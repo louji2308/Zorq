@@ -21,10 +21,10 @@
 | # | Requirement | Status | Evidence needed |
 |---|---|---|---|
 | R1 | Functional demo app, usable end-to-end | ❌ not started | live URL |
-| R2 | Public code repository (GitHub/GitLab/Bitbucket) with source + run instructions | 🟡 local git on `main` (root commit `00e0e6d`); **public remote not yet created** | repo URL |
+| R2 | Public code repository (GitHub/GitLab/Bitbucket) with source + run instructions | ✅ https://github.com/louji2308/zorq (PUBLIC, `main`, pushed `122053d`) | repo URL |
 | R3 | Text description of what it does + what makes it Qloo-powered | ❌ not started | Devpost field |
 | R4 | External hosting / fully published, free to test, no login | ❌ not started | live URL |
-| R5 | Open-source license visible in repo + repo About | 🟡 `LICENSE` (MIT) committed at root; must also be set in repo About on creation | `LICENSE` (MIT locked) |
+| R5 | Open-source license visible in repo + repo About | ✅ `LICENSE` (MIT) at root; GitHub reports `licenseInfo: mit`; About description set | `LICENSE` (MIT locked) |
 | R6 | Qloo integration actually used | ❌ not started | Gate A |
 | R7 | Truthful project start date | ⚠️ pending | enter Oct 6, 2026 (do not backdate) |
 | R8 | All Devpost custom fields answered | ⚠️ pending | submission-day checklist |
@@ -87,7 +87,7 @@ Cache TTL           ≈6h in-memory; PERSIST_QLOO_DERIVED=false by default
 | D — Rate/latency | 6–8 concurrency run completes in an acceptable UX budget | ❌ |
 | E — Evidence | explainability/affinity behavior known; rank-only fallback works | ❌ |
 | F — Presets | 2 genuinely Qloo-divergent presets + 1 honest control | ❌ |
-| G — Compliance | written Qloo answer on cache/storage/key lifetime, or no-persist mode active | ⚠️ key-lifetime confirmed valid through judging by user (2026-10-06); **cache/storage terms still unanswered** → no-persist mode stays active |
+| G — Compliance | written Qloo answer on cache/storage/key lifetime, or no-persist mode active | ✅ **answered from official docs** (developer guide, retrieved 2026-10-06): private server-side caching permitted with **no time limit**; never store Qloo responses in a public repo; keys active through end of judging period |
 
 ## 8. Day-1 / spike register (spec §18 + §35)
 
@@ -98,13 +98,14 @@ Cache TTL           ≈6h in-memory; PERSIST_QLOO_DERIVED=false by default
 | 3 | rate limit + latency at concurrency 6–8 | acceptable live duration | shrink K to 8, domains artist+movie | ❌ |
 | 4 | affinity present + rank stable across repeats | yes | rank-only weighting | ❌ |
 | 5 | 8 candidate sites → pick 2 divergent + 1 control presets | 3 presets chosen | — | ❌ |
-| 6 | caching/storage/key-lifetime terms | written organizer answer | in-memory only, no saved runs | ⚠️ key lifetime confirmed by user (D-0.7); storage/caching half still open → **email not sent** |
+| 6 | caching/storage/key-lifetime terms | written organizer answer | in-memory only, no saved runs | ✅ **closed from official developer guide (2026-10-06):** cache privately, any duration; no public storage of Qloo output; key valid through judging |
 | D1 | image URLs returned + displayable under terms | images for most entities | specimen tiles (typographic) | ❌ |
 | D2 | Raleway `lnum`/`tnum`, Bricolage axes, no layout shift | all render | numbers in Bricolage | ❌ |
 
 ## 9. Security / compliance (standing rules)
 
 - [ ] Qloo + DeepSeek keys exist only in server secrets; never in frontend, Git, logs, screenshots, README, committed MCP config.
+- [ ] **Never store Qloo response data in a public repository** (official Qloo rule, developer guide).
 - [ ] `.env.example` contains placeholders only.
 - [ ] No personal data (names, emails, device/location history) sent to Qloo.
 - [ ] Qloo/MCP/model output treated as untrusted; markdown sanitized before render.
@@ -129,14 +130,28 @@ clean-clone setup verified · no private URLs/assets · architecture documented 
 **After submission:** tag the exact commit · keep app online and free through Nov 16 · monitor
 `/healthz` (GitHub Actions every ~10 min) · no risky changes · watch organizer announcements.
 
-## 11. Open questions for organizers (ian@qloo.com) — NOT YET SENT
+## 11. Qloo official answers + API key acquisition (retrieved 2026-10-06)
 
-1. May Qloo output be cached, for how long, and in what form (raw / derived / entity IDs)?
-2. ~~Is the hackathon API key valid through the judging period (Nov 16)?~~ — **answered by user 2026-10-06: keys stay valid. No email needed for this item.**
-3. What are the event quota and rate limits?
-4. May preset evidence be pre-warmed?
+Source: **Qloo Agentic Hackathon Developer Guide** — https://docs.qloo.com/reference/qloo-llm-hackathon-developer-guide
 
-Conservative mode active until items 1/3/4 are answered: in-memory cache only, `PERSIST_QLOO_DERIVED=false`.
+| Question | Official answer | Impact |
+|---|---|---|
+| How to get a key | Submit the **API key request form**: https://forms.gle/zz12orkLHTAneLGz6 → key emailed; **"typically issued within a few business days"** (manual provisioning). Check spam; resubmit if >few days. | **Do this today** — lead time is the schedule risk (B-01). |
+| Key validity period | **"Keys remain active through the end of the judging period"**, deactivated after the hackathon closes. | Q4 of the organizer email is answered; key-lifetime risk closed. |
+| Caching / storage | **"Private server-side caching is fine and there is no time limit."** Do **not** store Qloo response data in a public repository. | Q1 answered; B-05 closed. `PERSIST_QLOO_DERIVED` stays `false` until server-side storage has a real owner (Phase 5), then may be enabled privately. |
+| Quota / rate limits | "set high enough to support typical hackathon projects"; raise via **#api-help** on Discord (https://discord.gg/rF9PKsD5Q7) | Q3 answered qualitatively; exact numbers measured empirically in Spike 3. |
+| Base URL | `https://hackathon.api.qloo.com` **only** (not staging/production) → otherwise 401 | Locked in gateway. |
+| Auth header | `X-Api-Key: <key>` (not `Authorization: Bearer`, not query param) | Locked in gateway. |
+| Method | `/v2/insights` is **GET**, params in query string (POST+JSON body fails) | Locked in gateway. |
+| Insights entity types | `urn:entity:{artist, book, brand, destination, movie, person, place, podcast, tv_show, video_game}`; 403 = unsupported type | Locked validator. |
+| Legacy endpoints | **Do not use `/recommendations` or `/recs`** — unsupported | Gateway must never call them. |
+| Silent invalid params | Unsupported params are **ignored, not errored** → 200 with empty `entities` | Gateway/tests must treat empty results as a param bug first, not data absence. |
+| Field filtering | Not supported — full response returned; extract client-side | Gateway must select/shape fields. |
+| Open organizer items | project-specific quota bump; preset evidence pre-warm | Ask in #api-help only if Spike 3/5 shows need. |
+
+## 11b. Remaining organizer contact
+
+Only if needed: quota headroom and preset pre-warming, via **#api-help on Discord** (faster than email).
 
 ## 12. Change log
 
@@ -144,3 +159,4 @@ Conservative mode active until items 1/3/4 are answered: in-memory cache only, `
 |---|---|
 | 2026-10-06 | Tracker created from `Hackathon_details.md` + `Tools_and_Requirements.md`. All requirements unmet (empty repository). |
 | 2026-10-06 | Phase 0: git init + MIT `LICENSE` + `.env.example` committed (`00e0e6d`) → R2/R5 partial. Key-lifetime question closed by user (D-0.7); storage/caching, quota and warm-up questions remain. |
+| 2026-10-06 | Public repo https://github.com/louji2308/zorq created, pushed, About + topics set, GitHub detects MIT → **R2 ✅ R5 ✅**. Official developer guide retrieved → **Gate G ✅, Spike 6 ✅** (cache policy, key expiry, base URL, auth header, supported types, legacy-endpoint ban). B-01 reduced to "submit key request form" (few business days lead time). |
