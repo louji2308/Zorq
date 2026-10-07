@@ -5,8 +5,8 @@
 
 ## Current Phase
 
-**PHASE 0 — Reconstruction & Groundwork** (pre-contract). Status: **COMPLETE pending sign-off**.
-Next: `PHASE 1 — Contract, Reconnaissance & Build Control`.
+**PHASE 0 — Reconstruction & Groundwork** (pre-contract). Status: **COMPLETE — signed off 2026-10-06**.
+Next: `PHASE 1 — Contract, Reconnaissance & Build Control` (opens with the Phase 1 contract).
 
 ## Current Objective
 
@@ -26,7 +26,7 @@ quota, cache/storage terms, DeepSeek tool calling).
 - [x] Git initialized on `main`; MIT `LICENSE`, `.gitignore`, `.env.example` committed in
       root commit `00e0e6d` (13 files, 7969 insertions). Working tree clean; `.env`
       confirmed ignored via `git check-ignore` (`.gitignore:2`).
-- [x] User decisions received for all Phase 0 open questions (D-0.5 … D-0.8).
+- [x] User decisions received for all Phase 0 open questions (D-0.5 … D-0.10).
 - [x] **Official Qloo developer guide retrieved** (docs.qloo.com, updated 2026-10-06): key-request
       form URL, base URL, auth header, GET-only insights, supported `filter.type` URNs, legacy
       endpoint ban, silent-invalid-param behaviour, cache/storage policy, key expiry, quota policy.
@@ -162,4 +162,5 @@ because Gate A formally requires it and the spec mandates MCP as the primary rou
 - [x] Public repository + visible license (R2/R5)
 - [x] **Qloo API key issued, stored safely, and proven to authenticate** (B-01)
 - [x] Real-service diagnostic evidence recorded (10 calls)
-- [ ] Phase 1 contract written (first action of next phase)
+- [x] All Phase 0 exit items closed. **Hand-off item → Phase 1 gate:** write the Phase 1 contract
+      (first action of the next phase, tracked there, not here).
