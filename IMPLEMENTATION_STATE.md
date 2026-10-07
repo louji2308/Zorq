@@ -210,9 +210,11 @@ response data in a public repository — only aggregate statistics appear above)
 
 ## Last Verified Commit
 
-`122053d` — *docs: record Phase 0 reconnaissance, toolchain evidence and build decisions.*
-Pushed to **https://github.com/louji2308/zorq** (`main`, PUBLIC, MIT detected, About set).
-Root commit `00e0e6d` holds the contract, spec bundle and scaffolding. Working tree clean.
+`bc0ccbf` — *docs: record Phase 1 contracts, worker evidence and Gate A MCP proof.*
+Preceded by `239c7df` (honest README) and `8ee0c91` (`ARCHITECTURE.md` execution contract).
+All three pushed to **https://github.com/louji2308/zorq** (`main`, PUBLIC, MIT detected);
+`git status -sb` → in sync with `origin/main`. Working tree clean.
+Earlier: `10d86a6` Phase 0 sign-off; root `00e0e6d` holds contract + spec bundle.
 
 ## Next Highest-Value Action
 
