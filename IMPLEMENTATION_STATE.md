@@ -5,7 +5,7 @@
 
 ## Current Phase
 
-**PHASE 0 — Reconstruction & Groundwork** (pre-contract). Status: `IN PROGRESS`.
+**PHASE 0 — Reconstruction & Groundwork** (pre-contract). Status: **COMPLETE pending sign-off**.
 Next: `PHASE 1 — Contract, Reconnaissance & Build Control`.
 
 ## Current Objective
@@ -32,6 +32,10 @@ quota, cache/storage terms, DeepSeek tool calling).
       endpoint ban, silent-invalid-param behaviour, cache/storage policy, key expiry, quota policy.
 - [x] **Public repository created and pushed**: https://github.com/louji2308/zorq (PUBLIC, `main`),
       About description + topics set, GitHub detects **MIT License** → submission R2/R5 satisfied.
+- [x] **Qloo API key received** (user), stored only in gitignored `.env`; verified absent from all
+      tracked files.
+- [x] **10 live Qloo calls executed** → Gate A REST path proven, locality + affinity + popularity
+      behaviour measured (see Verified Tests / Evidence).
 
 ### Toolchain evidence (2026-10-06, local Windows)
 
@@ -47,11 +51,10 @@ quota, cache/storage terms, DeepSeek tool calling).
 
 ## Active Work
 
-- **B-01 is now the critical path**: submit the official Qloo API key request form
-  (https://forms.gle/zz12orkLHTAneLGz6) today — manual provisioning takes a few business
-  days, i.e. up to ~Oct 9–13 against an Oct 28 internal freeze.
-- Credential-independent Phase 1 work can start immediately: phase contract, monorepo
-  scaffold (Vite/TS + Express/TS), config/validation layer, test harness.
+- Phase 0 evidence gathering is complete; **Phase 1 contract not yet written**.
+- Open engineering question decided by evidence, not assumption: the gateway must support
+  **POST** for `signal.interests.entities.query` / `filter.exclude.entities.query`
+  (JSON-body params), in addition to GET.
 
 ## Worker Status
 
@@ -60,8 +63,44 @@ implementation exists to delegate yet.
 
 ## Verified Tests / Evidence
 
-None. No code exists, therefore no tests exist. Do not report test status until
-Phase 2 establishes the Vitest/Playwright harness.
+No unit/integration tests exist yet (no code). **Live Qloo diagnostics — Gate A (REST path), 2026-10-06, 10 real calls against `https://hackathon.api.qloo.com` with `X-Api-Key`:**
+
+| Probe | Request | Result |
+|---|---|---|
+| A1 | `GET /search?query=cinema&type=urn:entity:movie` | **200**, 210 KB → `results[].entity_id`, `types`, `properties.image.url`, `tags[].tag_id` |
+| A2 | `GET /v2/tags?query=cinema` | **400** — error enumerates real params: `filter.results.tags, filter.tags, filter.parents.types, filter.tag.types, filter.query, filter.popularity.min/max` |
+| A3 | `GET /v2/tags?filter.query=cinema` | **200**, 5.3 KB → tags carry `id` (URN), `type`, `parents[].type` (**includes `urn:entity:place`**), `popularity` |
+| A4 | `GET /search?query=Williamsburg&type=urn:entity:place` | **200**, 347 KB → `address`, `geocode`, per-weekday `hours`, `business_rating`, `external.google_place` |
+| B1 | `/v2/insights?filter.type=urn:entity:place&signal.interests.tags=<place tag>` | **200**, 309 KB — **accepted** a place-scoped tag as signal |
+| B2/B3 | `/v2/insights?...&signal.interests.entities=<place id>` | **200**, 377 KB (take=20) → `results.entities[]` with `location{lat,lon,geohash}`, `popularity`, **`query.affinity` (numeric)**, `query.measurements.audience_growth` |
+| C1 | `+ filter.location=POINT(-73.958 40.718)&filter.location.radius=2500&sort_by=affinity&take=5` | **200** — all 5 results inside the Brooklyn radius |
+| C2 | `+ filter.location.query=Williamsburg, Brooklyn` | **200** — fuzzy named-locality filter works |
+| C3 | same as C1 with `take=50` | **200**, 982 KB → statistics below |
+
+**C3 statistics (50 results, Brooklyn 2.5 km):**
+```
+affinity    min 0.8051  max 0.8408  mean 0.8131  range 0.0357   ← compressed band
+popularity  min 0.0394  max 0.9992  mean 0.6697  range 0.9598   ← wide
+exact rank-position agreement (affinity vs popularity): 1 / 50  ← independent
+cities returned: all "New York"                                    ← locality filter real
+```
+
+**What this proves (and what it does not):**
+- ✅ Auth, base URL, `/search`, `/v2/tags`, `/v2/insights` all live and typed (Gate A **REST** path).
+- ✅ Numeric `affinity` **and** `popularity` are both real Qloo outputs (Gate E numeric source).
+- ✅ Locality can be forced via `filter.location` / `filter.location.query` + radius (Spike 1 prerequisite).
+- ✅ Affinity ordering is **not** popularity ordering (1/50 agreement) → non-popularity differentiation is
+  possible; low-population/high-affinity candidates exist (Spike 1 / Gate C preliminary).
+- ⚠️ **Affinity is compressed** (range 0.036): deltas must be normalized, never presented as large raw gaps.
+- ⚠️ **Payloads are enormous** (0.2–1.0 MB per call; no server-side field filtering) → gateway must project
+  fields before anything crosses SSE/DB.
+- ❌ **Not yet proven:** MCP transport (`qloo mcp` + `qloo_capabilities`) — Gate A formally still open;
+  shared-culture edge between two places; ≥80% concept→tag resolution (Spike 2); concurrency/latency
+  (Spike 3); rank stability (Spike 4); presets (Spike 5).
+
+**Secret hygiene verified:** `.env` → `.gitignore:2`; `tmp/insights_sample.json` → `.gitignore:37`;
+`git grep` finds no key material; no raw Qloo response is tracked (official Qloo rule: never store
+response data in a public repository — only aggregate statistics appear above).
 
 ## Decisions
 
@@ -74,8 +113,9 @@ Phase 2 establishes the Vitest/Playwright harness.
 | D-0.5 | Initialize git on `main` with MIT `LICENSE`, `.gitignore`, `.env.example`; single root commit `00e0e6d`. | User approved; public repo + visible license are hard submission requirements (R2/R5), and clean history must exist before Qloo work starts. | No (history is evidence; do not rewrite). |
 | D-0.6 | Skip Docker locally; validate the Dockerfile on Render only. | User approved. Render builds remotely; Qloo MCP needs a long-lived process only in production. Accepted dev-time risk. | Yes — revisit if container build fails late. |
 | D-0.7 | Qloo key validity + cache/storage policy now sourced from the **official developer guide**, not assumption. | Guide (retrieved 2026-10-06): keys active through end of judging; private server-side caching permitted with no time limit; Qloo responses must never enter a public repo. `PERSIST_QLOO_DERIVED` stays `false` until server-side storage has an owner (Phase 5), then may be enabled **privately**. | Yes if Qloo contradicts. |
-| D-0.8 | Sequence Qloo work ahead of agent work: DeepSeek key not yet available. | Real evidence (Gate A, Spikes 1–3) beats speculation; DeepSeek-dependent work (Prior Lock, agent loop) is deferred to Phase 3. Qloo key itself is still pending issuance (B-01). | Yes. |
+| D-0.8 | Sequence Qloo work ahead of agent work: DeepSeek key not yet available. | Real evidence (Gate A, Spikes 1–3) beats speculation; DeepSeek-dependent work (Prior Lock, agent loop) is deferred to Phase 3. | Yes. |
 | D-0.9 | Publish to https://github.com/louji2308/zorq immediately with MIT + About description. | User supplied the URL; R2/R5 are hard pass/fail requirements and history must exist before Qloo work. Verified: `visibility: PUBLIC`, `licenseInfo: mit`. | No (history is evidence). |
+| D-0.10 | Store raw Qloo responses only in gitignored `tmp/`; commit aggregate statistics and parameter findings, never response bodies or entity lists. | Official Qloo rule: do not store Qloo response data in a public repository. Keeps evidence auditable without violating terms. | No (compliance). |
 
 ## Deviations from contract
 
@@ -88,7 +128,7 @@ Phase 2 establishes the Vitest/Playwright harness.
 
 | ID | Severity | Blocker | Impact | Owner |
 |---|---|---|---|---|
-| B-01 | **Critical** | Qloo key **not yet issued**. User has not submitted the official request form: https://forms.gle/zz12orkLHTAneLGz6 — provisioning is manual, "typically a few business days", delivered to the registered email (check spam). | Blocks Spikes 1–6, Gate A (transport), all Qloo work, Phase 3. Longest lead time of any blocker → submit today. | User (form) → Qloo |
+| B-01 | ~~Qloo key not issued~~ | **Closed 2026-10-06**: key received from user, stored in gitignored `.env`, authenticated successfully against `hackathon.api.qloo.com`. | Gate A REST path unblocked; MCP path still open. | — |
 | B-02 | **Critical** | DeepSeek API key + balance not yet available. | Blocks Prior Lock, agent controller, every LLM-backed run. Qloo-first sequencing (D-0.8) limits schedule damage. | User |
 | B-03 | ~~Docker not installed~~ | **Closed by D-0.6** (accepted risk). | Local container tests skipped; Dockerfile validated on Render. | — |
 | B-04 | ~~No public GitHub repo~~ | **Closed by D-0.9**: https://github.com/louji2308/zorq is PUBLIC, pushed, MIT detected, About set. | R2/R5 satisfied. | — |
@@ -105,18 +145,21 @@ Root commit `00e0e6d` holds the contract, spec bundle and scaffolding. Working t
 
 ## Next Highest-Value Action
 
-1. **User submits the Qloo key request form today** (only action with multi-day lead time).
-2. Meanwhile, write the **Phase 1 contract** and scaffold the monorepo so that the moment
-   the key arrives, the first real call runs against typed, tested gateway code — not a
-   throwaway curl. Credentials convert immediately into Gate A evidence.
+Write the **Phase 1 contract**, then scaffold the monorepo (Vite/TS frontend + Express/TS backend,
+strict TS, Vitest, `npm run typecheck/lint/test/build`) with a typed Qloo gateway that reproduces the
+proven calls — including `filter.location` locality handling and field projection for the 0.2–1.0 MB
+payloads. **Highest-risk unknown after that: the MCP transport** (`qloo mcp`, `qloo_capabilities`),
+because Gate A formally requires it and the spec mandates MCP as the primary route with direct
+`/v2/insights` as degraded fallback. Also outstanding: DeepSeek key (B-02), MapTiler + Turso (B-06).
 
 ## Phase 0 Exit-Gate Status
 
 - [x] Repository state reconstructed
 - [x] All Project Spec files read at phase boundary
 - [x] Current-state model written
-- [x] Blockers and risks identified and assigned (B-04, B-05 closed with evidence)
+- [x] Blockers and risks identified and assigned (B-01, B-04, B-05 closed with evidence)
 - [x] Decisions received from user (D-0.5 … D-0.9)
 - [x] Public repository + visible license (R2/R5)
-- [ ] **Qloo API key issued and delivered into `.env`** (B-01) — last gate item
+- [x] **Qloo API key issued, stored safely, and proven to authenticate** (B-01)
+- [x] Real-service diagnostic evidence recorded (10 calls)
 - [ ] Phase 1 contract written (first action of next phase)

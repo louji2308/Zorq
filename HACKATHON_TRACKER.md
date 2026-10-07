@@ -81,11 +81,11 @@ Cache TTL           ≈6h in-memory; PERSIST_QLOO_DERIVED=false by default
 
 | Gate | Question | Status |
 |---|---|---|
-| A — Transport | Qloo MCP connects, `qloo_capabilities` ready, one full tool chain returns structured output | ❌ blocked on B-01 |
-| B — Resolution | ≥80% of component concepts resolve to defensible Qloo tags/entities | ❌ |
-| C — Edge quality | shared-culture edges vary meaningfully, not just popularity | ❌ |
-| D — Rate/latency | 6–8 concurrency run completes in an acceptable UX budget | ❌ |
-| E — Evidence | explainability/affinity behavior known; rank-only fallback works | ❌ |
+| A — Transport | Qloo MCP connects, `qloo_capabilities` ready, one full tool chain returns structured output | 🟡 **REST path proven 2026-10-06** (10 live calls: `/search`, `/v2/tags`, `/v2/insights` all 200; auth, base URL and error shapes known). **MCP path untested → gate not yet passed.** |
+| B — Resolution | ≥80% of component concepts resolve to defensible Qloo tags/entities | 🟡 1/8 concepts verified (`cinema` → `urn:tag:nearby_attraction:qloo:cinema` + `urn:tag:setting:qloo:cinema`, parents include `urn:entity:place`) |
+| C — Edge quality | shared-culture edges vary meaningfully, not just popularity | 🟡 preliminary: 50 local results show affinity-vs-popularity rank agreement **1/50** (independent) but affinity range only **0.036**. Pairwise shared-culture edge test still to run. |
+| D — Rate/latency | 6–8 concurrency run completes in an acceptable UX budget | ❌ not run. Known risk: responses are **0.2–1.0 MB** per call (no server-side field filtering). |
+| E — Evidence | explainability/affinity behavior known; rank-only fallback works | 🟡 **`query.affinity` numeric on every entity** (plus `popularity`); no separate explainability field observed. Affinity band is compressed → normalize before display. |
 | F — Presets | 2 genuinely Qloo-divergent presets + 1 honest control | ❌ |
 | G — Compliance | written Qloo answer on cache/storage/key lifetime, or no-persist mode active | ✅ **answered from official docs** (developer guide, retrieved 2026-10-06): private server-side caching permitted with **no time limit**; never store Qloo responses in a public repo; keys active through end of judging period |
 
@@ -93,13 +93,13 @@ Cache TTL           ≈6h in-memory; PERSIST_QLOO_DERIVED=false by default
 
 | # | Spike | Pass | Fallback | Status |
 |---|---|---|---|---|
-| 1 | 8 sites × 8 categories → edges non-degenerate, not popularity | real spread, site≠city | triangulation route as primary edge | ❌ |
-| 2 | `/v2/tags` resolves independent cinema, listening bar, design shop, gallery… | ≥80% | exemplar clustering | ❌ |
-| 3 | rate limit + latency at concurrency 6–8 | acceptable live duration | shrink K to 8, domains artist+movie | ❌ |
-| 4 | affinity present + rank stable across repeats | yes | rank-only weighting | ❌ |
+| 1 | 8 sites × 8 categories → edges non-degenerate, not popularity | real spread, site≠city | triangulation route as primary edge | 🟡 partial: locality filter (`filter.location` / `filter.location.query` + radius) proven; affinity independent of popularity (1/50 rank agreement); affinity band compressed (range 0.036). 8×8 matrix not yet run. |
+| 2 | `/v2/tags` resolves independent cinema, listening bar, design shop, gallery… | ≥80% | exemplar clustering | 🟡 1/8 verified (`cinema`, place-scoped parents present) |
+| 3 | rate limit + latency at concurrency 6–8 | acceptable live duration | shrink K to 8, domains artist+movie | ❌ not run; payload size (up to ~1 MB/call) is the flagged risk |
+| 4 | affinity present + rank stable across repeats | yes | rank-only weighting | 🟡 affinity present and numeric; **stability across repeats not yet measured** |
 | 5 | 8 candidate sites → pick 2 divergent + 1 control presets | 3 presets chosen | — | ❌ |
 | 6 | caching/storage/key-lifetime terms | written organizer answer | in-memory only, no saved runs | ✅ **closed from official developer guide (2026-10-06):** cache privately, any duration; no public storage of Qloo output; key valid through judging |
-| D1 | image URLs returned + displayable under terms | images for most entities | specimen tiles (typographic) | ❌ |
+| D1 | image URLs returned + displayable under terms | images for most entities | specimen tiles (typographic) | 🟡 images confirmed present (`properties.image.url` on search, `properties.images[]` on insights); display/licensing path not yet exercised |
 | D2 | Raleway `lnum`/`tnum`, Bricolage axes, no layout shift | all render | numbers in Bricolage | ❌ |
 
 ## 9. Security / compliance (standing rules)
@@ -147,6 +147,10 @@ Source: **Qloo Agentic Hackathon Developer Guide** — https://docs.qloo.com/ref
 | Legacy endpoints | **Do not use `/recommendations` or `/recs`** — unsupported | Gateway must never call them. |
 | Silent invalid params | Unsupported params are **ignored, not errored** → 200 with empty `entities` | Gateway/tests must treat empty results as a param bug first, not data absence. |
 | Field filtering | Not supported — full response returned; extract client-side | Gateway must select/shape fields. |
+| **Locality filtering** | `filter.location` = WKT `POINT(lon lat)` **or** locality Qloo ID; `filter.location.radius` = metres (`0` = strict boundary); `filter.location.query` = fuzzy named locality (400 if no match); also `filter.geocode.name/admin1_region/country_code`. `signal.location[+radius]` for geospatial signals. | **Verified live 2026-10-06** — Brooklyn point + 2500 m returned only New York results. This is how Zorq enforces place locality. |
+| Result control | `take` default **20**, max **50**; `page` (preferred) or `offset`; `sort_by` = `affinity` \| `distance` \| `rating` \| `quality`; `diversify.by=properties.geocode.city` + `diversify.take` | Caps candidate sets per call → iterate pages when K > 50. |
+| Popularity control | `filter.popularity.min/max` = float 0–1 percentile | Direct input for Spike 1 (distinctiveness vs popularity). |
+| POST-only params | `signal.interests.entities.query`, `filter.exclude.entities.query` (JSON body) | Gateway must support POST as well as GET. |
 | Open organizer items | project-specific quota bump; preset evidence pre-warm | Ask in #api-help only if Spike 3/5 shows need. |
 
 ## 11b. Remaining organizer contact
@@ -160,3 +164,4 @@ Only if needed: quota headroom and preset pre-warming, via **#api-help on Discor
 | 2026-10-06 | Tracker created from `Hackathon_details.md` + `Tools_and_Requirements.md`. All requirements unmet (empty repository). |
 | 2026-10-06 | Phase 0: git init + MIT `LICENSE` + `.env.example` committed (`00e0e6d`) → R2/R5 partial. Key-lifetime question closed by user (D-0.7); storage/caching, quota and warm-up questions remain. |
 | 2026-10-06 | Public repo https://github.com/louji2308/zorq created, pushed, About + topics set, GitHub detects MIT → **R2 ✅ R5 ✅**. Official developer guide retrieved → **Gate G ✅, Spike 6 ✅** (cache policy, key expiry, base URL, auth header, supported types, legacy-endpoint ban). B-01 reduced to "submit key request form" (few business days lead time). |
+| 2026-10-06 | **Qloo key received and used**: 10 live calls, zero failures after param correction. **B-01 ✅**, Gates A/B/C/E → 🟡, Spikes 1/2/4/D1 → 🟡. Locality filters verified live; affinity+popularity both numeric and independent (1/50 rank agreement); affinity band compressed (range 0.036); payloads 0.2–1.0 MB. Full evidence in `IMPLEMENTATION_STATE.md`. |
