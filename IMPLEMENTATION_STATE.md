@@ -5,18 +5,103 @@
 
 ## Current Phase
 
-**PHASE 3 — Real Qloo + DeepSeek Agent Core**. Status: **not yet opened**.
-Phase 2 signed off 2026-10-06 (Phases 0 and 1 signed off same date).
+**PHASE 3 — Real Qloo + DeepSeek Agent Core**. Status: **OPENED 2026-10-07**.
+Phase boundary refresh executed per AGENTS §5/§26: `AGENTS.md` + all 7 ProjectSpec
+sources re-read in full at this boundary, plus targeted re-reads of `ARCHITECTURE.md`
+§4 (Qloo contract, incl. §4.2 MCP binding conditions and §4.3 fixed truths) and
+`ProjectSpec/IMPLEMENTATION_PLAN.md` Phase 3 (lines 417–475). Contract written below
+**before any delegation** (AGENTS §7).
 
 ## Current Objective
 
-Open Phase 3: the Qloo gateway (MCP primary per proven Gate A + typed REST fallback) and
-the DeepSeek agent controller behind the locked bounds (≤3 planner turns, ≤$2/run).
-Qloo-side work is unblocked; LLM-side work (Prior Lock, agent loop) remains blocked on
-**B-02** (DeepSeek key). See `ProjectSpec/IMPLEMENTATION_PLAN.md` Phase 3 and
-`ARCHITECTURE.md` §4 for the binding contract.
+Execute the Phase 3 contract below. Worker plan (sequential, per D-2.1): spawn
+**W-3.1 QlooGateway** first (unblocked — canonical owner `src/server/qloo/`), then
+**W-3.2 DeepSeek controller + write-once Prior Lock** (`src/server/agent/`) once
+**B-02** (DeepSeek key, user-owned) clears. Binding references:
+`ProjectSpec/IMPLEMENTATION_PLAN.md` Phase 3, `ARCHITECTURE.md` §1/§4/§6.
 
-### PHASE 2 CONTRACT (written 2026-10-06, before delegation — CLOSED same date)
+### PHASE 3 CONTRACT (written 2026-10-07, before delegation)
+
+```text
+PHASE:        3 — Real Qloo + DeepSeek Agent Core
+MISSION:      Prove the highest-risk intelligence path against the real services before
+              the rest of the product depends on assumptions. (Plan §Phase 3, verbatim.)
+WHY:          Phases 4–8 consume gateway evidence, agent state, and Prior Lock behavior;
+              an assumed Qloo/LLM contract discovered late invalidates engine, SSE, and
+              all six screens simultaneously.
+CURRENT-STATE ASSUMPTIONS:
+              Phases 0–2 signed off 2026-10-06 (HEAD 1a5c993, tree clean); Phase 2
+              runtime green (62 unit + 3 e2e, degraded boot + rate limits + error model
+              §3.0 verified on a fresh clone); Gate A fully open — REST (10 live calls)
+              AND MCP (`USABLE-WITH-CONDITIONS`, 4 binding conditions, §4.2); Qloo key
+              in gitignored .env; DeepSeek key ABSENT → B-02 blocks LLM-dependent work
+              (D-0.8: gateway proceeds first); MCP spike artifacts in OS temp dir only
+              (`%TEMP%\qloo-mcp-spike`); canonical owners from §1: qloo/ and agent/.
+IN-SCOPE:     QlooGateway in `src/server/qloo/` (typed, transport-agnostic; MCP primary
+              per §4.2 conditions, DirectQlooTransport REST fallback for the 4 proven
+              capability gaps — rows 2/4/9/13: entity+place search, urn:heatmap, taste
+              neighborhoods, feature.explainability); capability surfaces only as needed
+              by the run (startup, search, tags, insights/locality, describe, rank/
+              recommend, bridge, replacement, triangulation); known-failure guards
+              (take>50 rejected client-side, zero-result 200 → failure, invalid
+              combinations pre-rejected, POST-body params for signal.interests.entities
+              .query / filter.exclude.entities.query, 429/5xx bounded backoff with
+              visible state); mandatory field projection before any persistence/SSE;
+              in-memory LRU cache TTL≈6h, smallest useful result, live/cached state;
+              budgets from config (target 180 calls, concurrency ≤8 default 6,
+              p-limit); ledger/evidence-shaped typed results. Later (W-3.2, after
+              B-02): one bounded DeepSeek tool-calling controller (no LangChain/
+              CrewAI/AutoGen/Mastra/swarm), write-once Prior Lock (Brief → LLM-only
+              Prior → persist once → qlooUsed=false → immutable), autonomous probe
+              adaptations (thin→widen scale, weak→bridge, uncertain→triangulate,
+              unresolved→tag/entity resolve, replace→role-preserving, budget→reserve
+              calls), bounded ≤3 planner turns. Tests: gateway contract + failure
+              guards; live-Qloo diagnostics isolated from default suite; malformed
+              model output rejected.
+INVARIANTS:   Qloo = cultural measurement only — never computes a Zorq metric (§4.3,
+              AGENTS §13); NO Qloo call before stored Prior exists; Prior write-once /
+              immutable; LLM never authors numeric truth; budgets locked — config
+              rejects above-lock values (≤3 turns, ≤180/≈200 calls, ≤8 conc, ≤2
+              mutation rounds, ≤$2); no fabricated evidence IDs, no canned Qloo data,
+              no hardcoded scores; error model §3.0 exact; API = the 11 routes only;
+              gateway hides transport (no HTTP/MCP details above it); field projection
+              mandatory; no secrets in tracked files / logs; client never receives
+              Qloo key; ProjectSpec/ read-only; do-not-drift list applies.
+DEPENDENCIES: .env Qloo key (available); npm registry; B-02 DeepSeek key (blocks W-3.2
+              only); B-06 Turso/MapTiler NOT required (in-memory cache suffices);
+              Docker absent (D-0.6, unchanged).
+NON-GOALS:    Measurement engine math (Phase 4), durable Turso state / SSE / recovery
+              (Phase 5), screens beyond API-level proof (Phase 6+), deployment changes,
+              rate-limit number tuning, multi-agent runtime, chat UI, trends claims.
+RISK HOTSPOTS:MCP envelope ↔ raw REST mapping mistakes; capability-gap fallback
+              silently never exercised; caching violating conservative policy;
+              field projection skipped (0.2–1.0 MB payloads cross the boundary);
+              budget config drift; Prior accidentally overwritten; controller looping
+              past turn caps; live-Qloo tests flaking the default suite; key leakage
+              via logs/errors.
+ACCEPTANCE:   A real brief → stored immutable Prior (qlooUsed=false) → ≥1 live Qloo
+              observation → validated state mutation → ledger event → evidence record;
+              Qloo outage → honest partial state with typed error (never fake data);
+              gateway contract tests green incl. all failure guards; controller
+              bounded ≤3 turns, malformed output rejected; budgets enforced by config;
+              full suite green (typecheck/lint/unit/build/e2e) with live-Qloo tests
+              gated/isolated so the default suite stays deterministic.
+VERIFY:       Orchestrator reviews every worker diff (AGENTS §17); independently re-runs
+              typecheck/lint/test/build/e2e; traces ONE real live observation end-to-end
+              (evidence record + ledger row → Qloo result path); secret grep scan;
+              failure-path spot check (bad key/network off → honest typed state).
+EXIT GATE:    "A real brief produces a Prior, at least one real Qloo observation, a
+              validated state mutation, a ledger event and an evidence record. Qloo
+              outage yields an honest partial state." (Plan §Phase 3, quoted in
+              ARCHITECTURE.md §6.)
+COMMIT EXPECT:3–5 coherent commits, plan-suggested boundaries:
+              feat: connect the production Qloo gateway through MCP.
+              feat: add the bounded DeepSeek tool-calling controller.
+              feat: enforce write-once Prior Lock and validated agent state.
+              test: cover live Qloo failures and malformed model output.
+```
+
+### PHASE 2 CONTRACT (ARCHIVED — written 2026-10-06, closed same date)
 
 ```text
 PHASE:        2 — Repository Foundation & Typed Runtime
@@ -149,6 +234,12 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 
 ## Active Work
 
+- **PHASE 3 OPENED 2026-10-07** — boundary refresh complete per AGENTS §5/§26 (all 7
+  ProjectSpec docs + `AGENTS.md` re-read in full at this boundary; targeted re-reads of
+  `ARCHITECTURE.md` §4 and Plan §Phase 3); Phase 3 contract written before delegation.
+  Worker plan (sequential, D-2.1): **W-3.1 QlooGateway** (`src/server/qloo/`,
+  unblocked) → **W-3.2 DeepSeek controller + Prior Lock** (`src/server/agent/`, blocked
+  on B-02) → orchestrator integration + phase verification.
 - **PHASE 2 CLOSED 2026-10-06 — exit gate PASSED on a real fresh checkout** (evidence in
   Verified Tests below; gate checklist at "Phase 2 Exit-Gate Status"). Phase boundary
   refresh had been executed per AGENTS §5/§26 (`AGENTS.md` + all 7 ProjectSpec sources
@@ -327,14 +418,19 @@ Phase 2 commits, all gates green on each. Pushed to **https://github.com/louji23
 
 ## Next Highest-Value Action
 
-**Open Phase 3 — Real Qloo + DeepSeek Agent Core**: write the Phase 3 contract (AGENTS §7),
-then build the **QlooGateway** on the proven Gate A transport (MCP primary + typed REST
-fallback; POST-body variants for `signal.interests.entities.query`/`filter.exclude.entities.query`;
-field projection mandatory — payloads 0.2–1.0 MB), with budgets from D-2.5 and §13 locked.
-LLM pieces (Prior Lock, agent controller) wait on **B-02 (DeepSeek key, critical, user-owned)** —
-Qloo-gateway work must proceed first (D-0.8). Still outstanding from user: DeepSeek key (B-02),
-MapTiler + Turso (B-06), Devpost registration. MCP spike artifacts remain in OS temp dir
-(`%TEMP%\qloo-mcp-spike`) for Phase 3 reference — outside the repo by design.
+**Spawn W-3.1 (QlooGateway)** — contract written; canonical owner `src/server/qloo/`
+per §1. Scope: typed gateway, MCP primary + REST fallback per §4.2's 4 binding
+conditions (trusted base URL pair, normalized envelope + contract-checksum change
+detection, capability-gap fallback mandatory, long-lived process), POST-body variants
+for `signal.interests.entities.query`/`filter.exclude.entities.query`, mandatory field
+projection (0.2–1.0 MB payloads), guards (take>50, zero-result, invalid combos, 429/5xx
+bounded backoff), in-memory LRU TTL≈6h with live/cached state, budgets from config
+(180 target / ≤8 concurrency, p-limit), live-Qloo tests isolated from the default
+suite. Then W-3.2 (controller + Prior Lock) waits on **B-02 (DeepSeek key, critical,
+user-owned)** — Qloo-gateway work proceeds first (D-0.8). Still outstanding from user:
+DeepSeek key (B-02), MapTiler + Turso (B-06), Devpost registration. MCP spike artifacts
+remain in OS temp dir (`%TEMP%\qloo-mcp-spike`) for Phase 3 reference — outside the
+repo by design.
 
 ## Phase 2 Exit-Gate Status
 
