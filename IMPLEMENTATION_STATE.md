@@ -5,14 +5,50 @@
 
 ## Current Phase
 
-**PHASE 0 — Reconstruction & Groundwork** (pre-contract). Status: **COMPLETE — signed off 2026-10-06**.
-Next: `PHASE 1 — Contract, Reconnaissance & Build Control` (opens with the Phase 1 contract).
+**PHASE 1 — Contract, Reconnaissance & Build Control**. Status: **COMPLETE — signed off 2026-10-06**.
+(Phase 0 signed off same date; Phase 2 opens next.)
 
 ## Current Objective
 
-Establish verified ground truth before any product code: repository state, toolchain,
-credentials, competition constraints, and the highest-risk unknowns (Qloo transport,
-quota, cache/storage terms, DeepSeek tool calling).
+Convert the supplied project documents into a repository-level execution contract before
+substantial product coding: repository ownership map, canonical Run state, API surface,
+Qloo capability contract, UI contract — and resolve the highest-risk unknown (Qloo MCP
+transport behaviour) with real evidence.
+
+### PHASE 1 CONTRACT (written 2026-10-06, before delegation)
+
+```text
+PHASE:        1 — Contract, Reconnaissance & Build Control
+MISSION:      One implementation path; ownership map; locked state/API/Qloo/UI contracts;
+              highest-risk unknowns tested, not assumed.
+WHY:          Phase 2+ builds against these contracts; ambiguity here multiplies rework.
+IN-SCOPE:     ARCHITECTURE.md (repo map, Run state tree, 11-route API contract with
+              request/response schemas + error semantics + security + tests, Qloo
+              capability contract, UI contract, phase gates, blockers); Qloo MCP
+              transport reconnaissance against the real key; README.md skeleton with
+              honest current status (no false run instructions).
+INVARIANTS:   Canonical Run state tree exactly as IMPLEMENTATION_PLAN.md Phase 1 locks it;
+              API family = the plan's /api/runs routes (single API family — the
+              /api/qloo/proxy family referenced in earlier notes does NOT exist in any
+              spec; stale note corrected 2026-10-06); Prior write-once; no fabricated
+              Qloo data; no secrets in tracked files; no product features (plan's
+              do-not-drift list applies).
+DEPENDENCIES: .env Qloo key (available); npm registry (verified).
+NON-GOALS:    Product code, UI polish, auth, extra features, package scaffolding
+              (Phase 2 owns the executable foundation).
+RISK HOTSPOTS:MCP transport (Gate A open half); harness install side-effects on repo;
+              accidental secret leakage; README claiming unimplemented commands.
+ACCEPTANCE:   ARCHITECTURE.md covers all 11 ownership domains + every route contract +
+              Run state tree verbatim; MCP verdict recorded with evidence (usable /
+              not usable / degraded) in Verified Tests; no secrets in git; tracker +
+              state updated.
+VERIFY:       Orchestrator re-reads ARCHITECTURE.md against plan §Phase 1 checklist;
+              git grep secret scan; independent MCP re-check of key findings.
+EXIT GATE:    Repo has one implementation path, clear responsibility owners, defined
+              API/state contracts, visible unresolved blockers, defined phase gates,
+              no plausible ambiguity about what Zorq is.
+COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
+```
 
 ## Completed Capabilities
 
@@ -51,15 +87,33 @@ quota, cache/storage terms, DeepSeek tool calling).
 
 ## Active Work
 
-- Phase 0 evidence gathering is complete; **Phase 1 contract not yet written**.
-- Open engineering question decided by evidence, not assumption: the gateway must support
-  **POST** for `signal.interests.entities.query` / `filter.exclude.entities.query`
-  (JSON-body params), in addition to GET.
+- **Phase 1 complete 2026-10-06.** Phase-boundary refresh done (all 7 ProjectSpec sources
+  re-consumed; Final Design + Hackathon Details via exact-value extraction briefs to protect
+  context — targeted rereads available on demand).
+- Phase 1 contract written pre-delegation (AGENTS.md §7, archived above).
+- Both workers completed, reviewed, and integrated: W-1.1 → `ARCHITECTURE.md`; W-1.2 → MCP
+  verdict `USABLE-WITH-CONDITIONS` (recorded in `ARCHITECTURE.md` §4.2 + evidence table below).
+- `README.md` written (honest status; no unimplemented commands printed).
+- Stale-note correction: an earlier internal note listed an `/api/qloo/proxy`-style API family.
+  **Grep proves no such routes exist in any spec** — the sole canonical API family is the
+  plan's 11 `/api/runs` routes (IMPLEMENTATION_PLAN.md Phase 1, repeated at final checklist).
+  Recorded here so no worker reintroduces the phantom family.
+- Engineering constraint carried forward: gateway must support **POST** for
+  `signal.interests.entities.query` / `filter.exclude.entities.query` (JSON-body params),
+  in addition to GET.
 
 ## Worker Status
 
-No workers spawned. Phase 0 is Orchestrator-owned reconnaissance; no substantive
-implementation exists to delegate yet.
+| Worker | Contract | Scope | Status |
+|---|---|---|---|
+| W-1.1 | Contract authoring | Create `ARCHITECTURE.md` only (repo ownership map, locked Run state tree, 11-route API contract, Qloo capability contract, UI contract, phase gates, blockers) | **DONE 2026-10-06 — reviewed & accepted.** 398-line contract; all 8 sections; 11/11 route contract blocks; Run tree byte-matches plan; phantom-route grep = 0 hits; no secrets. 6 spec ambiguities surfaced (error model undefined in specs → worker defined canonical §3.0 contract; Prior-failure semantics; challenge async shape; Phase 0 gate text sourced from state; Phase 7 gate mojibake normalized; SSE replay staged Phase 2–4 vs 5). |
+| W-1.2 | Reconnaissance | Install `@qloo/qloo-harness` **outside the repo tree** (temp dir), prove/disprove `qloo mcp` + `qloo_capabilities` against the real key, report verdict + evidence | **DONE 2026-10-06 — reviewed, independently re-run, accepted.** Verdict `USABLE-WITH-CONDITIONS`; Gate A MCP half now proven. Conditions recorded in `ARCHITECTURE.md` §4.2. |
+
+**Orchestrator integration review (AGENTS §17):** both diffs inspected; W-1.1 touched only `ARCHITECTURE.md`;
+W-1.2 touched only temp-dir files (repo `git status` shows no spike artifacts); key never echoed; worker claims
+independently re-verified by orchestrator re-run of `mcp-probe2.js` (identical contract checksum) and by grep
+scans (no key material, no phantom routes, 11 route sections present). Contract updated by orchestrator with the
+MCP verdict + 4 binding conditions. No duplicated responsibility; no hidden mocks.
 
 ## Verified Tests / Evidence
 
@@ -85,8 +139,25 @@ exact rank-position agreement (affinity vs popularity): 1 / 50  ← independent
 cities returned: all "New York"                                    ← locality filter real
 ```
 
+**Gate A — MCP transport path, 2026-10-06 (W-1.2 reconnaissance + independent orchestrator re-run):**
+
+| Probe | Request | Result |
+|---|---|---|
+| M1 | `node dist/bin.js mcp` (`@qloo/qloo-harness` 0.1.26, temp dir, `QLOO_BASE_URL` + `QLOO_TRUSTED_BASE_URL` = hackathon host) | **Boots on stdio** newline-delimited JSON-RPC 2.0, no TTY, no LLM credential required |
+| M2 | JSON-RPC `initialize` → `tools/list` | `serverInfo: qloo-harness 0.1.26`, protocol `2024-11-05`, capabilities `{tools, resources}`, boot→init 1544 ms; **10 tools** (`qloo_capabilities, qloo_recommend, qloo_rank, qloo_describe, qloo_where_popular, qloo_compare_audiences, qloo_entity_tags, qloo_audience_demographics, qloo_trends, qloo_find_tags`) |
+| M3 | `qloo_capabilities` | 63 ms, `status ok` → contract v1.0.0, checksum `sha256:762bdcc5…924f5`, adapter `qloo_harness_mcp` canonical, `ready: true`, 9 `supported_operation_ids` |
+| M4 | `tools/call qloo_find_tags {query:"jazz", limit:1}` | **Live 200-equivalent**: `status:"ok"`, `result_count:1`, `duration_ms:1618`, envelope has `interpretation/provenance/execution` |
+| M5 | `qloo doctor --network --json` | `qloo-network: ok — accepted the configured credential`; `qloo-endpoint-trust: ok` for the hackathon base URL |
+| M6 | Orchestrator independent re-run of `mcp-probe2.js` | **Identical contract checksum + 9 operation_ids** — worker claim reproduced, not trusted |
+
+**MCP verdict: `USABLE-WITH-CONDITIONS` → Gate A REST + MCP paths BOTH PROVEN.** Four binding conditions
+(trusted-base-URL env pair, normalized envelope ≠ raw REST, four demonstrated capability gaps needing the
+REST fallback, long-lived child-process model) recorded in `ARCHITECTURE.md` §4.2. Tool-inventory details
+(10 tools + input params) also live there. Artifacts stayed in OS temp dir — repo untouched.
+
 **What this proves (and what it does not):**
 - ✅ Auth, base URL, `/search`, `/v2/tags`, `/v2/insights` all live and typed (Gate A **REST** path).
+- ✅ **`qloo mcp` + `qloo_capabilities` live and typed (Gate A MCP path) — Gate A now fully proven.**
 - ✅ Numeric `affinity` **and** `popularity` are both real Qloo outputs (Gate E numeric source).
 - ✅ Locality can be forced via `filter.location` / `filter.location.query` + radius (Spike 1 prerequisite).
 - ✅ Affinity ordering is **not** popularity ordering (1/50 agreement) → non-popularity differentiation is
@@ -94,9 +165,9 @@ cities returned: all "New York"                                    ← locality 
 - ⚠️ **Affinity is compressed** (range 0.036): deltas must be normalized, never presented as large raw gaps.
 - ⚠️ **Payloads are enormous** (0.2–1.0 MB per call; no server-side field filtering) → gateway must project
   fields before anything crosses SSE/DB.
-- ❌ **Not yet proven:** MCP transport (`qloo mcp` + `qloo_capabilities`) — Gate A formally still open;
-  shared-culture edge between two places; ≥80% concept→tag resolution (Spike 2); concurrency/latency
-  (Spike 3); rank stability (Spike 4); presets (Spike 5).
+- ❌ **Not yet proven:** shared-culture edge between two places; ≥80% concept→tag resolution (Spike 2);
+  concurrency/latency (Spike 3); rank stability (Spike 4); presets (Spike 5); heatmap `urn:heatmap`,
+  taste neighborhoods, explainability feature (not exercised in our calls).
 
 **Secret hygiene verified:** `.env` → `.gitignore:2`; `tmp/insights_sample.json` → `.gitignore:37`;
 `git grep` finds no key material; no raw Qloo response is tracked (official Qloo rule: never store
@@ -128,7 +199,7 @@ response data in a public repository — only aggregate statistics appear above)
 
 | ID | Severity | Blocker | Impact | Owner |
 |---|---|---|---|---|
-| B-01 | ~~Qloo key not issued~~ | **Closed 2026-10-06**: key received from user, stored in gitignored `.env`, authenticated successfully against `hackathon.api.qloo.com`. | Gate A REST path unblocked; MCP path still open. | — |
+| B-01 | ~~Qloo key not issued~~ | **Closed 2026-10-06**: key received from user, stored in gitignored `.env`, authenticated successfully against `hackathon.api.qloo.com`. | Gate A REST path unblocked; MCP path also proven same day (see Verified Tests M1–M6). | — |
 | B-02 | **Critical** | DeepSeek API key + balance not yet available. | Blocks Prior Lock, agent controller, every LLM-backed run. Qloo-first sequencing (D-0.8) limits schedule damage. | User |
 | B-03 | ~~Docker not installed~~ | **Closed by D-0.6** (accepted risk). | Local container tests skipped; Dockerfile validated on Render. | — |
 | B-04 | ~~No public GitHub repo~~ | **Closed by D-0.9**: https://github.com/louji2308/zorq is PUBLIC, pushed, MIT detected, About set. | R2/R5 satisfied. | — |
@@ -145,12 +216,31 @@ Root commit `00e0e6d` holds the contract, spec bundle and scaffolding. Working t
 
 ## Next Highest-Value Action
 
-Write the **Phase 1 contract**, then scaffold the monorepo (Vite/TS frontend + Express/TS backend,
-strict TS, Vitest, `npm run typecheck/lint/test/build`) with a typed Qloo gateway that reproduces the
-proven calls — including `filter.location` locality handling and field projection for the 0.2–1.0 MB
-payloads. **Highest-risk unknown after that: the MCP transport** (`qloo mcp`, `qloo_capabilities`),
-because Gate A formally requires it and the spec mandates MCP as the primary route with direct
-`/v2/insights` as degraded fallback. Also outstanding: DeepSeek key (B-02), MapTiler + Turso (B-06).
+**Phase 2 — Repository Foundation & Typed Runtime**: scaffold Vite/TS frontend + Express/TS
+backend, shared Zod contracts, config loader, Pino, typed error model (per `ARCHITECTURE.md` §3.0),
+Helmet + rate limiting, Vitest, Playwright, Dockerfile, real `GET /healthz`. Exit gate: fresh
+checkout installs/typechecks/lints/tests/builds/starts and answers `/healthz`, and fails clearly
+when required config is absent.
+Still outstanding from user: **DeepSeek key (B-02, critical for Phase 3)**, MapTiler + Turso (B-06),
+Devpost registration. MCP spike artifacts remain in OS temp dir (`%TEMP%\qloo-mcp-spike`) for
+Phase 3 reference — outside the repo by design.
+
+## Phase 1 Exit-Gate Status
+
+- [x] One implementation path (ARCHITECTURE.md §1: single ownership map, one API family, one
+      state store, one Qloo gateway)
+- [x] Clear responsibility owners (all 11 plan-named domains placed in the `src/` tree)
+- [x] Defined API/state contracts (11/11 routes with schema + errors + security + tests;
+      Run state tree 13 nodes byte-matched to the plan, single-writer table per node)
+- [x] Visible unresolved blockers (§7: B-02, B-06, quota, Docker-accepted, Devpost)
+- [x] Defined phase gates (§6: Phases 0–10 exit gates recorded)
+- [x] No plausible ambiguity about what Zorq is (header statement + §4.3 fixed truths)
+- [x] High-risk unknown resolved with evidence: **Qloo MCP transport proven**
+      (`USABLE-WITH-CONDITIONS`, orchestrator independently re-ran; Gate A ✅ in tracker)
+- [x] Worker results reviewed (AGENTS §17): diffs inspected, claims re-verified, scope confirmed
+- [x] No secrets in tracked files (key-leak grep = 0 across all changed files)
+- [x] Deviation recorded where needed (phase-boundary reading method; §3.0 error model defined
+      by W-1.1 because no spec defines it — contract, not product behavior, so within AGENTS §2)
 
 ## Phase 0 Exit-Gate Status
 
