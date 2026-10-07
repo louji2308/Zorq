@@ -5,18 +5,18 @@
 
 ## Current Phase
 
-**PHASE 2 — Repository Foundation & Typed Runtime**. Status: **OPENED 2026-10-06**
-(Phases 0 and 1 signed off same date.)
+**PHASE 3 — Real Qloo + DeepSeek Agent Core**. Status: **not yet opened**.
+Phase 2 signed off 2026-10-06 (Phases 0 and 1 signed off same date).
 
 ## Current Objective
 
-Build the smallest real executable foundation that supports every later phase without
-architectural rework: typed full-stack runtime (React+Vite+TS · Express+TS · shared Zod
-contracts), config loader that fails clearly, Pino, typed error model, Helmet + rate
-limiting, route registration, npm scripts, Vitest, Playwright, Docker, environment
-contract, production build path, and a real `GET /healthz`.
+Open Phase 3: the Qloo gateway (MCP primary per proven Gate A + typed REST fallback) and
+the DeepSeek agent controller behind the locked bounds (≤3 planner turns, ≤$2/run).
+Qloo-side work is unblocked; LLM-side work (Prior Lock, agent loop) remains blocked on
+**B-02** (DeepSeek key). See `ProjectSpec/IMPLEMENTATION_PLAN.md` Phase 3 and
+`ARCHITECTURE.md` §4 for the binding contract.
 
-### PHASE 2 CONTRACT (written 2026-10-06, before delegation)
+### PHASE 2 CONTRACT (written 2026-10-06, before delegation — CLOSED same date)
 
 ```text
 PHASE:        2 — Repository Foundation & Typed Runtime
@@ -149,20 +149,21 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 
 ## Active Work
 
-- **Phase 2 opened 2026-10-06.** Phase-boundary refresh executed per AGENTS §5/§26:
-  `AGENTS.md` + all 7 ProjectSpec sources re-read in full at this boundary (Final_design
-  and Hackathon_details read across capped ranges to completion; Idea re-read in full).
-  Phase 2 contract written above, before any delegation (AGENTS §7).
-- Worker decomposition decided (AGENTS §9 — by responsibility, dependency-ordered):
-  `W-2.1 foundation → W-2.2 server runtime → W-2.3 harness/Docker/docs`. Workers run
-  **sequentially in one checkout** (decision D-2.1: parallel workers rejected for this
-  phase — shared lockfile/node_modules would make merge surfaces unsafe without worktree
-  overhead that a small foundation does not justify).
-- Convention carried from Phase 1: workers do **not** commit; orchestrator reviews every
-  diff (AGENTS §17), independently re-runs the exit gate, then commits coherent increments.
+- **PHASE 2 CLOSED 2026-10-06 — exit gate PASSED on a real fresh checkout** (evidence in
+  Verified Tests below; gate checklist at "Phase 2 Exit-Gate Status"). Phase boundary
+  refresh had been executed per AGENTS §5/§26 (`AGENTS.md` + all 7 ProjectSpec sources
+  re-read in full) and the contract written before any delegation.
+- Workers executed sequentially in one checkout (decision D-2.1), each with a written
+  contract; workers never committed — orchestrator reviewed every diff (AGENTS §17),
+  independently re-ran all gates, and committed 6 coherent Phase 2 commits
+  (`9d67bb6` docs → `73f0e9d` foundation → `197f8cb` server → `704af3a` server tests →
+  `4a143d3` e2e → `6eb397f` deploy contract + docs).
+- Two worker stalls occurred (W-2.2 first spawn; then W-2.2 itself mid-task) and were
+  recovered by surgical continuation workers on user instruction — disk state preserved,
+  no work lost, no duplicated responsibility.
 - Carried constraint (provenance for `ARCHITECTURE.md` §4): gateway must support **POST**
   for `signal.interests.entities.query` / `filter.exclude.entities.query` (JSON-body params)
-  in addition to GET — Phase 3 scope, not Phase 2.
+  in addition to GET — **now Phase 3 scope (next)**.
 - Phase 1 completed same date: `ARCHITECTURE.md` locked, Gate A fully proven (REST + MCP),
   README honest, phantom-route note corrected (sole API family = the 11 `/api/runs`
   routes), all Phase 1 commits pushed.
@@ -173,6 +174,9 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 |---|---|---|---|
 | W-1.1 | Contract authoring | Create `ARCHITECTURE.md` only (repo ownership map, locked Run state tree, 11-route API contract, Qloo capability contract, UI contract, phase gates, blockers) | **DONE 2026-10-06 — reviewed & accepted.** 398-line contract; all 8 sections; 11/11 route contract blocks; Run tree byte-matches plan; phantom-route grep = 0 hits; no secrets. 6 spec ambiguities surfaced (error model undefined in specs → worker defined canonical §3.0 contract; Prior-failure semantics; challenge async shape; Phase 0 gate text sourced from state; Phase 7 gate mojibake normalized; SSE replay staged Phase 2–4 vs 5). |
 | W-1.2 | Reconnaissance | Install `@qloo/qloo-harness` **outside the repo tree** (temp dir), prove/disprove `qloo mcp` + `qloo_capabilities` against the real key, report verdict + evidence | **DONE 2026-10-06 — reviewed, independently re-run, accepted.** Verdict `USABLE-WITH-CONDITIONS`; Gate A MCP half now proven. Conditions recorded in `ARCHITECTURE.md` §4.2. |
+| W-2.1 | Foundation scaffold | Root package (ESM, dual tsconfig), React+Vite shell with 4 locked UI routes, Express app skeleton, config loader + Pino, shared Zod contracts (errors/brief/run/events/routes), Vitest bootstrap | **DONE 2026-10-06 — reviewed; committed `73f0e9d`.** First spawn stalled (0 files) → retry succeeded. 47 tests green at handoff. One contract deviation corrected by orchestrator (silent `NODE_ENV` default → required at start). |
+| W-2.2 | Server runtime | Security baseline (helmet, request-id, 2-tier rate limits), Zod validation, typed error middleware, 11-route registration, healthz, static/SPA serving, degraded boot | **DONE 2026-10-06 — reviewed; committed `197f8cb` + `704af3a`.** Spawn stalled mid-task with substantial partial code on disk → continuation worker **W-2.2b** reviewed/fixed (1 security defect: config error message echoed raw Turso URL value → dropped), wrote 15 tests, all gates green. Orchestrator independently re-ran all gates + live boot checks. |
+| W-2.3 | Harness/deploy/docs | Playwright smoke (`channel: chrome`), `deployment/Dockerfile` + `render.yaml` + root `.dockerignore`, README run instructions | **DONE 2026-10-06 — reviewed; committed `4a143d3` + `6eb397f`.** 3/3 e2e green (orchestrator re-ran); Docker recipe COPY-targets all verified; README commands executed; one README claim corrected by orchestrator (dev server does not serve the SPA — production static only). |
 
 **Orchestrator integration review (AGENTS §17):** both diffs inspected; W-1.1 touched only `ARCHITECTURE.md`;
 W-1.2 touched only temp-dir files (repo `git status` shows no spike artifacts); key never echoed; worker claims
@@ -182,7 +186,29 @@ MCP verdict + 4 binding conditions. No duplicated responsibility; no hidden mock
 
 ## Verified Tests / Evidence
 
-No unit/integration tests exist yet (no code). **Live Qloo diagnostics — Gate A (REST path), 2026-10-06, 10 real calls against `https://hackathon.api.qloo.com` with `X-Api-Key`:**
+### Phase 2 — automated suites (2026-10-06)
+
+- **Vitest: 62/62 passing across 8 files** (`npm test`) — shared error model (§3.0 parity:
+  all 9 codes/statuses/body shape), config loader (lock bounds, required vars, URL checks,
+  no-value echo), logger redaction, route schemas, healthz (200 schema + 503 naming removed
+  vars + no-secrets-in-body), HTTP behavior (helmet, 400 validation with path details, honest
+  503 on unimplemented routes, 404 typed, 429 rate limit, 500 INTERNAL without stack leak),
+  static/SPA (fallback, immutable hashed assets, `/api` never swallowed), and a **degraded-boot
+  integration test spawning real `dist/server/main.js`** (503 + named vars + process alive).
+- **Playwright: 3/3 passing** (`npm run test:e2e`, system Chrome `channel: "chrome"`, real
+  production build via webServer) — `/healthz` 200, SPA mounts on `/`, SPA fallback on
+  unknown client route.
+- **Gates green on orchestrator re-run:** `typecheck` (dual tsconfig), `lint`, `test`,
+  `build`, `test:e2e` — then **fresh-checkout exit gate**: local clone → `npm ci` (250 pkgs)
+  → all gates → start **without `.env`** → `/healthz` 503 naming `NODE_ENV`+`APP_BASE_URL`,
+  WARN in stderr, process stays alive (degraded) → copy `.env.example` → `/healthz` 200
+  `{"status":"ok",…}` → 3/3 e2e → port 3000 clean → temp clone removed.
+- **Secret hygiene:** scans of changed files → 0 key-material hits; `.env` never read by
+  orchestrator or tests (degraded test strips env vars; e2e injects its own deterministic env).
+
+### Gate A — live Qloo diagnostics (Phase 0/1 evidence, retained)
+
+**Live Qloo diagnostics — Gate A (REST path), 2026-10-06, 10 real calls against `https://hackathon.api.qloo.com` with `X-Api-Key`:**
 
 | Probe | Request | Result |
 |---|---|---|
@@ -252,6 +278,12 @@ response data in a public repository — only aggregate statistics appear above)
 | D-0.8 | Sequence Qloo work ahead of agent work: DeepSeek key not yet available. | Real evidence (Gate A, Spikes 1–3) beats speculation; DeepSeek-dependent work (Prior Lock, agent loop) is deferred to Phase 3. | Yes. |
 | D-0.9 | Publish to https://github.com/louji2308/zorq immediately with MIT + About description. | User supplied the URL; R2/R5 are hard pass/fail requirements and history must exist before Qloo work. Verified: `visibility: PUBLIC`, `licenseInfo: mit`. | No (history is evidence). |
 | D-0.10 | Store raw Qloo responses only in gitignored `tmp/`; commit aggregate statistics and parameter findings, never response bodies or entity lists. | Official Qloo rule: do not store Qloo response data in a public repository. Keeps evidence auditable without violating terms. | No (compliance). |
+| D-2.1 | Phase 2 workers run **sequentially in one checkout**; workers never commit (orchestrator reviews + commits). | Shared lockfile/node_modules made parallel merge surfaces unsafe; foundation is small enough that parallelism bought nothing. Recovered both worker stalls without lost work. | Yes — revisit with worktrees if Phase 3 parallelizes. |
+| D-2.2 | **Degraded boot** on missing required config: WARN naming variables + `/healthz` 503 typed body, process keeps serving — **supersedes the initial exit(1) reading** of "fails clearly". | `ARCHITECTURE.md` §3.1 (higher authority than plan wording): "503 SERVICE_UNAVAILABLE with the shared error body when required configuration is absent" + its mandated test. Verified live (fresh clone, no `.env`). | No (locked contract). |
+| D-2.3 | Repository topology: single root package, ESM, dual tsconfig (`tsconfig.json` bundler-resolution for typecheck over src+tests+configs; `tsconfig.build.json` NodeNext emit → `dist/`); server/shared imports carry explicit `.js` extensions. | One install, one lockfile, Vite+tsx+Node each get correct resolution without workspaces. `tsconfig.build` `include` stays `src/server`+`src/shared` (keeps Docker build immune to new test dirs). | Yes. |
+| D-2.4 | Unknown `/api/*` → 404 `RUN_NOT_FOUND` typed body; unimplemented routes → `SERVICE_UNAVAILABLE` with phase-naming messages; `runIdParamsSchema` stays permissive (`min(1)`) until Phase 5 fixes the id format. | §3.0 defines no generic route-not-found code and no id format yet — flag, don't invent codes/policies (AGENTS §2). Both flagged for revisit: id schema when Phase 5 lands. | Yes — revisit in Phases 3/5. |
+| D-2.5 | Rate limits locked at **general 300 / 15 min per IP, mutating (POST/PUT/PATCH/DELETE) 30 / 15 min per IP**, express-rate-limit draft-7 headers, `trust proxy = 1`, typed 429 `RATE_LIMITED`. | Deployed behind Render's proxy (client IP arrives via `X-Forwarded-For`); tiers match the plan's intent and are overridable via factory options for tests. | Yes — tune only from measured evidence. |
+| D-2.6 | CI smoke against the **deployed** app (ARCHITECTURE line 163) deferred to deployment phase (8/9); Phase 2 gate = local fresh-checkout + Playwright against a real production build. | No deployed instance exists in Phase 2; plan's Phase 2 implement list has no deploy step. Smallest safe interpretation, recorded here (AGENTS §2). | Yes. |
 
 ## Deviations from contract
 
@@ -259,6 +291,17 @@ response data in a public repository — only aggregate statistics appear above)
   Committed unchanged rather than editing supplied read-only source. Our authored files
   (`.gitignore`, `.env.example`, `LICENSE`, `AGENTS.md`, both trackers) pass the check
   (`exit=0`). Rationale recorded here per AGENTS.md §2; no higher-order source altered.
+- **"Fails clearly when configuration is absent" implemented as degraded boot (D-2.2), not
+  `exit(1)`** — the plan's exit-gate wording is ambiguous, resolved in favor of the more
+  specific `ARCHITECTURE.md` §3.1 contract (503 + named vars). Observable behavior proven
+  live; no product requirement weakened.
+- **W-2.1 deviated by silently defaulting `NODE_ENV`** → orchestrator corrective patch made
+  it required at start (matches `.env.example` + §3.1). Contract deviation, not a spec one.
+- **W-2.2 deviated by echoing raw URL values in config-error messages** (potential credential
+  leak for `TURSO_DATABASE_URL`) → fixed by W-2.2b with a 1-line diff; test updated.
+- **Phase 9 open item recorded, not fixed (scope boundary):** runtime derives listen port from
+  `APP_BASE_URL` and does not yet honor platform-injected `PORT` (Render). Documented in
+  `deployment/render.yaml` + Dockerfile comments; `src/**` was outside W-2.3's scope.
 
 ## Known Risks / Blockers
 
@@ -275,22 +318,47 @@ response data in a public repository — only aggregate statistics appear above)
 
 ## Last Verified Commit
 
-`bc0ccbf` — *docs: record Phase 1 contracts, worker evidence and Gate A MCP proof.*
-Preceded by `239c7df` (honest README) and `8ee0c91` (`ARCHITECTURE.md` execution contract).
-All three pushed to **https://github.com/louji2308/zorq** (`main`, PUBLIC, MIT detected);
-`git status -sb` → in sync with `origin/main`. Working tree clean.
-Earlier: `10d86a6` Phase 0 sign-off; root `00e0e6d` holds contract + spec bundle.
+`6eb397f` — *feat: add the Docker/Render deploy contract and verified run docs.*
+Preceded by `4a143d3` (Playwright smoke), `704af3a` (server tests), `197f8cb` (Express
+runtime), `73f0e9d` (foundation scaffold), `9d67bb6` (Phase 2 contract docs) — six coherent
+Phase 2 commits, all gates green on each. Pushed to **https://github.com/louji2308/zorq**
+(`main`, PUBLIC, MIT). Earlier: `cd8d3d2` Phase 1 close, `bc0ccbf` Phase 1 evidence,
+`10d86a6` Phase 0 sign-off, root `00e0e6d` contract + spec bundle.
 
 ## Next Highest-Value Action
 
-**Phase 2 — Repository Foundation & Typed Runtime**: scaffold Vite/TS frontend + Express/TS
-backend, shared Zod contracts, config loader, Pino, typed error model (per `ARCHITECTURE.md` §3.0),
-Helmet + rate limiting, Vitest, Playwright, Dockerfile, real `GET /healthz`. Exit gate: fresh
-checkout installs/typechecks/lints/tests/builds/starts and answers `/healthz`, and fails clearly
-when required config is absent.
-Still outstanding from user: **DeepSeek key (B-02, critical for Phase 3)**, MapTiler + Turso (B-06),
-Devpost registration. MCP spike artifacts remain in OS temp dir (`%TEMP%\qloo-mcp-spike`) for
-Phase 3 reference — outside the repo by design.
+**Open Phase 3 — Real Qloo + DeepSeek Agent Core**: write the Phase 3 contract (AGENTS §7),
+then build the **QlooGateway** on the proven Gate A transport (MCP primary + typed REST
+fallback; POST-body variants for `signal.interests.entities.query`/`filter.exclude.entities.query`;
+field projection mandatory — payloads 0.2–1.0 MB), with budgets from D-2.5 and §13 locked.
+LLM pieces (Prior Lock, agent controller) wait on **B-02 (DeepSeek key, critical, user-owned)** —
+Qloo-gateway work must proceed first (D-0.8). Still outstanding from user: DeepSeek key (B-02),
+MapTiler + Turso (B-06), Devpost registration. MCP spike artifacts remain in OS temp dir
+(`%TEMP%\qloo-mcp-spike`) for Phase 3 reference — outside the repo by design.
+
+## Phase 2 Exit-Gate Status
+
+- [x] Fresh checkout **installs** — local clone → `npm ci` (250 packages, 0 vulnerabilities)
+- [x] **Typechecks** — dual tsconfig clean
+- [x] **Lints** — eslint clean, zero suppressions added
+- [x] **Tests** — Vitest 62/62 (incl. real degraded-boot subprocess) + Playwright 3/3 on
+      system Chrome against a real production build
+- [x] **Builds** — `dist/server` + `dist/web` produced
+- [x] **Starts** and **responds to `/healthz`** — 200 `{"status":"ok",…}` with config present
+      (proven twice: repo checkout and fresh clone with placeholder env)
+- [x] **Fails clearly when required configuration is absent** — no `.env`: WARN names
+      `NODE_ENV` + `APP_BASE_URL`, `/healthz` answers 503 typed `SERVICE_UNAVAILABLE`, process
+      stays alive (D-2.2, §3.1)
+- [x] Contract implement list complete: React+Vite+TS, Node/Express+TS, shared Zod, config
+      loader, Pino, typed errors §3.0, Helmet + rate limiting, route registration (exactly
+      the 11 routes, honest unimplemented), npm scripts, Vitest, Playwright, Docker,
+      environment contract, production build path
+- [x] Worker results reviewed (AGENTS §17): every diff read, 1 security defect + 2 contract
+      deviations caught and corrected, claims independently re-verified
+- [x] Exit-gate verified on a **real fresh checkout**, not just the working tree
+- [x] No secrets in tracked files; no fake business logic; numeric truth still owned by
+      future deterministic engine (nothing fake added to pretend otherwise)
+- [x] Progress recorded; 6 coherent commits; tracker updated (R2 satisfied)
 
 ## Phase 1 Exit-Gate Status
 

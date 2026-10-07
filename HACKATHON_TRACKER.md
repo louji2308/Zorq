@@ -21,7 +21,7 @@
 | # | Requirement | Status | Evidence needed |
 |---|---|---|---|
 | R1 | Functional demo app, usable end-to-end | ❌ not started | live URL |
-| R2 | Public code repository (GitHub/GitLab/Bitbucket) with source + run instructions | 🟡 repo PUBLIC at https://github.com/louji2308/zorq (pushed `0e4a353`), but **no code and no README/run instructions yet** — closes when the Phase 1 scaffold lands | repo URL |
+| R2 | Public code repository (GitHub/GitLab/Bitbucket) with source + run instructions | ✅ repo PUBLIC at https://github.com/louji2308/zorq with real source + verified run instructions in `README.md` (fresh clone → `npm ci` → gates → `npm start` → `/healthz` 200 proven 2026-10-06, Phase 2) | repo URL |
 | R3 | Text description of what it does + what makes it Qloo-powered | ❌ not started | Devpost field |
 | R4 | External hosting / fully published, free to test, no login | ❌ not started | live URL |
 | R5 | Open-source license visible in repo + repo About | ✅ `LICENSE` (MIT) at root; GitHub reports `licenseInfo: mit`; About description set | `LICENSE` (MIT locked) |
@@ -168,3 +168,4 @@ Only if needed: quota headroom and preset pre-warming, via **#api-help on Discor
 | 2026-10-06 | **Qloo key received and used**: 10 live calls, zero failures after param correction. **B-01 ✅**, Gates A/B/C/E → 🟡, Spikes 1/2/4/D1 → 🟡. Locality filters verified live; affinity+popularity both numeric and independent (1/50 rank agreement); affinity band compressed (range 0.036); payloads 0.2–1.0 MB. Full evidence in `IMPLEMENTATION_STATE.md`. |
 | 2026-10-06 | Phase 0 signed off. **Correction:** R2 downgraded ✅ → 🟡 — a public repo alone does not satisfy "source and run instructions"; closes with Phase 1 scaffold + README. |
 | 2026-10-06 | Phase 1 opened; contract written. Workers W-1.1 (`ARCHITECTURE.md` repo/API/state/Qloo/UI contracts) + W-1.2 (MCP transport recon) completed and reviewed. **MCP transport proven live → Gate A ✅** (verdict `USABLE-WITH-CONDITIONS`, 4 conditions in `ARCHITECTURE.md` §4.2); new Spike 7 registered and closed. Phantom `/api/qloo/proxy` route family corrected out — only the plan's 11 `/api/runs` routes exist. |
+| 2026-10-06 | **Phase 2 signed off** (fresh-checkout exit gate PASSED): typed runtime (React+Vite / Express / shared Zod), security baseline, real `/healthz` (200 configured, 503 degraded-boot naming missing vars), honest unimplemented-route 503s, Vitest 62/62 + Playwright 3/3 (system Chrome), Dockerfile + render.yaml (review-only, D-0.6), README run instructions verified on a real fresh clone → **R2 ✅**. Six commits `9d67bb6..6eb397f`. Phase 3 next (Qloo gateway unblocked; DeepSeek work waits on B-02). |
