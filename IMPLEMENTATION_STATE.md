@@ -5,17 +5,79 @@
 
 ## Current Phase
 
-**PHASE 1 — Contract, Reconnaissance & Build Control**. Status: **COMPLETE — signed off 2026-10-06**.
-(Phase 0 signed off same date; Phase 2 opens next.)
+**PHASE 2 — Repository Foundation & Typed Runtime**. Status: **OPENED 2026-10-06**
+(Phases 0 and 1 signed off same date.)
 
 ## Current Objective
 
-Convert the supplied project documents into a repository-level execution contract before
-substantial product coding: repository ownership map, canonical Run state, API surface,
-Qloo capability contract, UI contract — and resolve the highest-risk unknown (Qloo MCP
-transport behaviour) with real evidence.
+Build the smallest real executable foundation that supports every later phase without
+architectural rework: typed full-stack runtime (React+Vite+TS · Express+TS · shared Zod
+contracts), config loader that fails clearly, Pino, typed error model, Helmet + rate
+limiting, route registration, npm scripts, Vitest, Playwright, Docker, environment
+contract, production build path, and a real `GET /healthz`.
 
-### PHASE 1 CONTRACT (written 2026-10-06, before delegation)
+### PHASE 2 CONTRACT (written 2026-10-06, before delegation)
+
+```text
+PHASE:        2 — Repository Foundation & Typed Runtime
+MISSION:      Build the smallest real executable foundation that supports every later
+              phase without architectural rework (Plan Phase 2 mission, verbatim intent).
+WHY:          Phases 3–10 all land inside this skeleton; a wrong boundary now multiplies
+              rework across Qloo gateway, engine, SSE, and all six screens.
+CURRENT-STATE ASSUMPTIONS:
+              Phase 0+1 signed off; ARCHITECTURE.md LOCKED (ownership map §1, error model
+              §3.0, 11-route API §3, phase gates §6); git clean on `main`, public remote
+              live; toolchain verified (Node 24, npm 11.6.2, Chrome present, Docker absent
+              → D-0.6); no product code exists anywhere yet; .env holds the Qloo key but
+              Phase 2 runtime must not require it to boot (health works without Qloo).
+IN-SCOPE:     React + Vite + TypeScript web app; Node 22.19+ Express + TypeScript API;
+              shared Zod contracts in `src/shared` (single definition site per §1);
+              configuration loader (fail-clear when required config absent); Pino logging;
+              typed error model per ARCHITECTURE.md §3.0; Helmet + per-IP rate limiting;
+              route registration wired for exactly the 11 §3 routes (stubs that fail
+              clearly where downstream capability does not exist yet — never fake data);
+              npm scripts; Vitest; Playwright (channel "chrome"); Dockerfile +
+              deployment/ env contract; production build path (same-origin: Express serves
+              React build per Plan §Phase 2 production target); real `GET /healthz`;
+              `tests/` bootstrap + health tests; docs/ setup instructions so README run
+              commands become real and R2 flips to satisfied.
+INVARIANTS:   ARCHITECTURE.md §1 ownership map (one dir per domain — no duplicate owners);
+              §3.0 error model exact; API family = exactly the 11 routes, no phantom
+              routes (incl. no /api/qloo/proxy); no secrets in tracked files; no fabricated
+              business logic just to fill the tree (Plan §Phase 2 "Agent behavior");
+              budgets/limits not tuned (AGENTS §13); web never holds API keys or calls
+              Qloo; Prior remains write-once (not yet implemented, not violated);
+              ProjectSpec/ never edited; Plan do-not-drift list applies (no auth,
+              payments, chat-first UI, magic 0–100 score).
+DEPENDENCIES: npm registry (verified); Chrome for Playwright; .env.example placeholders.
+              Not required: DeepSeek key (B-02), MapTiler/Turso (B-06), Docker (D-0.6).
+NON-GOALS:    Qloo calls, agent controller, Prior Lock, engine math, SSE, Turso, screens
+              beyond a minimal shell, UI polish, extra features, Devpost work.
+RISK HOTSPOTS:wrong package topology (npm workspaces vs flat) forcing rework; error-model
+              drift from §3.0; stub routes accidentally shipping fake success; rate
+              limiting breaking Playwright; config loader either too lax (silent missing
+              config) or too strict (blocks health endpoint); README again claiming
+              commands that fail on fresh checkout.
+ACCEPTANCE:   Fresh clone → `npm ci` (or documented install) → typecheck → lint → unit
+              tests → build → start → `GET /healthz` 200 with typed body; missing
+              required config produces a clear typed failure, not a stack trace or a
+              silent default; all 11 routes registered with Zod-validated stubs that
+              return honest "not implemented" typed errors per §3.0; Playwright smoke
+              boots app + hits /healthz; no secret in tracked files; README run
+              instructions verified truthful; tracker R2 → 🟢.
+VERIFY:       Orchestrator independently runs the full exit-gate command sequence on a
+              fresh-clone equivalent (clean worktree or temp clone); git grep secret
+              scan; diff review of every worker (AGENTS §17); phantom-route grep = 0.
+EXIT GATE:    "A fresh checkout installs, typechecks, lints, tests, builds, starts,
+              responds to `/healthz`, and fails clearly when required configuration is
+              absent." (Plan §Phase 2, quoted in ARCHITECTURE.md §6.)
+COMMIT EXPECT:2–5 coherent commits, plan-suggested boundaries:
+              feat: establish the typed full-stack runtime foundation.
+              feat: add shared Zod contracts and server error boundaries.
+              test: verify repository bootstrap and health endpoint behavior.
+```
+
+### PHASE 1 CONTRACT (ARCHIVED — written 2026-10-06, completed same date)
 
 ```text
 PHASE:        1 — Contract, Reconnaissance & Build Control
@@ -87,20 +149,23 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 
 ## Active Work
 
-- **Phase 1 complete 2026-10-06.** Phase-boundary refresh done (all 7 ProjectSpec sources
-  re-consumed; Final Design + Hackathon Details via exact-value extraction briefs to protect
-  context — targeted rereads available on demand).
-- Phase 1 contract written pre-delegation (AGENTS.md §7, archived above).
-- Both workers completed, reviewed, and integrated: W-1.1 → `ARCHITECTURE.md`; W-1.2 → MCP
-  verdict `USABLE-WITH-CONDITIONS` (recorded in `ARCHITECTURE.md` §4.2 + evidence table below).
-- `README.md` written (honest status; no unimplemented commands printed).
-- Stale-note correction: an earlier internal note listed an `/api/qloo/proxy`-style API family.
-  **Grep proves no such routes exist in any spec** — the sole canonical API family is the
-  plan's 11 `/api/runs` routes (IMPLEMENTATION_PLAN.md Phase 1, repeated at final checklist).
-  Recorded here so no worker reintroduces the phantom family.
-- Engineering constraint carried forward: gateway must support **POST** for
-  `signal.interests.entities.query` / `filter.exclude.entities.query` (JSON-body params),
-  in addition to GET.
+- **Phase 2 opened 2026-10-06.** Phase-boundary refresh executed per AGENTS §5/§26:
+  `AGENTS.md` + all 7 ProjectSpec sources re-read in full at this boundary (Final_design
+  and Hackathon_details read across capped ranges to completion; Idea re-read in full).
+  Phase 2 contract written above, before any delegation (AGENTS §7).
+- Worker decomposition decided (AGENTS §9 — by responsibility, dependency-ordered):
+  `W-2.1 foundation → W-2.2 server runtime → W-2.3 harness/Docker/docs`. Workers run
+  **sequentially in one checkout** (decision D-2.1: parallel workers rejected for this
+  phase — shared lockfile/node_modules would make merge surfaces unsafe without worktree
+  overhead that a small foundation does not justify).
+- Convention carried from Phase 1: workers do **not** commit; orchestrator reviews every
+  diff (AGENTS §17), independently re-runs the exit gate, then commits coherent increments.
+- Carried constraint (provenance for `ARCHITECTURE.md` §4): gateway must support **POST**
+  for `signal.interests.entities.query` / `filter.exclude.entities.query` (JSON-body params)
+  in addition to GET — Phase 3 scope, not Phase 2.
+- Phase 1 completed same date: `ARCHITECTURE.md` locked, Gate A fully proven (REST + MCP),
+  README honest, phantom-route note corrected (sole API family = the 11 `/api/runs`
+  routes), all Phase 1 commits pushed.
 
 ## Worker Status
 
