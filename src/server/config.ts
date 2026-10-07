@@ -207,7 +207,7 @@ function readOptionalUrl(
     new URL(value);
     return value;
   } catch {
-    issues.push({ variable, expected: "a valid absolute URL", received: value });
+    issues.push({ variable, expected: "a valid absolute URL" });
     return undefined;
   }
 }
