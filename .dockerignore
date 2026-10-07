@@ -1,0 +1,40 @@
+# Docker build-context ignore rules.
+# OWNER: deployment contract (ARCHITECTURE.md §1). Docker resolves .dockerignore ONLY from the
+# build-context root (repo root) or as `<Dockerfile>.dockerignore` next to the Dockerfile — never
+# from a plain deployment/.dockerignore — so this file lives here, while deployment/Dockerfile
+# remains the image recipe owner. One owner per responsibility; no second ignore file.
+
+# VCS / editor
+.git
+.vscode
+.idea
+
+# Dependencies / build output (image builds its own)
+node_modules
+dist
+build
+.vite
+coverage
+*.tsbuildinfo
+
+# Secrets — never enter the image context; .env.example (placeholders only) is kept on purpose
+.env
+.env.*
+!.env.example
+
+# Test + tooling artifacts (not needed by `npm run build` or runtime)
+test-results
+playwright-report
+blob-report
+tests
+e2e
+tmp
+.tmp
+scratch
+logs
+*.log
+
+# Docs / spec — not needed to build or run the image
+docs
+ProjectSpec
+*.md

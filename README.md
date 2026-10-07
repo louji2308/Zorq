@@ -21,6 +21,13 @@ it is not printed here.
 - **Repository contract:** [`ARCHITECTURE.md`](./ARCHITECTURE.md) — repository ownership map,
   canonical Run state, the 11-route API contract, Qloo capability contract, UI contract,
   phase gates and open blockers.
+- **Typed runtime (Phase 2):** Express server with the security baseline (Helmet, per-IP rate
+  limiting, Zod validation, typed error model), `GET /healthz` (200 `{"status":"ok",…}` when
+  configured; 503 typed error naming the missing variables when not), SPA static serving with
+  client-route fallback, shared Zod contracts in [`src/shared`](./src/shared).
+- **Test suites:** Vitest unit/integration (`npm test`) covering health, errors, degraded boot
+  and config; Playwright E2E smoke (`npm run test:e2e`) driving your installed system Chrome
+  against a real production build — `/healthz`, SPA mount, and SPA fallback on an unknown route.
 - **Proven Qloo integration (live, real key, real calls):**
   - REST path: `/search`, `/v2/tags`, `/v2/insights` verified against `hackathon.api.qloo.com`
     (locality filters, numeric `affinity` and `popularity`, POST-body query params).
@@ -33,11 +40,13 @@ it is not printed here.
 
 ## What is not built yet
 
-Application code. Phases 2–10 of the
-[implementation plan](./ProjectSpec/IMPLEMENTATION_PLAN.md) cover the typed runtime, the real
-Qloo + DeepSeek agent core, the deterministic measurement engine, SSE/durable state, the five
-screens, integration, deployment and red-team verification. Each phase has an explicit exit
-gate; run/install commands appear here only once they actually work on a fresh checkout.
+The product itself: the Qloo + DeepSeek agent core (Phase 3), the deterministic measurement
+engine (Phase 4), durable run state / SSE / recovery (Phase 5), the five judge-facing screens
+(Phases 6–8), and deployment (Phase 9). There is **no hosted URL yet**: `deployment/Dockerfile`
+and `deployment/render.yaml` exist as a reviewed-but-unbuilt contract (Docker is not available in
+the local dev environment, so the image is validated on Render when deployment lands). Each phase
+of the [implementation plan](./ProjectSpec/IMPLEMENTATION_PLAN.md) has an explicit exit gate;
+commands appear here only once they actually work on a fresh checkout.
 
 ## Architecture in one diagram
 
@@ -63,15 +72,69 @@ React + Vite + TypeScript · Node.js 22.19+ + Express + TypeScript · shared Zod
 DeepSeek (`deepseek-flash`, OpenAI-compatible) · Qloo official MCP harness · MapLibre + MapTiler ·
 Turso/libSQL · Vitest + Playwright · Docker on Render Free · $0-cost ceiling (≤ $2 LLM/run).
 
-## Setup
+## Run it
 
-Not applicable yet — the executable foundation lands with Phase 2. Requirements meanwhile:
-Node.js ≥ 22.19, npm, Git. Secrets (`.env`) are required only by the diagnostic scripts and are
-never committed; see [`.env.example`](./.env.example) for the variable contract.
+**Prerequisites:** Node.js ≥ 22.19 + npm, Git, and Google Chrome (the E2E suite launches your
+installed system Chrome via Playwright's `channel: "chrome"` — it never downloads a browser).
+
+Install exactly as a fresh checkout would:
+
+```bash
+npm ci
+```
+
+**Configuration.** Copy the placeholder contract and fill values *locally*:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Required at start: `NODE_ENV` and `APP_BASE_URL`. The remaining variables in
+[`.env.example`](./.env.example) (Qloo / DeepSeek / Turso / MapTiler) are unused by the runtime
+so far. Never paste real values into commits, docs, issues, or screenshots; `.env` is git-ignored.
+
+**Production-style run** (this is also what the E2E suite executes):
+
+```bash
+npm run build
+npm start
+```
+
+Verify the health contract:
+
+```bash
+curl http://localhost:3000/healthz
+# → 200 {"status":"ok","service":"zorq","version":"…","checks":{…}}
+```
+
+With `NODE_ENV`/`APP_BASE_URL` absent the server still boots, and `/healthz` answers 503 with a
+typed error naming the missing variables — that degraded-boot behavior is the documented
+contract, not a crash.
+
+**Development mode** (two terminals):
+
+```bash
+npm run dev:server   # Express API (incl. /healthz) on http://localhost:3000 (tsx watch)
+npm run dev:web      # Vite dev server for the frontend shell on http://localhost:5173
+```
+
+The built SPA is served by `npm start` (production mode) only; in development the frontend
+shell lives on the Vite dev server. No API proxy is wired into Vite yet (front-end screens
+land in Phase 6).
+
+**Quality gates** (all must stay green):
+
+```bash
+npm run typecheck
+npm run lint
+npm test           # Vitest unit/integration
+npm run test:e2e   # Playwright smoke: builds, starts, tests against system Chrome
+```
 
 ## Limitations (honest, current)
 
-- No runnable application yet; no hosted demo URL yet (Phase 9).
+- No hosted demo URL yet — deployment lands in Phase 9 (`deployment/` holds the reviewed
+  Dockerfile + Render config; no image has been built, so there is nothing deployed today).
 - Qloo quota / rate-limit numbers are not yet published by the organizers; call budgets
   (≤ 180 target, ≈ 200 ceiling, concurrency ≤ 8) are engineering defaults pending measurement.
 - Measured constraints: Qloo responses are 0.2–1.0 MB (field projection is mandatory), and the

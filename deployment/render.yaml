@@ -1,0 +1,25 @@
+# Zorq Render service contract (ARCHITECTURE.md §1: deployment/ owns Render service config).
+#
+# Env var NAMES only — no values, no keys, ever (AGENTS.md §24; .env.example holds the full contract).
+# Before the first deploy an operator sets these in the Render dashboard:
+#   NODE_ENV     = production
+#   APP_BASE_URL = the public service URL (e.g. https://<service-name>.onrender.com)
+# `sync: false` marks them dashboard-managed so no value can leak into this file or git history.
+#
+# DEFERRED (not validated in Phase 2): the image build itself (D-0.6 — Docker not installed
+# locally) and a live Render deploy — Phase 9. Open deploy-time item recorded in the Phase 2
+# handoff: the runtime derives its listen port from APP_BASE_URL (resolvePort → 3000) and does
+# not read a platform-injected PORT yet (src/** is off-limits in Phase 2).
+
+services:
+  - type: web
+    name: zorq
+    runtime: docker
+    plan: free
+    dockerfilePath: ./deployment/Dockerfile
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        sync: false
+      - key: APP_BASE_URL
+        sync: false
