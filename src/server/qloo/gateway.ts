@@ -152,6 +152,7 @@ export function createQlooGateway(options: QlooGatewayOptions): QlooGateway {
   async function callWithRetry(run: () => Promise<TransportResponse>): Promise<TransportResponse> {
     let attempt = 0;
     for (;;) {
+      budget.assertAcquire();
       try {
         return await run();
       } catch (error) {
@@ -185,7 +186,6 @@ export function createQlooGateway(options: QlooGatewayOptions): QlooGateway {
         return { ...cached, cache: "cached" };
       }
 
-      budget.assertAcquire();
       const response = await limit(() =>
         callWithRetry(() => transport.call({ operation: args.operation, transport: kind, request, settings }))
       );

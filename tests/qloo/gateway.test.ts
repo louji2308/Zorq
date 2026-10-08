@@ -115,7 +115,7 @@ describe("qloo gateway", () => {
     expect(calls).toHaveLength(3);
     expect(sleeps).toEqual([375, 625]);
     expect(envelope.status).toBe("ok");
-    expect(gateway.stats.budgetUsed).toBe(1);
+    expect(gateway.stats.budgetUsed).toBe(3);
   });
 
   it("honors retry-after but never sleeps past the retry delay ceiling", async () => {
@@ -144,7 +144,7 @@ describe("qloo gateway", () => {
       retryable: true
     });
     expect(calls).toHaveLength(3);
-    expect(gateway.stats.budgetUsed).toBe(1);
+    expect(gateway.stats.budgetUsed).toBe(3);
   });
 
   it("never retries a non-retryable upstream rejection", async () => {
