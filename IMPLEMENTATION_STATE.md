@@ -5,20 +5,22 @@
 
 ## Current Phase
 
-**PHASE 3 — Real Qloo + DeepSeek Agent Core**. Status: **OPENED 2026-10-07**.
-Phase boundary refresh executed per AGENTS §5/§26: `AGENTS.md` + all 7 ProjectSpec
-sources re-read in full at this boundary, plus targeted re-reads of `ARCHITECTURE.md`
-§4 (Qloo contract, incl. §4.2 MCP binding conditions and §4.3 fixed truths) and
-`ProjectSpec/IMPLEMENTATION_PLAN.md` Phase 3 (lines 417–475). Contract written below
-**before any delegation** (AGENTS §7).
+**PHASE 4 — Deterministic Cultural Measurement Engine**. Status: **NOT YET OPENED**
+(Phase 3 **SIGNED OFF 2026-10-08** — exit gate passed, evidence + checklist below).
+Phase 4 boundary refresh per AGENTS §5/§26 (read all 7 ProjectSpec sources in full,
+re-read Plan Phase 4 lines 476+ and ARCHITECTURE §6 gate) is the first action of the
+next phase, followed by a written contract before any delegation (AGENTS §7).
 
 ## Current Objective
 
-Execute the Phase 3 contract below. Worker plan (sequential, per D-2.1): **W-3.1
-QlooGateway DONE** (`src/server/qloo/`, committed `8a4c367`/`e41d89a`, live-verified);
-next **W-3.2 DeepSeek controller + write-once Prior Lock** (`src/server/agent/`) —
-unblocked 2026-10-08 (key valid, balance pending payment). Binding references:
-`ProjectSpec/IMPLEMENTATION_PLAN.md` Phase 3, `ARCHITECTURE.md` §1/§4/§6.
+Execute the Phase 4 contract (to be written after the boundary refresh): deterministic
+cultural measurement in `src/server/engine/` + extending `src/server/evidence/` —
+graph, coherence, percentile, distinctiveness, weakest link, evidence classifications,
+all without LLM-generated numbers. Binding references: `ProjectSpec/IMPLEMENTATION_PLAN.md`
+Phase 4 (from line 476), `ARCHITECTURE.md` §6 gate ("A controlled candidate pool can
+produce a complete graph, ranked role-valid compositions, percentile, distinctiveness,
+weakest links and evidence classifications without LLM-generated numbers."), AGENTS §13
+determinism invariant.
 
 ### PHASE 3 CONTRACT (written 2026-10-07, before delegation)
 
@@ -251,11 +253,15 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
   (`/v2/analysis/compare`) paths are NOT proven by Gate A — only reachable on explicit
   `transport:"rest"` selection; auto routing sends both to MCP. Live-test suite stays
   skipped by default (`LIVE_QLOO=1` gate) so the default suite is deterministic.
-- **Remaining Phase 3:** **W-3.2 DeepSeek controller + write-once Prior Lock**
-  (`src/server/agent/`) — **implementation unblocked 2026-10-08**: B-02 key delivered,
-  valid (402 = unpaid, not 401), balance 0 → live LLM verification deferred until the
-  user tops up; with the exit-gate chain assembled (real brief → Prior → observation →
-  mutation → ledger → evidence record) the Qloo side is already live-proven.
+- **PHASE 3 SIGNED OFF 2026-10-08 — exit gate PASSED with live Qloo evidence** (checklist at
+  "Phase 3 Exit-Gate Status"; evidence in Verified Tests). Landed this phase: gateway
+  (`8a4c367` + budget fix `e41d89a`), agent controller + Prior Lock (`7e69523`), assembler
+  Prior-reference fix (`8d5b422`), live exit-gate proof (`62f29af`), contract docs
+  (`edc9a62`, `b7a1de4`), review records (`c59fdeb`). Real-LLM Prior generation is the one
+  deferred verification (B-02 balance; `LIVE_DEEPSEEK=1` gated test ready).
+- **Remaining work outstanding from users:** DeepSeek balance top-up (B-02), MapTiler +
+  Turso (B-06), Devpost registration; optional low-priority Qloo capability exercises
+  (taste neighborhoods / explainability / heatmap, ARCH §4.1 rows 9/13).
 - **PHASE 3 OPENED 2026-10-07** — boundary refresh complete per AGENTS §5/§26 (all 7
   ProjectSpec docs + `AGENTS.md` re-read in full at this boundary; targeted re-reads of
   `ARCHITECTURE.md` §4 and Plan §Phase 3); Phase 3 contract written before delegation.
@@ -292,6 +298,7 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 | W-2.3 | Harness/deploy/docs | Playwright smoke (`channel: chrome`), `deployment/Dockerfile` + `render.yaml` + root `.dockerignore`, README run instructions | **DONE 2026-10-06 — reviewed; committed `4a143d3` + `6eb397f`.** 3/3 e2e green (orchestrator re-ran); Docker recipe COPY-targets all verified; README commands executed; one README claim corrected by orchestrator (dev server does not serve the SPA — production static only). |
 | W-3.1 | QlooGateway (first spawn) | `src/server/qloo/` foundation: types, guards, errors, config, cache, budget + deps (`@qloo/qloo-harness` 0.1.26, `@modelcontextprotocol/sdk`, `p-limit`) | **STALLED 2026-10-08 after substantial partial work.** 6 foundation files + dependency install completed; no transports/gateway/tests. Registry spike answered: harness IS on public npm (0.1.26) — no temp-dir dependency. Disk state preserved. |
 | W-3.1b | QlooGateway (continuation) | Finish gateway: config fields, `project.ts`, `transport.ts`, `restTransport.ts`, `mcpTransport.ts`, `gateway.ts`, `index.ts`, `tests/qloo/*` | **DONE 2026-10-08 — reviewed, independently re-verified, committed `8a4c367`.** All gates green at handoff (typecheck/lint/105 unit/build); live suite correctly gated. Two earlier spawn attempts failed on provider errors (API connect, rate limit) before any write — third succeeded. |
+| W-3.2 | DeepSeek controller + Prior Lock | `src/server/agent/` (9 modules: llm, budget, prior, tools, controller, state, ledger, errors, index) + `src/server/evidence/` (minimal canonical owner) + `tests/agent/` (8 files) + `openai@7.30.1` dep | **DONE 2026-10-08 — reviewed file-by-file, independently re-verified, committed `7e69523`.** All gates green at handoff (typecheck/lint/153 unit/4 gated skips/build/e2e 3/3); no contract deviations; fake LLM only in tests; live `LIVE_DEEPSEEK=1` test written but expected 402 until balance (user-approved exception). |
 
 **Orchestrator integration review (AGENTS §17):** both diffs inspected; W-1.1 touched only `ARCHITECTURE.md`;
 W-1.2 touched only temp-dir files (repo `git status` shows no spike artifacts); key never echoed; worker claims
@@ -299,7 +306,42 @@ independently re-verified by orchestrator re-run of `mcp-probe2.js` (identical c
 scans (no key material, no phantom routes, 11 route sections present). Contract updated by orchestrator with the
 MCP verdict + 4 binding conditions. No duplicated responsibility; no hidden mocks.
 
+**W-3.2 orchestrator review (AGENTS §17):** diff scope = 2 manifest files + 3 new dirs, contract-exact.
+Implementation read file-by-file (prior, state, controller, budget, evidence, index, llm key paths, tools
+envelope mapping): Prior-before-Qloo structural (`prior.ts` imports zero qloo modules; `transitionRun` and
+`runController` both refuse `investigating` without a persisted Prior); write-once + deep-freeze verified;
+turn cap clamped at 3 in code; official DeepSeek pricing table encoded with conservative cache-miss default
+and ceiling clamped to `LOCK_LLM_BUDGET_USD`; key redaction confirmed (`redact(raw, secrets)`); envelope
+`cache`→evidence `cacheState` mapping correct. Gates independently re-run: typecheck, lint, **153 pass /
+5 gated skips**, build, **e2e 3/3**; secret scan clean. **Review catch → fixed in `8d5b422`:** assembler
+returned the pre-persist Prior object (unfrozen, separate object from the persisted zod clone) — now returns
+`run.prior` (the frozen persisted reference), test tightened to reference equality. Exit gate proven live
+(`62f29af`).
+
 ## Verified Tests / Evidence
+
+### Phase 3 — agent controller + Prior Lock + exit gate (2026-10-08, commits `7e69523`/`8d5b422`/`62f29af`)
+
+- **Unit suite at sign-off:** typecheck (dual tsconfig) PASS; eslint 0 warnings; Vitest
+  **153 passed / 5 skipped** (158; skips = 3 gated live Qloo + 1 gated `LIVE_DEEPSEEK=1` +
+  1 gated exit-gate run); `npm run build` PASS; **e2e 3/3 PASS**.
+- **Exit gate LIVE run (orchestrator, `LIVE_QLOO=1`):** `tests/agent/exit-gate.live.test.ts`
+  **1/1 PASSED against real Qloo** — real brief → persisted frozen Prior (`qlooUsed=false`,
+  deep-frozen, referenced by identity from run state) → **real `qloo_search` observation**
+  → validated mutation (`prior_pending → investigating → complete`) → ledger sequence
+  `LLM, LLM, Qloo, LLM` → evidence record linked by `ledgerEventId` to the Qloo ledger
+  entry, provenance = real envelope (transport/endpoint/durationMs/cacheState/resultCount).
+  LLM side scripted (fake) — real-LLM Prior generation deferred per user exception (B-02:
+  valid key, zero balance, 402). Real Qloo outage mid-loop covered by unit test
+  (honest partial state: prior + partial ledger/evidence preserved, no fabricated fields).
+- **Prior Lock proof:** write-once conflict throws; frozen prior resists `Reflect.set`;
+  gateway spy asserts **0 calls** until Prior persisted; `prior.ts` grep = zero qloo imports.
+- **Budget proof:** peak/off-peak rate selection (fixed clocks), cache-miss conservative math,
+  80% reserve refusal (`LLM_BUDGET_RESERVE`), 100% ceiling (`LLM_BUDGET_CEILING`), constructor
+  clamp to `LOCK_LLM_BUDGET_USD = 2`.
+- **Pricing source:** official https://api-docs.deepseek.com/quick_start/pricing fetched
+  2026-10-08 (`deepseek-flash`: in miss $0.15/$0.30 off/peak, hit $0.003/$0.006, out
+  $0.60/$1.20; peak = 01–04 & 06–10 UTC Mon–Fri) — reproduces the spec's $0.45/$0.90 examples.
 
 ### Phase 3 — Qloo gateway (2026-10-08, commit `8a4c367`)
 
@@ -420,6 +462,10 @@ response data in a public repository — only aggregate statistics appear above)
 | D-2.4 | Unknown `/api/*` → 404 `RUN_NOT_FOUND` typed body; unimplemented routes → `SERVICE_UNAVAILABLE` with phase-naming messages; `runIdParamsSchema` stays permissive (`min(1)`) until Phase 5 fixes the id format. | §3.0 defines no generic route-not-found code and no id format yet — flag, don't invent codes/policies (AGENTS §2). Both flagged for revisit: id schema when Phase 5 lands. | Yes — revisit in Phases 3/5. |
 | D-2.5 | Rate limits locked at **general 300 / 15 min per IP, mutating (POST/PUT/PATCH/DELETE) 30 / 15 min per IP**, express-rate-limit draft-7 headers, `trust proxy = 1`, typed 429 `RATE_LIMITED`. | Deployed behind Render's proxy (client IP arrives via `X-Forwarded-For`); tiers match the plan's intent and are overridable via factory options for tests. | Yes — tune only from measured evidence. |
 | D-2.6 | CI smoke against the **deployed** app (ARCHITECTURE line 163) deferred to deployment phase (8/9); Phase 2 gate = local fresh-checkout + Playwright against a real production build. | No deployed instance exists in Phase 2; plan's Phase 2 implement list has no deploy step. Smallest safe interpretation, recorded here (AGENTS §2). | Yes. |
+| D-3.1 | `src/server/evidence/` made real in **Phase 3** with the minimal `EvidenceRecord` (id, claim, envelope provenance, `ledgerEventId` link) instead of waiting for Phase 4. | The Plan Phase 3 exit gate (line 466) explicitly requires "an evidence record"; ARCHITECTURE §1 makes `evidence/` the canonical owner (dir created, not duplicated). Phase 4 extends claim→citation validation. | Yes — Phase 4 owns evolution. |
+| D-3.2 | **Live real-LLM verification deferred** (user-approved 2026-10-08): DeepSeek key valid but balance 0 (HTTP 402). Exit gate run with scripted LLM + real Qloo; `LIVE_DEEPSEEK=1` test written and gated for later. | No spec weakened — only the verification medium substituted, with the exception recorded by the user's explicit instruction. All numeric/budget/controller behavior proven with fakes + real Qloo. | Yes — run the gated suite when balance is paid. |
+| D-3.3 | `runInvestigation` returns the **persisted frozen Prior reference** (`run.prior`), not the pre-persist object. | Orchestrator review catch (`8d5b422`): `priorSchema.parse` clones, so the pre-persist object was a mutable alias of persisted data — consumers must hold the real frozen artifact. | No (invariant). |
+| D-3.4 | Peak/off-peak pricing ignores Chinese public holidays (holiday hours inside peak windows price at peak). | Conservative direction: never undercounts spend against the locked $2 ceiling. Implementing a holiday table adds complexity for zero budget risk. | Yes if a holiday run matters. |
 
 ## Deviations from contract
 
@@ -454,33 +500,62 @@ response data in a public repository — only aggregate statistics appear above)
 
 ## Last Verified Commit
 
-`e41d89a` — *fix: charge the Qloo call budget per upstream attempt.* (review catch:
-retries must count against the locked 180-call budget; tests updated to per-attempt
-semantics, all gates re-run green). Preceded by `8a4c367` — *feat: connect the
-production Qloo gateway through MCP and REST fallback.*, `edc9a62` (Phase 3 contract
-docs), `1a5c993` (Phase 2 sign-off), `6eb397f` (deploy contract), `4a143d3` (Playwright
-smoke), `704af3a` (server tests), `197f8cb` (Express runtime), `73f0e9d` (foundation
-scaffold), `9d67bb6` (Phase 2 contract docs). All gates green on the current head
-(typecheck, lint, 105 unit + 3 live Qloo, build, 3 e2e). Push target:
-**https://github.com/louji2308/zorq** (`main`, PUBLIC, MIT).
+`62f29af` — *test: prove the Phase 3 exit gate against a live Qloo gateway.* (live run
+1/1 PASSED). Preceded by `8d5b422` (assembler returns persisted frozen Prior — review
+catch), `7e69523` (agent controller + Prior Lock), `b7a1de4` (B-02 record), `c59fdeb`
+(gateway review record), `e41d89a` (gateway budget-per-attempt fix), `8a4c367`
+(gateway), `edc9a62` (Phase 3 contract), `1a5c993` (Phase 2 sign-off). All gates green
+on current head: typecheck, lint, **153 unit + 5 gated live skips**, build, **3 e2e**.
+Push target: **https://github.com/louji2308/zorq** (`main`, PUBLIC, MIT).
 
 ## Next Highest-Value Action
 
-**Spawn W-3.2 — DeepSeek bounded controller + write-once Prior Lock** (`src/server/agent/`;
-B-02 key in `.env`, implementation unblocked). Scope: OpenAI SDK → DeepSeek
-(`baseURL=https://api.deepseek.com`, `deepseek-flash`), LLM budget tracking
-(`llmBudgetUsd` ceiling $2, usage from every response, 80% stop threshold), Prior Lock
-(`priorSchema`, `qlooUsed:false`, write-once), bounded tool loop (≤3 planner turns,
-tools = committed gateway surface `src/server/qloo/index.ts`), ledger events
-(`ledgerEventSchema`), minimal evidence record (canonical `src/server/evidence/`
-made real early because the Plan Phase 3 exit gate requires one — Phase 4 extends;
-record as decision at review), tests with fake LLM + fake/gateway transports, gated
-`LIVE_DEEPSEEK=1` suite. **Live real-LLM run deferred until the user tops up the
-balance (402 today)** — assembly verified with fake LLM + real Qloo gateway first.
-Optional meanwhile (low priority): exercise still-unproven Qloo capabilities via the
-gated live suite — taste neighborhoods, `feature.explainability`, `urn:heatmap`
-(ARCHITECTURE §4.1 rows 9/13). Also outstanding from user: DeepSeek balance payment,
-MapTiler + Turso (B-06), Devpost registration.
+**Open Phase 4 (Deterministic Cultural Measurement Engine).** First actions per AGENTS
+§5: boundary refresh — read all 7 ProjectSpec sources in full + re-read Plan Phase 4
+(lines 476+) and ARCHITECTURE §6 gate ("A controlled candidate pool can produce a
+complete graph, ranked role-valid compositions, percentile, distinctiveness, weakest
+links and evidence classifications **without LLM-generated numbers**") — then write the
+Phase 4 contract into this file before any delegation. Canonical owners: `src/server/engine/`
+(new) + `src/server/evidence/` (extend per D-3.1). Invariants to protect: AGENTS §13
+determinism (graph edges, coherence, null-model percentile, distinctiveness, weakest
+link, constraint fit all reproducible from identical normalized inputs); LLM never
+authors numeric truth. Parallel consideration: Qloo capability exercises (taste
+neighborhoods/explainability/heatmap) can run as low-priority gated live tests while
+workers build. User-side: DeepSeek balance (enables `LIVE_DEEPSEEK=1`), MapTiler +
+Turso (B-06), Devpost registration.
+
+## Phase 3 Exit-Gate Status (PASSED 2026-10-08)
+
+Gate text (ARCHITECTURE §6): *"A real brief produces a Prior, at least one real Qloo
+observation, a validated state mutation, a ledger event and an evidence record. Qloo
+outage yields an honest partial state."*
+
+- [x] **Real brief** → `runInvestigation` validates it (typed validation error on malformed)
+- [x] **Prior** → LLM-only generation (scripted LLM in the live run; real-LLM path gated
+      `LIVE_DEEPSEEK=1`, deferred per D-3.2/B-02) → `priorSchema` enforced → **persisted
+      exactly once** (write-once conflict test) → deep-frozen, `qlooUsed=false` literal
+- [x] **≥1 real Qloo observation** → live run `LIVE_QLOO=1`: real `qloo_search` via gateway
+      (REST/MCP real envelope) — the same suite independently proven 3/3 this phase
+- [x] **Validated state mutation** → `prior_pending → investigating → complete` through the
+      guarded transition table (illegal transitions + phase regression + prior-less
+      investigation all throw; shared `runStateSchema` validated at every step)
+- [x] **Ledger event** → live sequence `LLM, LLM, Qloo, LLM` against `ledgerEventSchema`
+- [x] **Evidence record** → created, `ledgerEventId` links to the Qloo ledger entry,
+      provenance = real envelope (transport/endpoint/durationMs/cacheState/resultCount);
+      unknown provenance → typed `EvidenceError`, never rendered as confirmed
+- [x] **Qloo outage → honest partial state** → unit-proven: prior + partial ledger/evidence
+      preserved, typed error, run lands `partial`, zero fabricated fields
+- [x] **Bounds:** planner turns ≤3 (clamped in code, test with `maxTurns:99`), LLM budget
+      ≤$2 ceiling (constructor clamp, 80% reserve, official pricing), Qloo budget per
+      attempt ≤180 (from gateway review), no orchestration frameworks
+- [x] **Intelligence boundary preserved:** LLM never authors numeric truth (budget/validation/
+      caps deterministic in Zorq code); no fabricated ids/results anywhere (`src/` scan clean)
+- [x] **Worker results reviewed** (AGENTS §17): both workers' diffs read file-by-file; 1
+      assembler defect caught and fixed (`8d5b422`); claims independently re-verified
+- [x] **All gates green at sign-off:** typecheck, lint, 153 unit + 5 gated live, build, 3 e2e
+- [x] **Secrets clean:** key only in gitignored `.env`; diff scans (sk-/hack_/eyJ) = 0 hits
+- [x] **4 coherent commits for the phase's agent half** (+2 gateway +2 docs earlier)
+- [x] **Progress recorded; Phase 4 identified as the next highest-value action**
 
 ## Phase 2 Exit-Gate Status
 

@@ -41,7 +41,7 @@
 
 | Dimension | Target evidence | Status |
 |---|---|---|
-| Technological Implementation | deep multi-stage Qloo usage, guarded gateway, visible call trace, resilient code | ❌ |
+| Technological Implementation | deep multi-stage Qloo usage, guarded gateway, visible call trace, resilient code | 🟡 guarded gateway + live call trace + honest outage handling landed (Phase 3); deep multi-stage usage arrives with engine/challenge |
 | Design | complete self-teaching product, no video/narration required | ❌ |
 | Potential Impact | real placemaking/tenant-mix workflow, named buyer, board-readable Blueprint | ❌ |
 | Quality of Idea | composition-not-recommendation abstraction; Prior→Final; self-challenge | ❌ concept locked |
@@ -50,11 +50,11 @@
 
 | # | Invariant | Status |
 |---|---|---|
-| P1 | Prior Lock is write-once, generated before any Qloo call | ❌ |
+| P1 | Prior Lock is write-once, generated before any Qloo call | ✅ proven (structural: `prior.ts` has zero Qloo imports; write-once conflict + deep-freeze tests; live exit-gate ordering) |
 | P2 | Qloo changes the result **or** honestly confirms it (control case; never manufacture divergence) | ❌ |
-| P3 | Every `[Qloo]` claim → evidence ID → ledger event → measurement input | ❌ |
-| P4 | Every numeric metric deterministic and reproducible (LLM authors no numbers) | ❌ |
-| P5 | Agent decisions are observation-dependent, not a fixed script | ❌ |
+| P3 | Every `[Qloo]` claim → evidence ID → ledger event → measurement input | 🟡 ledger event + evidence record + provenance linked live (Phase 3); claim→measurement input is Phase 4/5 |
+| P4 | Every numeric metric deterministic and reproducible (LLM authors no numbers) | ❌ (budget/gateway arithmetic deterministic; product metrics = Phase 4) |
+| P5 | Agent decisions are observation-dependent, not a fixed script | 🟡 architecture proven (observation→diagnosis→tool loop, turn/budget caps deterministic); real-LLM adaptive run pending DeepSeek balance (`LIVE_DEEPSEEK=1` ready) |
 | P6 | Output is a **set** with measured inter-component relationships (graph, not list) | ❌ |
 | P7 | Graph edges have receipts: shared entities, route, triangulation, status | ❌ |
 | P8 | Challenge the Plan is real → `Survived / Revised / Replaced` | ❌ |
@@ -169,3 +169,4 @@ Only if needed: quota headroom and preset pre-warming, via **#api-help on Discor
 | 2026-10-06 | Phase 0 signed off. **Correction:** R2 downgraded ✅ → 🟡 — a public repo alone does not satisfy "source and run instructions"; closes with Phase 1 scaffold + README. |
 | 2026-10-06 | Phase 1 opened; contract written. Workers W-1.1 (`ARCHITECTURE.md` repo/API/state/Qloo/UI contracts) + W-1.2 (MCP transport recon) completed and reviewed. **MCP transport proven live → Gate A ✅** (verdict `USABLE-WITH-CONDITIONS`, 4 conditions in `ARCHITECTURE.md` §4.2); new Spike 7 registered and closed. Phantom `/api/qloo/proxy` route family corrected out — only the plan's 11 `/api/runs` routes exist. |
 | 2026-10-06 | **Phase 2 signed off** (fresh-checkout exit gate PASSED): typed runtime (React+Vite / Express / shared Zod), security baseline, real `/healthz` (200 configured, 503 degraded-boot naming missing vars), honest unimplemented-route 503s, Vitest 62/62 + Playwright 3/3 (system Chrome), Dockerfile + render.yaml (review-only, D-0.6), README run instructions verified on a real fresh clone → **R2 ✅**. Six commits `9d67bb6..6eb397f`. Phase 3 next (Qloo gateway unblocked; DeepSeek work waits on B-02). |
+| 2026-10-08 | **Phase 3 signed off** (exit gate PASSED with live Qloo): production Qloo gateway (MCP primary + REST fallback, per-attempt 180-call budget), DeepSeek bounded controller + write-once Prior Lock (`src/server/agent/`), minimal evidence owner (`src/server/evidence/`), official-pricing LLM budget ($2 ceiling, 80% reserve). Live exit-gate run 1/1: real brief → frozen Prior → **real Qloo observation** → guarded mutation → ledger `LLM,LLM,Qloo,LLM` → evidence record with real provenance; outage → honest partial state (unit-proven). Vitest 153 + 5 gated live; e2e 3/3. **P1 ✅, P3 🟡, P5 🟡.** DeepSeek key valid, balance unpaid (402) → real-LLM run deferred (`LIVE_DEEPSEEK=1` ready). Commits `edc9a62..62f29af`. Phase 4 next (deterministic measurement engine). |
