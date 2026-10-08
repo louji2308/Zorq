@@ -2,6 +2,8 @@
 
 > Canonical implementation-state record. Contract: `AGENTS.md` + `ProjectSpec/IMPLEMENTATION_PLAN.md`.
 > Read-only authorities live in `ProjectSpec/`. Do not duplicate them here.
+> Session briefing for the next orchestrator: `SESSION_HANDOFF.md` (supplement only —
+> this file wins on any conflict; delete it once Phase 4 absorbs it).
 
 ## Current Phase
 
