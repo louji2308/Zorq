@@ -14,10 +14,10 @@ sources re-read in full at this boundary, plus targeted re-reads of `ARCHITECTUR
 
 ## Current Objective
 
-Execute the Phase 3 contract below. Worker plan (sequential, per D-2.1): spawn
-**W-3.1 QlooGateway** first (unblocked — canonical owner `src/server/qloo/`), then
-**W-3.2 DeepSeek controller + write-once Prior Lock** (`src/server/agent/`) once
-**B-02** (DeepSeek key, user-owned) clears. Binding references:
+Execute the Phase 3 contract below. Worker plan (sequential, per D-2.1): **W-3.1
+QlooGateway DONE** (`src/server/qloo/`, committed `8a4c367`/`e41d89a`, live-verified);
+next **W-3.2 DeepSeek controller + write-once Prior Lock** (`src/server/agent/`) —
+unblocked 2026-10-08 (key valid, balance pending payment). Binding references:
 `ProjectSpec/IMPLEMENTATION_PLAN.md` Phase 3, `ARCHITECTURE.md` §1/§4/§6.
 
 ### PHASE 3 CONTRACT (written 2026-10-07, before delegation)
@@ -252,9 +252,10 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
   `transport:"rest"` selection; auto routing sends both to MCP. Live-test suite stays
   skipped by default (`LIVE_QLOO=1` gate) so the default suite is deterministic.
 - **Remaining Phase 3:** **W-3.2 DeepSeek controller + write-once Prior Lock**
-  (`src/server/agent/`) — **blocked on B-02 (DeepSeek key, user-owned)**; with it, the
-  Phase 3 exit-gate chain (real brief → Prior → observation → mutation → ledger →
-  evidence record) can be assembled. Gateway side is ready for integration.
+  (`src/server/agent/`) — **implementation unblocked 2026-10-08**: B-02 key delivered,
+  valid (402 = unpaid, not 401), balance 0 → live LLM verification deferred until the
+  user tops up; with the exit-gate chain assembled (real brief → Prior → observation →
+  mutation → ledger → evidence record) the Qloo side is already live-proven.
 - **PHASE 3 OPENED 2026-10-07** — boundary refresh complete per AGENTS §5/§26 (all 7
   ProjectSpec docs + `AGENTS.md` re-read in full at this boundary; targeted re-reads of
   `ARCHITECTURE.md` §4 and Plan §Phase 3); Phase 3 contract written before delegation.
@@ -443,7 +444,7 @@ response data in a public repository — only aggregate statistics appear above)
 | ID | Severity | Blocker | Impact | Owner |
 |---|---|---|---|---|
 | B-01 | ~~Qloo key not issued~~ | **Closed 2026-10-06**: key received from user, stored in gitignored `.env`, authenticated successfully against `hackathon.api.qloo.com`. | Gate A REST path unblocked; MCP path also proven same day (see Verified Tests M1–M6). | — |
-| B-02 | **Critical** | DeepSeek API key + balance not yet available. | Blocks Prior Lock, agent controller, every LLM-backed run. Qloo-first sequencing (D-0.8) limits schedule damage. | User |
+| B-02 | **Critical → PARTIALLY CLEARED 2026-10-08** | DeepSeek key **delivered and proven valid**: `/models` 200 → `deepseek-flash`, `deepseek-v4-pro`; completion → **HTTP 402 (unpaid, not 401)** — key recognized, **balance = 0** (user topping up later). | **Implementation UNBLOCKED** (fake-LLM tests + gated live suite). Live LLM verification (real Prior generation, `LIVE_DEEPSEEK=1`) deferred until balance is topped up; key stored only in gitignored `.env`. | User (payment) |
 | B-03 | ~~Docker not installed~~ | **Closed by D-0.6** (accepted risk). | Local container tests skipped; Dockerfile validated on Render. | — |
 | B-04 | ~~No public GitHub repo~~ | **Closed by D-0.9**: https://github.com/louji2308/zorq is PUBLIC, pushed, MIT detected, About set. | R2/R5 satisfied. | — |
 | B-05 | ~~Cache/storage + key-lifetime terms unconfirmed~~ | **Closed 2026-10-06 from the official developer guide**: private server-side caching allowed with no time limit; never store Qloo output publicly; keys valid through end of judging. | `PERSIST_QLOO_DERIVED` remains `false` until Phase 5 gives storage a private owner. | — |
@@ -465,17 +466,21 @@ scaffold), `9d67bb6` (Phase 2 contract docs). All gates green on the current hea
 
 ## Next Highest-Value Action
 
-**Unblock W-3.2 (DeepSeek controller + write-once Prior Lock)** — the gateway half of
-Phase 3 is landed and live-verified (`8a4c367`); the remaining exit-gate chain (real
-brief → LLM-only Prior persisted once, `qlooUsed=false`, immutable → validated
-agent-state mutation → ledger event → evidence record → honest Qloo-outage partial
-state) needs **B-02: DeepSeek API key (critical, user-owned — the only blocker)**.
-When the key arrives: spawn W-3.2 with `src/server/agent/` scope against the committed
-`createQlooGateway` surface (`src/server/qloo/index.ts`). Optional meanwhile (low
-priority): exercise still-unproven Qloo capabilities through the gateway — taste
-neighborhoods, `feature.explainability`, `urn:heatmap` (ARCHITECTURE §4.1 rows 9/13)
-— via the gated live suite. Also outstanding from user: MapTiler + Turso (B-06),
-Devpost registration; commits `edc9a62` + `8a4c367` not yet pushed.
+**Spawn W-3.2 — DeepSeek bounded controller + write-once Prior Lock** (`src/server/agent/`;
+B-02 key in `.env`, implementation unblocked). Scope: OpenAI SDK → DeepSeek
+(`baseURL=https://api.deepseek.com`, `deepseek-flash`), LLM budget tracking
+(`llmBudgetUsd` ceiling $2, usage from every response, 80% stop threshold), Prior Lock
+(`priorSchema`, `qlooUsed:false`, write-once), bounded tool loop (≤3 planner turns,
+tools = committed gateway surface `src/server/qloo/index.ts`), ledger events
+(`ledgerEventSchema`), minimal evidence record (canonical `src/server/evidence/`
+made real early because the Plan Phase 3 exit gate requires one — Phase 4 extends;
+record as decision at review), tests with fake LLM + fake/gateway transports, gated
+`LIVE_DEEPSEEK=1` suite. **Live real-LLM run deferred until the user tops up the
+balance (402 today)** — assembly verified with fake LLM + real Qloo gateway first.
+Optional meanwhile (low priority): exercise still-unproven Qloo capabilities via the
+gated live suite — taste neighborhoods, `feature.explainability`, `urn:heatmap`
+(ARCHITECTURE §4.1 rows 9/13). Also outstanding from user: DeepSeek balance payment,
+MapTiler + Turso (B-06), Devpost registration.
 
 ## Phase 2 Exit-Gate Status
 
