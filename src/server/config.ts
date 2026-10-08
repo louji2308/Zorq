@@ -9,6 +9,8 @@ export interface ZorqConfig {
   qlooCacheTtlSec: number;
   persistQlooDerived: boolean;
   qlooApiKey: string | undefined;
+  qlooBaseUrl: string | undefined;
+  qlooTrustedBaseUrl: string | undefined;
   deepseekApiKey: string | undefined;
   tursoDatabaseUrl: string | undefined;
   tursoAuthToken: string | undefined;
@@ -255,6 +257,8 @@ export function loadConfig(env: Record<string, string | undefined>): ZorqConfig 
   );
   const persistQlooDerived = readBoolean(env, "PERSIST_QLOO_DERIVED", LOCKED_DEFAULTS.persistQlooDerived, issues);
   const tursoDatabaseUrl = readOptionalUrl(env, "TURSO_DATABASE_URL", issues);
+  const qlooBaseUrl = readOptionalUrl(env, "QLOO_BASE_URL", issues);
+  const qlooTrustedBaseUrl = readOptionalUrl(env, "QLOO_TRUSTED_BASE_URL", issues);
 
   if (issues.length > 0) {
     throw new ConfigError(issues);
@@ -269,6 +273,8 @@ export function loadConfig(env: Record<string, string | undefined>): ZorqConfig 
     qlooCacheTtlSec,
     persistQlooDerived,
     qlooApiKey: readOptionalSecret(env, "QLOO_API_KEY"),
+    qlooBaseUrl,
+    qlooTrustedBaseUrl,
     deepseekApiKey: readOptionalSecret(env, "DEEPSEEK_API_KEY"),
     tursoDatabaseUrl,
     tursoAuthToken: readOptionalSecret(env, "TURSO_AUTH_TOKEN"),

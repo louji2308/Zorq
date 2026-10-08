@@ -17,9 +17,12 @@
     "dev:server": "tsx watch src/server/main.ts"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "@qloo/qloo-harness": "^0.1.26",
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.1",
     "helmet": "^8.3.0",
+    "p-limit": "^7.3.3",
     "pino": "^10.4.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

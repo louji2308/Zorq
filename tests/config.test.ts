@@ -107,6 +107,8 @@ describe("loadConfig", () => {
       qlooCacheTtlSec: LOCKED_DEFAULTS.qlooCacheTtlSec,
       persistQlooDerived: LOCKED_DEFAULTS.persistQlooDerived,
       qlooApiKey: undefined,
+      qlooBaseUrl: undefined,
+      qlooTrustedBaseUrl: undefined,
       deepseekApiKey: undefined,
       tursoDatabaseUrl: undefined,
       tursoAuthToken: undefined,
@@ -151,5 +153,29 @@ describe("loadConfig", () => {
 
   it("rejects a malformed Turso URL when provided", () => {
     expect(() => loadConfig({ ...BASE, TURSO_DATABASE_URL: "not a url" })).toThrow(/TURSO_DATABASE_URL/);
+  });
+
+  it("carries explicit Qloo base URL overrides through when they are valid URLs", () => {
+    const config = loadConfig({
+      ...BASE,
+      QLOO_BASE_URL: "https://hackathon.api.qloo.com",
+      QLOO_TRUSTED_BASE_URL: "https://hackathon.api.qloo.com"
+    });
+    expect(config.qlooBaseUrl).toBe("https://hackathon.api.qloo.com");
+    expect(config.qlooTrustedBaseUrl).toBe("https://hackathon.api.qloo.com");
+  });
+
+  it("rejects malformed QLOO_BASE_URL and QLOO_TRUSTED_BASE_URL values", () => {
+    expect(() => loadConfig({ ...BASE, QLOO_BASE_URL: "not a url" })).toThrow(/QLOO_BASE_URL/);
+    expect(() => loadConfig({ ...BASE, QLOO_TRUSTED_BASE_URL: "not a url" })).toThrow(/QLOO_TRUSTED_BASE_URL/);
+    let caught: unknown;
+    try {
+      loadConfig({ ...BASE, QLOO_BASE_URL: "hackathon.api.qloo.com" });
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(ConfigError);
+    expect((caught as ConfigError).issues.map((issue) => issue.variable)).toEqual(["QLOO_BASE_URL"]);
+    expect((caught as ConfigError).message).toContain("a valid absolute URL");
   });
 });
