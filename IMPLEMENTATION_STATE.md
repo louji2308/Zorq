@@ -7,24 +7,129 @@
 
 ## Current Phase
 
-**PHASE 4 — Deterministic Cultural Measurement Engine**. Status: **NOT YET OPENED**
-(Phase 3 **SIGNED OFF 2026-10-08** — exit gate passed, evidence + checklist below).
-Phase 4 boundary refresh per AGENTS §5/§26 (read all 7 ProjectSpec sources in full,
-re-read Plan Phase 4 lines 476+ and ARCHITECTURE §6 gate) is the first action of the
-next phase, followed by a written contract before any delegation (AGENTS §7).
+**PHASE 4 — Deterministic Cultural Measurement Engine**. Status: **OPENED 2026-10-08**
+— boundary refresh complete per AGENTS §5/§26 (all 7 ProjectSpec sources re-read in
+full at this boundary; targeted re-reads of Plan Phase 4 lines 476–536, ARCHITECTURE
+§6 gate, ProductSpec §12 Measurements, Spec Architecture §11–12), contract written
+below before any delegation (AGENTS §7). Phase 3 **SIGNED OFF 2026-10-08**.
 
 ## Current Objective
 
-Execute the Phase 4 contract (to be written after the boundary refresh): deterministic
-cultural measurement in `src/server/engine/` + extending `src/server/evidence/` —
-graph, coherence, percentile, distinctiveness, weakest link, evidence classifications,
-all without LLM-generated numbers. Binding references: `ProjectSpec/IMPLEMENTATION_PLAN.md`
-Phase 4 (from line 476), `ARCHITECTURE.md` §6 gate ("A controlled candidate pool can
-produce a complete graph, ranked role-valid compositions, percentile, distinctiveness,
-weakest links and evidence classifications without LLM-generated numbers."), AGENTS §13
-determinism invariant.
+Execute the Phase 4 contract (below): deterministic cultural measurement in
+`src/server/engine/` + extending `src/server/evidence/` — neighborhoods, IDF-weighted
+graph, coherence, exact percentile, distinctiveness, weakest link, triangulation and
+evidence grades, all without LLM-generated numbers. Gate: "A controlled candidate pool
+can produce a complete graph, ranked role-valid compositions, percentile,
+distinctiveness, weakest links and evidence classifications without LLM-generated
+numbers." Next action: delegate per the contract's worker plan (Active Work).
 
-### PHASE 3 CONTRACT (written 2026-10-07, before delegation)
+### PHASE 4 CONTRACT (written 2026-10-08, before delegation)
+
+```text
+PHASE:        4 — Deterministic Cultural Measurement Engine
+MISSION:      Turn Qloo-derived observations into reproducible cultural composition
+              mathematics. (Plan §Phase 4, verbatim.)
+WHY:          This is the product's numeric-truth boundary: tracker P4, hackathon rule 9
+              and AGENTS §13 all require every metric to be deterministic code. Phases
+              5–8 (durable state, screens S2–S5) render these numbers; a formula
+              assumed or fudged late invalidates graph, compositions, challenge and
+              blueprint simultaneously.
+CURRENT-STATE ASSUMPTIONS:
+              Phase 3 signed off 2026-10-08 (HEAD 62f29af, tree clean; 153 unit + 5
+              gated live + 3 e2e green). QlooGateway returns typed projected results
+              (src/server/qloo/types.ts: ProjectedEntity/ProjectedCandidate/
+              QlooInsightsResults/QlooTagResults + provenance envelope). evidence/
+              minimal owner exists (D-3.1: EvidenceRecord with envelope provenance +
+              ledgerEventId). No src/server/engine/ yet (ARCHITECTURE §1: Phase 4 first
+              makes it real). Canonical Run tree (§2) reserves CulturalDNA/CandidatePool/
+              Neighborhoods/Graph/Compositions — engine owns their math; persistence of
+              those nodes is Phase 5. Turso absent (B-06) → fixtures in-memory; DeepSeek
+              balance unpaid (B-02) → irrelevant, Phase 4 admits no LLM numbers.
+IN-SCOPE:     `src/server/engine/` (new; sole owner of numeric truth) + extending
+              `src/server/evidence/` (claim→measurement validation, classifications):
+              - candidate pool model: K≈8–10 components, each role, tags, ≤5 local
+                exemplars, provenance path, evidence state; required path local anchor
+                → Qloo entity/tag signal → resolved category/role → exemplar set →
+                taste neighborhood; missing evidence ⇒ unmeasured, never a finalist.
+              - taste neighborhoods: artist/movie/brand, top 30 per domain; weight =
+                returned affinity when present else 1/rank; deterministic normalization.
+              - IDF suppression: IDF_e = ln(K / (1 + component_count_containing_e)),
+                floored at zero.
+              - shared-culture edges: edge(j,k) = cosine(IDF·N_j, IDF·N_k); complete
+                graph over measured components; relative bands within the pool (never
+                absolute truth claims).
+              - composition mathematics: mean pairwise coherence; exact percentile over
+                ALL equal-size role-valid subsets enumerated exactly (no sampling, no
+                Qloo calls; K≈10 size 5 ≤252 sets); weakest link = minimum edge, named;
+                distinctiveness d(k) = 1 − cosine(N_k^site, N_k^city) on the artist
+                domain; deterministic Familiar↔Distinctive reranking
+                rank = z(C)·(1−w) + z(D̄)·w (default w=0.5, visible dial), tie-break by
+                weakest link, rival sweep w∈[0,1] reporting leadership flips; hard
+                role-coverage filter before ranking.
+              - triangulation of finalist edges → confirmed / contested / thin /
+                failed-unmeasured; evidence grades A / B / C with grade caps.
+              - evidence extension: classification states attached to evidence;
+                claim → evidence ID → ledger event → measurement input validation
+                (tracker P3 completion for engine-consumed claims); unknown evidence
+                IDs rejected, never rendered as confirmed.
+              Tests: hand-worked unit case per formula plus edge conditions (K=1, empty
+              neighborhood, zero vector, zero-variance z, duplicate entities, ties);
+              deterministic double-run identity; fixture isolation.
+INVARIANTS:   AGENTS §13 determinism — graph edges, coherence, null-model percentile,
+              distinctiveness, weakest link reproducible byte-identical from identical
+              normalized inputs; LLM never authors numeric truth; Zorq code owns all
+              numbers (Qloo = measurement only, never computes a Zorq metric); no
+              hardcoded scores/percentiles/canned answers; no fabricated evidence IDs;
+              unknown evidence IDs never render as confirmed; uncertainty states
+              (confirmed/contested/thin/not measured/failed) preserved, never averaged
+              away; no magical 0–100 ecosystem score (relative ranking only); exact
+              enumeration, never sampling; budgets/turns unchanged; fixture/canned data
+              isolated from production execution (AGENTS §12); ProjectSpec/ read-only;
+              no secrets; do-not-drift list applies.
+DEPENDENCIES: Phase 3 gateway projected shapes + evidence/ minimal record. No network,
+              no Turso (B-06), no DeepSeek balance (B-02), Docker absent (D-0.6).
+              Optional gated live Qloo exercises (taste neighborhoods/explainability,
+              ARCH §4.1 rows 9/13) are NOT required for the gate.
+NON-GOALS:    Challenge/stress operator execution, bridge/replacement search (Plan
+              Phases 7–8), constraint/format library + footprint fit (Phase 8), durable
+              Run persistence / SSE streaming (Phase 5), frontend rendering of graph/
+              compositions (Phases 6–7), API route changes (routes stay honest
+              unimplemented), live Qloo calls in the default suite, any LLM involvement
+              in numeric output.
+RISK HOTSPOTS:percentile definition drifting (role-valid = hard role-coverage filter
+              applied before enumeration); cosine with zero vectors → NaN; IDF floor
+              edge cases; z-score zero variance; nondeterministic ordering (float ties,
+              Map iteration, unsorted output); rounding embedded in comparisons instead
+              of presentation; fixture pool leaking into production paths;
+              distinctiveness city-scale vector invented instead of Qloo-derived;
+              evidence grades computed without links back to evidence IDs;
+              triangulation classified from fabricated probe output.
+ACCEPTANCE:   A controlled candidate pool (fixture, isolated from production execution)
+              produces: a complete edge graph; ranked role-valid compositions; an exact
+              percentile hand-verified against the enumerated subsets; distinctiveness
+              per component; named weakest links; triangulation classifications and
+              evidence grades A/B/C — with ZERO LLM-generated numbers; identical
+              normalized inputs rerun byte-identical; every engine-derived rendered
+              claim resolvable to evidence ID → ledger event → measurement input; full
+              suite green (typecheck/lint/unit/build/e2e) with live tests still gated.
+VERIFY:       Orchestrator reviews every worker diff (AGENTS §17); independently re-runs
+              typecheck/lint/test/build/e2e; hand-checks ≥1 percentile case and 1 edge
+              case against the formula; runs the determinism double-run test; confirms
+              fixture isolation (no production import of fixture data); secret grep
+              scan; spot-checks that no LLM path can write engine outputs.
+EXIT GATE:    "A controlled candidate pool can produce a complete graph, ranked
+              role-valid compositions, percentile, distinctiveness, weakest links and
+              evidence classifications without LLM-generated numbers." (Plan §Phase 4,
+              quoted in ARCHITECTURE.md §6.)
+COMMIT EXPECT:3–5 coherent commits, plan-suggested boundaries:
+              feat: implement deterministic cultural neighborhood construction.
+              feat: add IDF-weighted shared-culture graph scoring.
+              feat: implement exact null-model composition percentiles.
+              feat: add distinctiveness ranking and triangulation logic.
+              test: prove deterministic scoring and edge-case behavior.
+```
+
+### PHASE 3 CONTRACT (ARCHIVED — written 2026-10-07, signed off 2026-10-08)
 
 ```text
 PHASE:        3 — Real Qloo + DeepSeek Agent Core
@@ -238,6 +343,26 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 
 ## Active Work
 
+- **PHASE 4 OPENED 2026-10-08** — boundary refresh complete per AGENTS §5/§26 (all 7
+  ProjectSpec sources re-read in full at this boundary; targeted re-reads of Plan
+  Phase 4 lines 476–536, ARCHITECTURE §6 gate, ProductSpec §12 Measurements, Spec
+  Architecture §11–12); Phase 4 contract written above before any delegation.
+  Worker plan (contracts written at delegation, AGENTS §8): **W-4.1 engine core**
+  (`src/server/engine/`: pool model → taste neighborhoods → IDF → cosine edges →
+  complete graph) → **W-4.2 composition mathematics** (coherence, exact percentile,
+  weakest link, distinctiveness, w-ranking + rival sweep — depends on W-4.1 edges) →
+  **W-4.3 triangulation + evidence grades** (parallelizable with W-4.2 after W-4.1:
+  classification logic + `src/server/evidence/` extension) → orchestrator integration
+  + phase verification. `SESSION_HANDOFF.md` deleted once delegation absorbs it.
+- **PHASE 3 SIGNED OFF 2026-10-08 — exit gate PASSED with live Qloo evidence** (checklist at
+  "Phase 3 Exit-Gate Status"; evidence in Verified Tests). Landed this phase: gateway
+  (`8a4c367` + budget fix `e41d89a`), agent controller + Prior Lock (`7e69523`), assembler
+  Prior-reference fix (`8d5b422`), live exit-gate proof (`62f29af`), contract docs
+  (`edc9a62`, `b7a1de4`), review records (`c59fdeb`). Real-LLM Prior generation is the one
+  deferred verification (B-02 balance; `LIVE_DEEPSEEK=1` gated test ready).
+- **Remaining work outstanding from users:** DeepSeek balance top-up (B-02), MapTiler +
+  Turso (B-06), Devpost registration; optional low-priority Qloo capability exercises
+  (taste neighborhoods / explainability / heatmap, ARCH §4.1 rows 9/13).
 - **PHASE 3 — W-3.1 gateway LANDED 2026-10-08, commit `8a4c367`** (21 files, +5465):
   `src/server/qloo/` (12 modules) + `tests/qloo/` (4 files) + config/env/deps.
   **Orchestrator review (AGENTS §17):** diff inspected file-by-file; scope matches
@@ -255,15 +380,6 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
   (`/v2/analysis/compare`) paths are NOT proven by Gate A — only reachable on explicit
   `transport:"rest"` selection; auto routing sends both to MCP. Live-test suite stays
   skipped by default (`LIVE_QLOO=1` gate) so the default suite is deterministic.
-- **PHASE 3 SIGNED OFF 2026-10-08 — exit gate PASSED with live Qloo evidence** (checklist at
-  "Phase 3 Exit-Gate Status"; evidence in Verified Tests). Landed this phase: gateway
-  (`8a4c367` + budget fix `e41d89a`), agent controller + Prior Lock (`7e69523`), assembler
-  Prior-reference fix (`8d5b422`), live exit-gate proof (`62f29af`), contract docs
-  (`edc9a62`, `b7a1de4`), review records (`c59fdeb`). Real-LLM Prior generation is the one
-  deferred verification (B-02 balance; `LIVE_DEEPSEEK=1` gated test ready).
-- **Remaining work outstanding from users:** DeepSeek balance top-up (B-02), MapTiler +
-  Turso (B-06), Devpost registration; optional low-priority Qloo capability exercises
-  (taste neighborhoods / explainability / heatmap, ARCH §4.1 rows 9/13).
 - **PHASE 3 OPENED 2026-10-07** — boundary refresh complete per AGENTS §5/§26 (all 7
   ProjectSpec docs + `AGENTS.md` re-read in full at this boundary; targeted re-reads of
   `ARCHITECTURE.md` §4 and Plan §Phase 3); Phase 3 contract written before delegation.
@@ -512,19 +628,19 @@ Push target: **https://github.com/louji2308/zorq** (`main`, PUBLIC, MIT).
 
 ## Next Highest-Value Action
 
-**Open Phase 4 (Deterministic Cultural Measurement Engine).** First actions per AGENTS
-§5: boundary refresh — read all 7 ProjectSpec sources in full + re-read Plan Phase 4
-(lines 476+) and ARCHITECTURE §6 gate ("A controlled candidate pool can produce a
+**Execute the Phase 4 contract (written above, 2026-10-08).** Next action: write the
+W-4.1 worker contract (AGENTS §8) and delegate the engine core — pool model → taste
+neighborhoods → IDF → cosine edges → complete graph in `src/server/engine/` — then
+W-4.2 (composition mathematics) and W-4.3 (triangulation + evidence grades, parallel
+with W-4.2 after W-4.1 lands), orchestrator review of every diff (AGENTS §17), phase
+verification, and the exit-gate check ("A controlled candidate pool can produce a
 complete graph, ranked role-valid compositions, percentile, distinctiveness, weakest
-links and evidence classifications **without LLM-generated numbers**") — then write the
-Phase 4 contract into this file before any delegation. Canonical owners: `src/server/engine/`
-(new) + `src/server/evidence/` (extend per D-3.1). Invariants to protect: AGENTS §13
-determinism (graph edges, coherence, null-model percentile, distinctiveness, weakest
-link, constraint fit all reproducible from identical normalized inputs); LLM never
-authors numeric truth. Parallel consideration: Qloo capability exercises (taste
-neighborhoods/explainability/heatmap) can run as low-priority gated live tests while
-workers build. User-side: DeepSeek balance (enables `LIVE_DEEPSEEK=1`), MapTiler +
-Turso (B-06), Devpost registration.
+links and evidence classifications **without LLM-generated numbers**"). Delete
+`SESSION_HANDOFF.md` once delegation absorbs its briefing. Protect: AGENTS §13
+determinism (byte-identical reruns from identical normalized inputs); LLM never authors
+numeric truth; fixtures isolated from production execution. User-side: DeepSeek balance
+(enables `LIVE_DEEPSEEK=1`), MapTiler + Turso (B-06), Devpost registration — none
+blocks Phase 4.
 
 ## Phase 3 Exit-Gate Status (PASSED 2026-10-08)
 
