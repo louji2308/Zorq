@@ -83,7 +83,7 @@ export async function runInvestigation(options: RunInvestigationOptions): Promis
 
   return {
     run: controllerResult.run,
-    prior,
+    prior: controllerResult.run.prior,
     ledger: ledger.list(),
     evidence: controllerResult.evidence,
     observations: controllerResult.observations,
