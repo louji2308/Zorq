@@ -41,3 +41,41 @@ export {
   type BandableEdge,
   type BandedEdge
 } from "./graph.js";
+export {
+  MAX_ENUMERATION_CANDIDATES,
+  buildCompositions,
+  compareMemberArrays,
+  compositionSchema,
+  isRoleValidSubset,
+  measureComposition,
+  percentileOf,
+  weakestLinkSchema,
+  type Composition,
+  type CompositionFamily,
+  type CompositionInput,
+  type MeasuredComposition,
+  type SubsetValidityInput,
+  type WeakestLink
+} from "./compositions.js";
+export {
+  computeDistinctiveness,
+  computeDistinctivenessMap,
+  type WeightedEntity
+} from "./distinctiveness.js";
+export {
+  DEFAULT_RANK_WEIGHT,
+  SWEEP_POINT_COUNT,
+  populationZScores,
+  rankCompositionSet,
+  rankCompositions,
+  rivalSweep,
+  type RankedComposition,
+  type RankingExclusion,
+  type RankingExclusionReason,
+  type RankingInput,
+  type RankingOutcome,
+  type RankingResult,
+  type RivalSweep,
+  type SweepFlip,
+  type SweepPoint
+} from "./ranking.js";
