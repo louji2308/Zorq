@@ -234,6 +234,27 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 
 ## Active Work
 
+- **PHASE 3 — W-3.1 gateway LANDED 2026-10-08, commit `8a4c367`** (21 files, +5465):
+  `src/server/qloo/` (12 modules) + `tests/qloo/` (4 files) + config/env/deps.
+  **Orchestrator review (AGENTS §17):** diff inspected file-by-file; scope matches
+  contract exactly; independent gate re-run — typecheck, lint, **Vitest 105 pass /
+  3 skipped (gated live)**, build, **e2e 3/3**; secret scan clean (no key material,
+  no canned Qloo data in `src/`); `EXPECTED_QLOO_CONTRACT_CHECKSUM` verified against
+  the installed harness package (full sha256 match — not fabricated); MCP SDK stdio
+  env-merge verified (child inherits default environment). **Review catch → fixed in
+  `e41d89a`:** budget was charged once per logical call, letting retries slip under
+  the locked 180-call ceiling — now charged per upstream attempt (tests updated,
+  gates re-run green). **Live evidence: orchestrator ran the gated suite — 3/3 real
+  Qloo calls passed** (REST capabilities + MCP `qloo_find_tags` via real harness child
+  process + REST `/search`, 48 s).
+  Accepted risk: REST `describe` (`/entities`) and `triangulate`
+  (`/v2/analysis/compare`) paths are NOT proven by Gate A — only reachable on explicit
+  `transport:"rest"` selection; auto routing sends both to MCP. Live-test suite stays
+  skipped by default (`LIVE_QLOO=1` gate) so the default suite is deterministic.
+- **Remaining Phase 3:** **W-3.2 DeepSeek controller + write-once Prior Lock**
+  (`src/server/agent/`) — **blocked on B-02 (DeepSeek key, user-owned)**; with it, the
+  Phase 3 exit-gate chain (real brief → Prior → observation → mutation → ledger →
+  evidence record) can be assembled. Gateway side is ready for integration.
 - **PHASE 3 OPENED 2026-10-07** — boundary refresh complete per AGENTS §5/§26 (all 7
   ProjectSpec docs + `AGENTS.md` re-read in full at this boundary; targeted re-reads of
   `ARCHITECTURE.md` §4 and Plan §Phase 3); Phase 3 contract written before delegation.
@@ -268,6 +289,8 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 | W-2.1 | Foundation scaffold | Root package (ESM, dual tsconfig), React+Vite shell with 4 locked UI routes, Express app skeleton, config loader + Pino, shared Zod contracts (errors/brief/run/events/routes), Vitest bootstrap | **DONE 2026-10-06 — reviewed; committed `73f0e9d`.** First spawn stalled (0 files) → retry succeeded. 47 tests green at handoff. One contract deviation corrected by orchestrator (silent `NODE_ENV` default → required at start). |
 | W-2.2 | Server runtime | Security baseline (helmet, request-id, 2-tier rate limits), Zod validation, typed error middleware, 11-route registration, healthz, static/SPA serving, degraded boot | **DONE 2026-10-06 — reviewed; committed `197f8cb` + `704af3a`.** Spawn stalled mid-task with substantial partial code on disk → continuation worker **W-2.2b** reviewed/fixed (1 security defect: config error message echoed raw Turso URL value → dropped), wrote 15 tests, all gates green. Orchestrator independently re-ran all gates + live boot checks. |
 | W-2.3 | Harness/deploy/docs | Playwright smoke (`channel: chrome`), `deployment/Dockerfile` + `render.yaml` + root `.dockerignore`, README run instructions | **DONE 2026-10-06 — reviewed; committed `4a143d3` + `6eb397f`.** 3/3 e2e green (orchestrator re-ran); Docker recipe COPY-targets all verified; README commands executed; one README claim corrected by orchestrator (dev server does not serve the SPA — production static only). |
+| W-3.1 | QlooGateway (first spawn) | `src/server/qloo/` foundation: types, guards, errors, config, cache, budget + deps (`@qloo/qloo-harness` 0.1.26, `@modelcontextprotocol/sdk`, `p-limit`) | **STALLED 2026-10-08 after substantial partial work.** 6 foundation files + dependency install completed; no transports/gateway/tests. Registry spike answered: harness IS on public npm (0.1.26) — no temp-dir dependency. Disk state preserved. |
+| W-3.1b | QlooGateway (continuation) | Finish gateway: config fields, `project.ts`, `transport.ts`, `restTransport.ts`, `mcpTransport.ts`, `gateway.ts`, `index.ts`, `tests/qloo/*` | **DONE 2026-10-08 — reviewed, independently re-verified, committed `8a4c367`.** All gates green at handoff (typecheck/lint/105 unit/build); live suite correctly gated. Two earlier spawn attempts failed on provider errors (API connect, rate limit) before any write — third succeeded. |
 
 **Orchestrator integration review (AGENTS §17):** both diffs inspected; W-1.1 touched only `ARCHITECTURE.md`;
 W-1.2 touched only temp-dir files (repo `git status` shows no spike artifacts); key never echoed; worker claims
@@ -276,6 +299,27 @@ scans (no key material, no phantom routes, 11 route sections present). Contract 
 MCP verdict + 4 binding conditions. No duplicated responsibility; no hidden mocks.
 
 ## Verified Tests / Evidence
+
+### Phase 3 — Qloo gateway (2026-10-08, commit `8a4c367`)
+
+- **Vitest: 105 passed / 3 skipped across 12 files** (orchestrator independent re-run
+  post-review) — incl. `tests/qloo/`: fake-transport gateway contract (guards before
+  spend, POST-body path for `signal.interests.entities.query`, cache hit/TTL, budget
+  exhaustion → RATE_LIMITED, ≤2 retries on retryable errors, 400 → no retry, malformed
+  → DEPENDENCY_UNAVAILABLE, empty → `status:'empty'`, secret scrub on every thrown
+  error), projection stripping, REST transport plan/serialization tests, config
+  QLOO base-URL cases. 3 skipped = gated live suite.
+- **LIVE Qloo: 3/3 passed (real service, orchestrator-run, `LIVE_QLOO=1`)** — REST
+  capabilities readiness; **MCP path**: real `@qloo/qloo-harness` child process over
+  stdio → `qloo_find_tags {query:"jazz"}` → `status:ok`, tags projected; **REST path**:
+  `/search?query=coffee&type=urn:entity:place&take=3` → projected entities with
+  provenance endpoint = hackathon host. Total 48.3 s.
+- Gates independently re-run by orchestrator: `typecheck` (dual tsconfig) ✅, `lint` ✅,
+  `build` ✅, `test:e2e` 3/3 ✅ (SPA + healthz unaffected by gateway additions).
+- Verification extras: full `EXPECTED_QLOO_CONTRACT_CHECKSUM` sha256 matches
+  `node_modules/@qloo/qloo-harness/dist/router.js` (source not fabricated); MCP SDK
+  `StdioClientTransport` merges `getDefaultEnvironment()` (child gets PATH);
+  `git diff` secret scan clean; no canned/fixture data anywhere in `src/`.
 
 ### Phase 2 — automated suites (2026-10-06)
 
@@ -409,28 +453,29 @@ response data in a public repository — only aggregate statistics appear above)
 
 ## Last Verified Commit
 
-`6eb397f` — *feat: add the Docker/Render deploy contract and verified run docs.*
-Preceded by `4a143d3` (Playwright smoke), `704af3a` (server tests), `197f8cb` (Express
-runtime), `73f0e9d` (foundation scaffold), `9d67bb6` (Phase 2 contract docs) — six coherent
-Phase 2 commits, all gates green on each. Pushed to **https://github.com/louji2308/zorq**
-(`main`, PUBLIC, MIT). Earlier: `cd8d3d2` Phase 1 close, `bc0ccbf` Phase 1 evidence,
-`10d86a6` Phase 0 sign-off, root `00e0e6d` contract + spec bundle.
+`e41d89a` — *fix: charge the Qloo call budget per upstream attempt.* (review catch:
+retries must count against the locked 180-call budget; tests updated to per-attempt
+semantics, all gates re-run green). Preceded by `8a4c367` — *feat: connect the
+production Qloo gateway through MCP and REST fallback.*, `edc9a62` (Phase 3 contract
+docs), `1a5c993` (Phase 2 sign-off), `6eb397f` (deploy contract), `4a143d3` (Playwright
+smoke), `704af3a` (server tests), `197f8cb` (Express runtime), `73f0e9d` (foundation
+scaffold), `9d67bb6` (Phase 2 contract docs). All gates green on the current head
+(typecheck, lint, 105 unit + 3 live Qloo, build, 3 e2e). Push target:
+**https://github.com/louji2308/zorq** (`main`, PUBLIC, MIT).
 
 ## Next Highest-Value Action
 
-**Spawn W-3.1 (QlooGateway)** — contract written; canonical owner `src/server/qloo/`
-per §1. Scope: typed gateway, MCP primary + REST fallback per §4.2's 4 binding
-conditions (trusted base URL pair, normalized envelope + contract-checksum change
-detection, capability-gap fallback mandatory, long-lived process), POST-body variants
-for `signal.interests.entities.query`/`filter.exclude.entities.query`, mandatory field
-projection (0.2–1.0 MB payloads), guards (take>50, zero-result, invalid combos, 429/5xx
-bounded backoff), in-memory LRU TTL≈6h with live/cached state, budgets from config
-(180 target / ≤8 concurrency, p-limit), live-Qloo tests isolated from the default
-suite. Then W-3.2 (controller + Prior Lock) waits on **B-02 (DeepSeek key, critical,
-user-owned)** — Qloo-gateway work proceeds first (D-0.8). Still outstanding from user:
-DeepSeek key (B-02), MapTiler + Turso (B-06), Devpost registration. MCP spike artifacts
-remain in OS temp dir (`%TEMP%\qloo-mcp-spike`) for Phase 3 reference — outside the
-repo by design.
+**Unblock W-3.2 (DeepSeek controller + write-once Prior Lock)** — the gateway half of
+Phase 3 is landed and live-verified (`8a4c367`); the remaining exit-gate chain (real
+brief → LLM-only Prior persisted once, `qlooUsed=false`, immutable → validated
+agent-state mutation → ledger event → evidence record → honest Qloo-outage partial
+state) needs **B-02: DeepSeek API key (critical, user-owned — the only blocker)**.
+When the key arrives: spawn W-3.2 with `src/server/agent/` scope against the committed
+`createQlooGateway` surface (`src/server/qloo/index.ts`). Optional meanwhile (low
+priority): exercise still-unproven Qloo capabilities through the gateway — taste
+neighborhoods, `feature.explainability`, `urn:heatmap` (ARCHITECTURE §4.1 rows 9/13)
+— via the gated live suite. Also outstanding from user: MapTiler + Turso (B-06),
+Devpost registration; commits `edc9a62` + `8a4c367` not yet pushed.
 
 ## Phase 2 Exit-Gate Status
 
