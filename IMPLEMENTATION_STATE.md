@@ -351,9 +351,32 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
   (`src/server/engine/`: pool model → taste neighborhoods → IDF → cosine edges →
   complete graph) → **W-4.2 composition mathematics** (coherence, exact percentile,
   weakest link, distinctiveness, w-ranking + rival sweep — depends on W-4.1 edges) →
-  **W-4.3 triangulation + evidence grades** (parallelizable with W-4.2 after W-4.1:
-  classification logic + `src/server/evidence/` extension) → orchestrator integration
-  + phase verification. `SESSION_HANDOFF.md` deleted once delegation absorbs it.
+  **W-4.3 triangulation + evidence grades** (classification logic + `src/server/evidence/`
+  extension) → orchestrator integration + phase verification. Sequential in one checkout
+  (D-2.1 rationale re-applied: shared tree makes concurrent typecheck/test runs
+  cross-contaminate). `SESSION_HANDOFF.md` deleted once delegation absorbs it.
+- **W-4.1b DONE 2026-10-08 — reviewed (AGENTS §17), committed `ac63f63`.**
+  `src/server/engine/` (types/neighborhoods/idf/graph/index) + `tests/engine/` (6 files,
+  40 tests): pool validation, provenance path, affinity-vs-1/rank weights, top-30 cap,
+  IDF floor, complete cosine graph, band terciles, unmeasured/zero-vector honesty,
+  byte-identical determinism + shuffle independence. First spawn (W-4.1) stalled with an
+  empty result before writing anything (provider-level stall, tree clean) → fresh
+  W-4.1b succeeded. Independent orchestrator verification: typecheck 0, lint 0,
+  **193 pass / 5 gated-live skips** (was 153 → +40 engine tests, no pre-existing test
+  touched), zero comments/hardcodes/Date.now/Math.random in engine src, fixtures only
+  under `tests/engine/`. Decisions D-4.1…D-4.4 recorded.
+- **W-4.2 DONE 2026-10-08 — reviewed (AGENTS §17), independently re-verified, committed
+  `3eb298b`.** `src/server/engine/` (+`compositions.ts`, `distinctiveness.ts`,
+  `ranking.ts`, append-only `index.ts` +38/-0) + `tests/engine/` (+4 files, 55 tests):
+  exact subset enumeration (C(n,k) safety cap 10,000), role+measurement validity gating,
+  coherence = mean pairwise edge, strictly-less percentile over the valid family,
+  per-member distinctiveness mean (null → excluded from ranking with honest reason),
+  population z-scores (σ=0 → all z=0), `rank = z(C)·(1−w) + z(D̄)·w` (default w=0.5,
+  tie-break weakest link → members lex), rival sweep over 101 weights (w=0.00…1.00 step
+  0.01) with leader-flip reporting. Independent orchestrator verification: typecheck 0,
+  lint 0, **248 pass / 5 gated-live skips** (was 193 → +55); `index.ts` diff append-only;
+  hand-worked z (±√1.5) and flip-at-index-50 assertions inspected in source. Decisions
+  D-4.5…D-4.8 recorded.
 - **PHASE 3 SIGNED OFF 2026-10-08 — exit gate PASSED with live Qloo evidence** (checklist at
   "Phase 3 Exit-Gate Status"; evidence in Verified Tests). Landed this phase: gateway
   (`8a4c367` + budget fix `e41d89a`), agent controller + Prior Lock (`7e69523`), assembler
@@ -417,6 +440,10 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 | W-3.1 | QlooGateway (first spawn) | `src/server/qloo/` foundation: types, guards, errors, config, cache, budget + deps (`@qloo/qloo-harness` 0.1.26, `@modelcontextprotocol/sdk`, `p-limit`) | **STALLED 2026-10-08 after substantial partial work.** 6 foundation files + dependency install completed; no transports/gateway/tests. Registry spike answered: harness IS on public npm (0.1.26) — no temp-dir dependency. Disk state preserved. |
 | W-3.1b | QlooGateway (continuation) | Finish gateway: config fields, `project.ts`, `transport.ts`, `restTransport.ts`, `mcpTransport.ts`, `gateway.ts`, `index.ts`, `tests/qloo/*` | **DONE 2026-10-08 — reviewed, independently re-verified, committed `8a4c367`.** All gates green at handoff (typecheck/lint/105 unit/build); live suite correctly gated. Two earlier spawn attempts failed on provider errors (API connect, rate limit) before any write — third succeeded. |
 | W-3.2 | DeepSeek controller + Prior Lock | `src/server/agent/` (9 modules: llm, budget, prior, tools, controller, state, ledger, errors, index) + `src/server/evidence/` (minimal canonical owner) + `tests/agent/` (8 files) + `openai@7.30.1` dep | **DONE 2026-10-08 — reviewed file-by-file, independently re-verified, committed `7e69523`.** All gates green at handoff (typecheck/lint/153 unit/4 gated skips/build/e2e 3/3); no contract deviations; fake LLM only in tests; live `LIVE_DEEPSEEK=1` test written but expected 402 until balance (user-approved exception). |
+| W-4.1 | Engine core (first spawn) | `src/server/engine/` + `tests/engine/` | **STALLED 2026-10-08** — returned an empty result, wrote zero files (provider-level stall; tree clean, nothing lost). |
+| W-4.1b | Engine core (fresh spawn) | `src/server/engine/` (types, neighborhoods, idf, graph, index) + `tests/engine/` (fixtures + 5 test files) | **DONE 2026-10-08 — reviewed (§17), independently re-verified, committed `ac63f63`.** typecheck/lint green; **193 pass / 5 gated skips** (+40 tests); byte-identical determinism + shuffle tests; decisions D-4.1…D-4.4 recorded. |
+| W-4.2 | Composition mathematics | `src/server/engine/` (+`compositions.ts`, `distinctiveness.ts`, `ranking.ts`, `index.ts` append-only) + `tests/engine/` (+4 test files) | **DONE 2026-10-08 — reviewed (§17), independently re-verified, committed `3eb298b`.** typecheck 0, lint 0; **248 pass / 5 gated skips** (+55 tests); barrel append-only confirmed (`git diff` zero deletions); decisions D-4.5…D-4.8 recorded. |
+| W-4.3 | Triangulation + evidence grades + claim→citation validation | NEW: `src/server/engine/triangulation*.ts` (+tests); EDIT: `src/server/evidence/index.ts` (+`tests/evidence/`); barrel `engine/index.ts` off-limits (orchestrator wires exports) | **NOT STARTED 2026-10-08** — first spawn interrupted at dispatch before any write (tree clean). Re-spawn next with the same §8 contract. |
 
 **Orchestrator integration review (AGENTS §17):** both diffs inspected; W-1.1 touched only `ARCHITECTURE.md`;
 W-1.2 touched only temp-dir files (repo `git status` shows no spike artifacts); key never echoed; worker claims
@@ -437,6 +464,18 @@ returned the pre-persist Prior object (unfrozen, separate object from the persis
 (`62f29af`).
 
 ## Verified Tests / Evidence
+
+### Phase 4 — engine core + composition mathematics (2026-10-08, commits `ac63f63`/`3eb298b`)
+
+- **W-4.1b (`ac63f63`):** typecheck (dual tsconfig) 0; eslint 0; Vitest **193 pass /
+  5 gated-live skips** (+40 engine tests vs Phase 3's 153); byte-identical determinism +
+  shuffle-independence tests; zero `Date.now`/`Math.random`/comments/hardcodes in engine
+  src (grep); fixtures live only under `tests/engine/`.
+- **W-4.2 (`3eb298b`, orchestrator independently re-ran all three):** typecheck 0;
+  lint 0; Vitest **248 pass / 5 gated-live skips** (+55 composition/ranking/distinctiveness
+  tests). Hand-worked arithmetic inspected in source: population z = ±√1.5 for
+  `[1,2,3]`; rival-sweep leadership flip exactly at index 50 (w=0.5); `index.ts` diff is
+  append-only (+38/−0).
 
 ### Phase 3 — agent controller + Prior Lock + exit gate (2026-10-08, commits `7e69523`/`8d5b422`/`62f29af`)
 
@@ -584,6 +623,14 @@ response data in a public repository — only aggregate statistics appear above)
 | D-3.2 | **Live real-LLM verification deferred** (user-approved 2026-10-08): DeepSeek key valid but balance 0 (HTTP 402). Exit gate run with scripted LLM + real Qloo; `LIVE_DEEPSEEK=1` test written and gated for later. | No spec weakened — only the verification medium substituted, with the exception recorded by the user's explicit instruction. All numeric/budget/controller behavior proven with fakes + real Qloo. | Yes — run the gated suite when balance is paid. |
 | D-3.3 | `runInvestigation` returns the **persisted frozen Prior reference** (`run.prior`), not the pre-persist object. | Orchestrator review catch (`8d5b422`): `priorSchema.parse` clones, so the pre-persist object was a mutable alias of persisted data — consumers must hold the real frozen artifact. | No (invariant). |
 | D-3.4 | Peak/off-peak pricing ignores Chinese public holidays (holiday hours inside peak windows price at peak). | Conservative direction: never undercounts spend against the locked $2 ceiling. Implementing a holiday table adds complexity for zero budget risk. | Yes if a holiday run matters. |
+| D-4.1 | Engine neighborhood normalization = **per-domain sum-normalization** (weights sum to 1 within each artist/movie/brand block; sum accumulated in sorted order for float determinism; zero/non-finite total ⇒ domain empty). | Plan says only "normalize deterministically"; scheme left open (AGENTS §2). Cosine is scale-invariant so edges are unaffected; choice keeps weights interpretable + reproducible. | Yes if Qloo affinity scale evidence contradicts. |
+| D-4.2 | Edge **band rule**: over measured edges only — sort value desc (tie: `a` asc, `b` asc); `s = floor(m/3)`; first `s` → strong, last `s` → weak, remainder → typical; `m < 3` ⇒ all typical. Pure function, exported as `assignEdgeBands`. | Spec mandates relative bands within pool (ProductSpec §12) but not the split rule; deterministic floor-tercile is the smallest defensible reading. | Yes — UI may re-render bands, engine rule stays the source. |
+| D-4.3 | Neighborhood `state` heuristic at this layer: all 3 domains filled → measured; some → incomplete; none → not measured. Graph gating uses **component** `evidenceState`, not neighborhood state. Triangulation states (confirmed/contested/thin) reserved for W-4.3. | Spec silent on neighborhood-level state; needed honest mid-states without erasing uncertainty (AGENTS §13). | Yes — W-4.3 may refine with triangulation evidence. |
+| D-4.4 | **K≤2 pools are degenerate by formula**: every shared entity has count ≥ K ⇒ all IDF floor to 0 ⇒ all edges unmeasured. Accepted as mathematically faithful (ProductSpec §12 IDF), tested; non-degenerate graphs require K≥3 (unique entities) / K≥4 (shared-entity edges survive). | Never weaken a spec formula to make a toy case pass (AGENTS §16). Phase 4 pool spec is K≈8–10 where the formula behaves. | No (formula is spec-locked). |
+| D-4.5 | **Percentile tie rule**: percentile = strictly-less count ÷ family size × 100; a composition is always in its own denominator; ties do not count as "below"; empty family → `null`. | Spec says "percentile of pool" without tie semantics (ProductSpec §12); strictly-less is the smallest reading that never overstates a composition's standing. | Yes if judge testing shows misread percentiles. |
+| D-4.6 | **Population z-scores with σ=0 → all z=0** (not NaN, not ±∞); rank weight `w ∈ [0,1]` validated; sweep granularity `SWEEP_POINT_COUNT = 101` (w = 0.00…1.00 step 0.01); rank tie-break: score → weakest link → members lex (total order, deterministic). | Spec gives the formula but no degenerate-σ or sweep-granularity rule; the zero-σ fallback keeps rankScore finite and honest; fixed 101 points make flip indices reproducible. | Yes if measured pools show degenerate σ in practice. |
+| D-4.7 | **Two validity notions**: *coherence-valid* (all members measured + all internal edges measured + required roles present) = percentile domain; *rankable* = coherence-valid AND distinctiveness mean non-null = ranking domain. Rankable-but-excluded compositions are reported via `excluded: [{members, reason: "distinctiveness_unavailable"}]`, never silently dropped. | Percentile is a statement about the graph alone; ranking additionally requires D̄. Honest partial states required (AGENTS §13) — exclusion must be visible, not erased. | No (both notions are spec-necessary). |
+| D-4.8 | W-4.2 reused existing `EngineError` codes (no new `INVALID_COMPOSITION_INPUT`) because `types.ts` is frozen after W-4.1b — composition-input errors surface as `INVALID_GRAPH_INPUT`/`INVALID_COMPONENT`. Accepted as a **limitation**: error-code granularity is coarser than ideal on the composition surface. | Frozen-file boundary (contract) outranks error-taxonomy aesthetics (AGENTS §2). | Yes — fold a dedicated code into `types.ts` only if a higher phase needs it. |
 
 ## Deviations from contract
 
@@ -618,29 +665,27 @@ response data in a public repository — only aggregate statistics appear above)
 
 ## Last Verified Commit
 
-`62f29af` — *test: prove the Phase 3 exit gate against a live Qloo gateway.* (live run
-1/1 PASSED). Preceded by `8d5b422` (assembler returns persisted frozen Prior — review
-catch), `7e69523` (agent controller + Prior Lock), `b7a1de4` (B-02 record), `c59fdeb`
-(gateway review record), `e41d89a` (gateway budget-per-attempt fix), `8a4c367`
-(gateway), `edc9a62` (Phase 3 contract), `1a5c993` (Phase 2 sign-off). All gates green
-on current head: typecheck, lint, **153 unit + 5 gated live skips**, build, **3 e2e**.
+`3eb298b` — *feat: implement exact composition percentiles and distinctive ranking.*
+(W-4.2; 248 unit pass / 5 gated skips). Preceded by `ac63f63` (W-4.1b engine core,
+193 pass), `cec7b11` (Phase 4 contract), `62f29af` (Phase 3 exit gate), `8d5b422`
+(assembler frozen-Prior review catch), `7e69523` (agent controller + Prior Lock),
+`b7a1de4`, `c59fdeb`, `e41d89a`, `8a4c367` (gateway), `edc9a62`, `1a5c993`. All gates
+green on current head: typecheck, lint, **248 unit + 5 gated live skips**, build, **3 e2e**.
 Push target: **https://github.com/louji2308/zorq** (`main`, PUBLIC, MIT).
 
 ## Next Highest-Value Action
 
-**Execute the Phase 4 contract (written above, 2026-10-08).** Next action: write the
-W-4.1 worker contract (AGENTS §8) and delegate the engine core — pool model → taste
-neighborhoods → IDF → cosine edges → complete graph in `src/server/engine/` — then
-W-4.2 (composition mathematics) and W-4.3 (triangulation + evidence grades, parallel
-with W-4.2 after W-4.1 lands), orchestrator review of every diff (AGENTS §17), phase
-verification, and the exit-gate check ("A controlled candidate pool can produce a
-complete graph, ranked role-valid compositions, percentile, distinctiveness, weakest
-links and evidence classifications **without LLM-generated numbers**"). Delete
-`SESSION_HANDOFF.md` once delegation absorbs its briefing. Protect: AGENTS §13
-determinism (byte-identical reruns from identical normalized inputs); LLM never authors
-numeric truth; fixtures isolated from production execution. User-side: DeepSeek balance
-(enables `LIVE_DEEPSEEK=1`), MapTiler + Turso (B-06), Devpost registration — none
-blocks Phase 4.
+**Delegate W-4.3** (triangulation classification + evidence grades A/B/C + claim→citation
+validation in `src/server/evidence/index.ts`, per the §8 contract already written: route
+precedence failed > thin > confirmed > contested; grade precedence C > B > A with the
+honest-gap rule that unclassified finalist edges count as failed → B; barrel exports wired
+by the orchestrator, not the worker), then orchestrator review (AGENTS §17), commit,
+independent full-gate re-run (typecheck/lint/test/build/e2e), the controlled-candidate-pool
+exit-gate demonstration ("evidence classifications **without LLM-generated numbers**"),
+Phase 4 exit-gate record, delete `SESSION_HANDOFF.md`, and reassess. Protect: AGENTS §13
+determinism; unknown evidence IDs must never render as confirmed; fixtures isolated from
+production execution. User-side (non-blocking): DeepSeek balance (enables
+`LIVE_DEEPSEEK=1`), MapTiler + Turso (B-06), Devpost registration.
 
 ## Phase 3 Exit-Gate Status (PASSED 2026-10-08)
 
