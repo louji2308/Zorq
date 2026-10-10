@@ -1,0 +1,217 @@
+import { afterEach, describe, expect, it } from "vitest";
+import {
+  postRunsResponseSchema,
+  runResponseSchema,
+  runStateSchema,
+  type RunState
+} from "../../src/shared/index.js";
+import { createApp } from "../../src/server/app.js";
+import { loadConfig } from "../../src/server/config.js";
+import { createLogger } from "../../src/server/logger.js";
+import { createOrchestrator } from "../../src/server/orchestrator/index.js";
+import { createMemoryStore, type RunStore } from "../../src/server/persistence/index.js";
+import { createEventHub, type EventHub } from "../../src/server/sse/index.js";
+import { TEST_BRIEF, TEST_NOW, TEST_PRIOR, fakeGateway, fakeLlm } from "../agent/support/fakes.js";
+import { FINAL_TURN, PRIOR_RESPONSE, TURN_ONE } from "../orchestrator/support.js";
+import { startServer } from "../support/http.js";
+
+const TEST_CONFIG = loadConfig({ NODE_ENV: "test", APP_BASE_URL: "http://localhost:3000" });
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+interface TestStack {
+  baseUrl: string;
+  store: RunStore;
+  hub: EventHub;
+}
+
+const cleanups: Array<() => Promise<void>> = [];
+
+afterEach(async () => {
+  while (cleanups.length > 0) {
+    await cleanups.pop()?.();
+  }
+});
+
+async function createStack(): Promise<TestStack> {
+  const store = createMemoryStore();
+  const hub = createEventHub();
+  const llm = fakeLlm([{ content: PRIOR_RESPONSE }, TURN_ONE, FINAL_TURN]);
+  const gateway = fakeGateway();
+  const orchestrator = createOrchestrator({
+    store,
+    gateway: gateway.gateway,
+    llm: llm.client,
+    now: () => TEST_NOW,
+    eventSink: (event) => hub.publish(event)
+  });
+  const app = createApp(createLogger("test"), {
+    config: TEST_CONFIG,
+    orchestrator,
+    store,
+    eventHub: hub
+  });
+  const server = await startServer(app);
+  cleanups.push(server.close);
+  return { baseUrl: server.baseUrl, store, hub };
+}
+
+async function postBrief(baseUrl: string, body: unknown = TEST_BRIEF): Promise<Response> {
+  return fetch(`${baseUrl}/api/runs`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body)
+  });
+}
+
+async function postStop(baseUrl: string, runId: string, body: unknown = {}): Promise<Response> {
+  return fetch(`${baseUrl}/api/runs/${runId}/stop`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body)
+  });
+}
+
+describe("POST /api/runs", () => {
+  it("creates a run, executes the pipeline, and returns the terminal run with a frozen Prior", async () => {
+    const { baseUrl } = await createStack();
+
+    const response = await postBrief(baseUrl);
+
+    expect(response.status).toBe(201);
+    const body: unknown = await response.json();
+    const parsed = postRunsResponseSchema.safeParse(body);
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) {
+      return;
+    }
+    const run = parsed.data.run;
+    expect(run.id).toMatch(UUID_RE);
+    expect(run.brief).toEqual(TEST_BRIEF);
+    expect(run.prior).toBeDefined();
+    expect(run.prior?.qlooUsed).toBe(false);
+    expect(run.prior?.generatedAt).toBe(new Date(TEST_NOW).toISOString());
+    expect(["complete", "partial", "failed"]).toContain(run.status);
+  });
+
+  it("rejects a brief that fails schema validation with 400 VALIDATION_FAILED", async () => {
+    const { baseUrl } = await createStack();
+
+    const response = await postBrief(baseUrl, { location: "", objective: "" });
+
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: { code: string; requestId: string } };
+    expect(body.error.code).toBe("VALIDATION_FAILED");
+    expect(body.error.requestId).toMatch(/.+/);
+  });
+});
+
+describe("GET /api/runs/:id", () => {
+  it("round-trips the persisted run, projects evidence, and strips stray fields", async () => {
+    const { baseUrl, store } = await createStack();
+    const created = await postBrief(baseUrl);
+    const createdBody = (await created.json()) as { run: { id: string } };
+    const runId = createdBody.run.id;
+
+    const stored = await store.loadRun(runId);
+    expect(stored).not.toBeNull();
+    if (stored === null) {
+      return;
+    }
+    const tainted = { ...stored.state, apiKey: "should-not-appear-in-the-response" } as unknown as RunState;
+    await store.saveRunState(runId, tainted);
+
+    const response = await fetch(`${baseUrl}/api/runs/${runId}`);
+
+    expect(response.status).toBe(200);
+    const body: unknown = await response.json();
+    const parsed = runResponseSchema.safeParse(body);
+    expect(parsed.success).toBe(true);
+    const raw = body as { run: Record<string, unknown> & { apiKey?: string } };
+    expect(raw.run.apiKey).toBeUndefined();
+    expect(raw.run.evidence).toEqual([
+      { id: expect.any(String), kind: "search", summary: expect.any(String) }
+    ]);
+  });
+
+  it("answers 404 RUN_NOT_FOUND for an unknown run id", async () => {
+    const { baseUrl } = await createStack();
+
+    const response = await fetch(`${baseUrl}/api/runs/11111111-1111-4111-8111-111111111111`);
+
+    expect(response.status).toBe(404);
+    const body = (await response.json()) as { error: { code: string; message: string } };
+    expect(body.error.code).toBe("RUN_NOT_FOUND");
+    expect(body.error.message).toContain("run not found");
+  });
+});
+
+describe("POST /api/runs/:id/stop", () => {
+  const runId = "22222222-2222-4222-8222-222222222222";
+
+  async function seedInvestigating(store: RunStore): Promise<void> {
+    await store.createRun({
+      id: runId,
+      state: { id: runId, status: "investigating", phase: "investigation", brief: TEST_BRIEF, prior: TEST_PRIOR }
+    });
+  }
+
+  it("stops a resumable run and stays idempotent on a second stop", async () => {
+    const { baseUrl, store } = await createStack();
+    await seedInvestigating(store);
+
+    const first = await postStop(baseUrl, runId, { reason: "operator asked" });
+    expect(first.status).toBe(200);
+    const firstBody = (await first.json()) as { run: { id: string; status: string } };
+    expect(firstBody.run.id).toBe(runId);
+    expect(firstBody.run.status).toBe("stopped");
+
+    const second = await postStop(baseUrl, runId, { reason: "operator asked again" });
+    expect(second.status).toBe(200);
+    const secondBody = (await second.json()) as { run: { id: string; status: string } };
+    expect(secondBody.run.id).toBe(runId);
+    expect(secondBody.run.status).toBe("stopped");
+
+    const stored = await store.loadRun(runId);
+    expect(stored?.state.status).toBe("stopped");
+  });
+
+  it("answers 404 RUN_NOT_FOUND for an unknown run id", async () => {
+    const { baseUrl } = await createStack();
+
+    const response = await postStop(baseUrl, "33333333-3333-4333-8333-333333333333");
+
+    expect(response.status).toBe(404);
+    const body = (await response.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("RUN_NOT_FOUND");
+  });
+});
+
+describe("runStateSchema (expanded tree)", () => {
+  it("keeps evidence and the expanded node fields through a parse and strips stray keys", () => {
+    const evidence = [
+      { id: "ev-1", kind: "search", label: "jazz cafe", summary: "one measured anchor", grade: "A" }
+    ];
+    const parsed = runStateSchema.parse({
+      id: "44444444-4444-4444-8444-444444444444",
+      status: "complete",
+      phase: "measurement",
+      brief: TEST_BRIEF,
+      prior: TEST_PRIOR,
+      evidence,
+      siteRead: { footprint: "narrow corner" },
+      culturalDna: { jazz: 0.4 },
+      graph: { nodes: [{ id: "n1" }], edges: [] },
+      compositions: [{ name: "daytime corner" }],
+      revisions: [1, 2],
+      apiKey: "should-not-survive"
+    });
+
+    expect(parsed.evidence).toEqual(evidence);
+    expect(parsed.siteRead).toEqual({ footprint: "narrow corner" });
+    expect(parsed.culturalDna).toEqual({ jazz: 0.4 });
+    expect(parsed.graph).toEqual({ nodes: [{ id: "n1" }], edges: [] });
+    expect(parsed.compositions).toEqual([{ name: "daytime corner" }]);
+    expect(parsed.revisions).toEqual([1, 2]);
+    expect((parsed as Record<string, unknown>).apiKey).toBeUndefined();
+  });
+});

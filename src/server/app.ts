@@ -6,13 +6,20 @@ import { createLogger } from "./logger.js";
 import { createErrorHandler, notFoundHandler } from "./middleware/errors.js";
 import { requestIdMiddleware } from "./middleware/requestId.js";
 import { createRateLimiters, type RateLimitOverrides } from "./middleware/rateLimit.js";
+import type { Orchestrator } from "./orchestrator/index.js";
+import type { RunStore } from "./persistence/index.js";
 import { registerRoutes } from "./routes.js";
+import { createEventHub, type EventHub } from "./sse/index.js";
 import { DEFAULT_WEB_DIR, mountStaticWeb, resolveWebDirPath, webIndexPath } from "./staticWeb.js";
 
 export interface CreateAppOptions {
   config?: ZorqConfig;
   rateLimits?: RateLimitOverrides;
   webDir?: string;
+  orchestrator?: Orchestrator;
+  store?: RunStore;
+  eventHub?: EventHub;
+  sseHeartbeatMs?: number;
 }
 
 export function createApp(): Express;
@@ -37,6 +44,8 @@ export function createApp(logger?: ReturnType<typeof createLogger>, options?: Cr
   app.use(express.json());
 
   const webDir = resolveWebDirPath(options?.webDir ?? DEFAULT_WEB_DIR);
+  const eventHub = options?.eventHub ?? createEventHub();
+  app.locals.sseHub = eventHub;
 
   registerRoutes(app, {
     healthz: () =>
@@ -46,7 +55,11 @@ export function createApp(logger?: ReturnType<typeof createLogger>, options?: Cr
           enabled: staticEnabled,
           indexPath: webIndexPath(webDir)
         }
-      })
+      }),
+    ...(options?.orchestrator !== undefined ? { orchestrator: options.orchestrator } : {}),
+    ...(options?.store !== undefined ? { store: options.store } : {}),
+    eventHub,
+    ...(options?.sseHeartbeatMs !== undefined ? { sseHeartbeatMs: options.sseHeartbeatMs } : {})
   });
 
   if (staticEnabled) {

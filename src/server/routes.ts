@@ -8,11 +8,15 @@ import {
   recomputeRequestSchema,
   replaceRequestSchema,
   runIdParamsSchema,
+  runStateSchema,
   stopRunRequestSchema,
   unpinAnchorRequestSchema
 } from "../shared/index.js";
 import type { HealthzResult } from "./healthz.js";
 import { validate } from "./middleware/validate.js";
+import type { Orchestrator } from "./orchestrator/index.js";
+import { RunNotFound, RunStoreError, type RunStore } from "./persistence/index.js";
+import { createRunEventsHandler, type EventHub } from "./sse/index.js";
 
 export const UNIMPLEMENTED_MESSAGES = {
   createRun: "Run creation is not implemented yet; it lands in Phase 5 (durable Run state).",
@@ -35,11 +39,35 @@ function unimplemented(message: string) {
   };
 }
 
+export function mapRouteError(error: unknown): unknown {
+  if (error instanceof ApiError) {
+    return error;
+  }
+  if (error instanceof RunNotFound) {
+    return new ApiError("RUN_NOT_FOUND", error.message);
+  }
+  if (error instanceof RunStoreError) {
+    return new ApiError("CONFLICT", error.message);
+  }
+  return error;
+}
+
+function readRunId(req: Request): string {
+  const id: unknown = req.params.id;
+  return typeof id === "string" ? id : "";
+}
+
 export interface RouteDependencies {
   healthz: () => HealthzResult;
+  orchestrator?: Orchestrator;
+  store?: RunStore;
+  eventHub?: EventHub;
+  sseHeartbeatMs?: number;
 }
 
 export function registerRoutes(app: Express, dependencies: RouteDependencies): void {
+  const { orchestrator, store, eventHub } = dependencies;
+
   app.get("/healthz", (_req, res, next) => {
     const result = dependencies.healthz();
     if (result.status === 200) {
@@ -49,9 +77,50 @@ export function registerRoutes(app: Express, dependencies: RouteDependencies): v
     next(new ApiError("SERVICE_UNAVAILABLE", result.message));
   });
 
-  app.post("/api/runs", validate({ body: postRunsRequestSchema }), unimplemented(UNIMPLEMENTED_MESSAGES.createRun));
+  app.post("/api/runs", validate({ body: postRunsRequestSchema }), (req, res, next) => {
+    if (orchestrator === undefined || store === undefined) {
+      unimplemented(UNIMPLEMENTED_MESSAGES.createRun)(req, res, next);
+      return;
+    }
+    void orchestrator
+      .startRun({ brief: req.body })
+      .then((run) => {
+        res.status(201).json({ run });
+      })
+      .catch((error: unknown) => {
+        next(mapRouteError(error));
+      });
+  });
 
-  app.get("/api/runs/:id", validate({ params: runIdParamsSchema }), unimplemented(UNIMPLEMENTED_MESSAGES.getRun));
+  app.get("/api/runs/:id", validate({ params: runIdParamsSchema }), (req, res, next) => {
+    if (store === undefined) {
+      unimplemented(UNIMPLEMENTED_MESSAGES.getRun)(req, res, next);
+      return;
+    }
+    void (async () => {
+      const runId = readRunId(req);
+      const stored = await store.loadRun(runId);
+      if (stored === null) {
+        throw new ApiError("RUN_NOT_FOUND", `run not found: ${runId}`);
+      }
+      const evidence = await store.listEvidence(stored.id);
+      const projected = {
+        ...stored.state,
+        evidence: evidence.map((record) => ({
+          id: record.id,
+          kind: record.operation,
+          summary: record.claim
+        }))
+      };
+      return { run: runStateSchema.parse(projected) };
+    })()
+      .then((body) => {
+        res.status(200).json(body);
+      })
+      .catch((error: unknown) => {
+        next(mapRouteError(error));
+      });
+  });
 
   app.get(
     "/api/runs/:id/events",
@@ -64,13 +133,38 @@ export function registerRoutes(app: Express, dependencies: RouteDependencies): v
         })
       }
     }),
-    unimplemented(UNIMPLEMENTED_MESSAGES.runEvents)
+    (req, res, next) => {
+      if (orchestrator === undefined || store === undefined || eventHub === undefined) {
+        unimplemented(UNIMPLEMENTED_MESSAGES.runEvents)(req, res, next);
+        return;
+      }
+      const handler = createRunEventsHandler({
+        store,
+        hub: eventHub,
+        ...(dependencies.sseHeartbeatMs !== undefined ? { heartbeatMs: dependencies.sseHeartbeatMs } : {})
+      });
+      void handler(req, res, next);
+    }
   );
 
   app.post(
     "/api/runs/:id/stop",
     validate({ params: runIdParamsSchema, body: stopRunRequestSchema }),
-    unimplemented(UNIMPLEMENTED_MESSAGES.stopRun)
+    (req, res, next) => {
+      if (orchestrator === undefined || store === undefined) {
+        unimplemented(UNIMPLEMENTED_MESSAGES.stopRun)(req, res, next);
+        return;
+      }
+      const reason = (req.body as { reason?: string } | undefined)?.reason;
+      void orchestrator
+        .stopRun(readRunId(req), reason)
+        .then((run) => {
+          res.status(200).json({ run });
+        })
+        .catch((error: unknown) => {
+          next(mapRouteError(error));
+        });
+    }
   );
 
   app.post(

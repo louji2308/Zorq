@@ -1,7 +1,12 @@
 import { existsSync } from "node:fs";
+import { createDeepSeekLlmClient } from "./agent/llm.js";
 import { createApp } from "./app.js";
 import { ConfigError, loadConfig, resolvePort, type ZorqConfig } from "./config.js";
 import { createLogger } from "./logger.js";
+import { createOrchestrator } from "./orchestrator/index.js";
+import { createRunStore } from "./persistence/index.js";
+import { createQlooGateway, missingQlooConfiguration, type QlooGateway } from "./qloo/index.js";
+import { createEventHub } from "./sse/index.js";
 
 const FALLBACK_PORT = 3000;
 
@@ -15,7 +20,30 @@ function readDotEnv(): void {
   }
 }
 
-function bootstrap(): void {
+function unconfiguredGateway(): QlooGateway {
+  const reject = (): Promise<never> =>
+    Promise.reject(
+      missingQlooConfiguration([
+        { path: "env.QLOO_API_KEY", message: "required before the Qloo gateway can be used" }
+      ])
+    );
+  return {
+    capabilities: reject,
+    search: reject,
+    resolveTags: reject,
+    insights: reject,
+    describe: reject,
+    bridge: reject,
+    replace: reject,
+    triangulate: reject,
+    get stats() {
+      return { budgetUsed: 0, budgetRemaining: 0, cacheSize: 0, cacheHits: 0 };
+    },
+    close: async () => {}
+  };
+}
+
+async function bootstrap(): Promise<void> {
   readDotEnv();
   let config: ZorqConfig | undefined;
   let configFailure: ConfigError | undefined;
@@ -36,7 +64,29 @@ function bootstrap(): void {
       "required configuration absent; /healthz reports 503 until it is fixed"
     );
   }
-  const app = createApp(logger, config !== undefined ? { config } : {});
+
+  const hub = createEventHub();
+  const store = await createRunStore({
+    tursoDatabaseUrl: config?.tursoDatabaseUrl,
+    tursoAuthToken: config?.tursoAuthToken
+  });
+  const gateway = config !== undefined ? createQlooGateway({ config }) : unconfiguredGateway();
+  const llm = createDeepSeekLlmClient({ apiKey: config?.deepseekApiKey });
+  const orchestrator = createOrchestrator({
+    store,
+    gateway,
+    llm,
+    eventSink: (event) => {
+      hub.publish(event);
+    }
+  });
+
+  const app = createApp(logger, {
+    ...(config !== undefined ? { config } : {}),
+    store,
+    orchestrator,
+    eventHub: hub
+  });
   const port = config !== undefined ? resolvePort(config) : FALLBACK_PORT;
   app.listen(port, () => {
     logger.info(
@@ -46,4 +96,7 @@ function bootstrap(): void {
   });
 }
 
-bootstrap();
+void bootstrap().catch((error: unknown) => {
+  process.stderr.write(`fatal: ${error instanceof Error ? error.message : String(error)}\n`);
+  process.exitCode = 1;
+});
