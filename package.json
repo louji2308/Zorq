@@ -17,6 +17,7 @@
     "dev:server": "tsx watch src/server/main.ts"
   },
   "dependencies": {
+    "@libsql/client": "^0.18.0",
     "@modelcontextprotocol/sdk": "^1.32.1",
     "@qloo/qloo-harness": "^0.1.26",
     "express": "^5.2.1",
