@@ -79,3 +79,26 @@ export {
   type SweepFlip,
   type SweepPoint
 } from "./ranking.js";
+export {
+  TRIANGULATION_MIN_USABLE_RESULTS,
+  classifyTriangulation,
+  route1FromGraph,
+  route1Schema,
+  route2Schema,
+  triangulationClassificationSchema,
+  triangulationInputSchema,
+  triangulationStates,
+  type Route1Measurement,
+  type Route2Probe,
+  type TriangulationClassification,
+  type TriangulationInput,
+  type TriangulationState
+} from "./triangulation.js";
+export {
+  evidenceGrades,
+  gradeEvidence,
+  type ClassifiedTriangulationEdge,
+  type EvidenceGrade,
+  type EvidenceGradeInput,
+  type EvidenceGradeResult
+} from "./grades.js";
