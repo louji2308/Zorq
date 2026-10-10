@@ -7,7 +7,7 @@
 
 ## Current Phase
 
-**PHASE 5 — Orchestrator, Durable State, SSE & Recovery**. Status: **OPENED 2026-10-09**.
+**PHASE 5 — Orchestrator, Durable State, SSE & Recovery**. Status: **CLOSED 2026-10-09 — exit gate PASSED** (HEAD `7f11d7f`, tree clean, 386 pass / 5 gated-live skips, e2e 3/3).
 Phase 4 closed 2026-10-08 with exit gate PASSED (HEAD `9e91da0`, tree clean, 293 pass /
 5 gated-live skips). Boundary refresh completed 2026-10-09 (all 7 ProjectSpec sources
 + AGENTS + this file re-read at the boundary). Phase 5 contract written below before
@@ -21,6 +21,10 @@ fabricating completion." (Plan line 597.) Sequential workers W-5.1 → W-5.4; or
 reviews and commits each verified increment (AGENTS §17). B-06 (Turso not provisioned)
 is mitigated by a persistence port with an in-memory adapter — Turso adapter is
 env-gated and activates when credentials appear, with zero code change.
+
+**RESULT:** All four workers delivered; independent §17 reviews at each commit; full
+gates (typecheck, lint, 386 unit / 5 gated-live skips, build, e2e 3/3) green on
+`7f11d7f`. Exit-gate clause map is in the Phase 5 Exit-Gate Status section below.
 
 ### PHASE 5 CONTRACT (written 2026-10-09, before delegation)
 
@@ -451,23 +455,11 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 
 ## Active Work
 
-- **PHASE 5 OPENED 2026-10-09** — boundary refresh complete per AGENTS §5/§26 (all 7
-  ProjectSpec sources + AGENTS + this file re-read at the boundary; targeted re-reads
-  of Plan Phase 5 lines 538–605, ARCHITECTURE §1/§2/§3.4/§6, ProductSpec §15 edge
-  cases, Tools §4/§14/§16). Phase 5 contract written above before any delegation.
-  Worker plan (contracts written at delegation, AGENTS §8; sequential, D-2.1):
-  **W-5.1 persistence port** (`src/server/persistence/`: RunStore interface +
-  in-memory adapter + Turso adapter gated on env + config wiring + healthz check) →
-  **W-5.2 orchestration core** (`src/server/orchestrator/`: phase sequencing over
-  extended agent state machine with new `stopped` status, idempotency, resume, stop/
-  cancel, bounded retries, wall-clock cap, best-so-far, wires agent+gateway+engine+
-  persistence) → **W-5.3 SSE + API routes** (real handlers for POST /api/runs,
-  GET /api/runs/:id, GET /api/runs/:id/events with Last-Event-ID replay, POST
-  /api/runs/:id/stop; expand shared/run.ts toward the 13-node tree) →
-  **W-5.4 recovery + exit-gate suite** (disconnect/reconnect/retry/resume/stop,
-  Qloo-outage mid-run, exit-gate proof) → orchestrator integration + phase
-  verification. B-06 Turso is non-blocking (in-memory adapter default; Turso adapter
-  env-gated and ready).
+- **PHASE 5 CLOSED 2026-10-09 — exit gate PASSED** (HEAD `7f11d7f`, tree clean,
+  386 pass / 5 gated-live skips, e2e 3/3). See "Phase 5 Exit-Gate Status" below for
+  the clause-by-clause proof map. Landed: W-5.1 persistence (`d912ebb`), W-5.2
+  orchestration (`5fb61c0`), W-5.3 SSE + API (`6ec2531`), W-5.4 recovery suite
+  (`7f11d7f`), plus state-record commits (`7989d16`, `b3c38f1`, this file).
 - **W-4.1b DONE 2026-10-08 — reviewed (AGENTS §17), committed `ac63f63`.**
   `src/server/engine/` (types/neighborhoods/idf/graph/index) + `tests/engine/` (6 files,
   40 tests): pool validation, provenance path, affinity-vs-1/rank weights, top-30 cap,
@@ -518,47 +510,6 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 - **Remaining work outstanding from users:** DeepSeek balance top-up (B-02), MapTiler +
   Turso (B-06), Devpost registration; optional low-priority Qloo capability exercises
   (taste neighborhoods / explainability / heatmap, ARCH §4.1 rows 9/13).
-- **PHASE 3 — W-3.1 gateway LANDED 2026-10-08, commit `8a4c367`** (21 files, +5465):
-  `src/server/qloo/` (12 modules) + `tests/qloo/` (4 files) + config/env/deps.
-  **Orchestrator review (AGENTS §17):** diff inspected file-by-file; scope matches
-  contract exactly; independent gate re-run — typecheck, lint, **Vitest 105 pass /
-  3 skipped (gated live)**, build, **e2e 3/3**; secret scan clean (no key material,
-  no canned Qloo data in `src/`); `EXPECTED_QLOO_CONTRACT_CHECKSUM` verified against
-  the installed harness package (full sha256 match — not fabricated); MCP SDK stdio
-  env-merge verified (child inherits default environment). **Review catch → fixed in
-  `e41d89a`:** budget was charged once per logical call, letting retries slip under
-  the locked 180-call ceiling — now charged per upstream attempt (tests updated,
-  gates re-run green). **Live evidence: orchestrator ran the gated suite — 3/3 real
-  Qloo calls passed** (REST capabilities + MCP `qloo_find_tags` via real harness child
-  process + REST `/search`, 48 s).
-  Accepted risk: REST `describe` (`/entities`) and `triangulate`
-  (`/v2/analysis/compare`) paths are NOT proven by Gate A — only reachable on explicit
-  `transport:"rest"` selection; auto routing sends both to MCP. Live-test suite stays
-  skipped by default (`LIVE_QLOO=1` gate) so the default suite is deterministic.
-- **PHASE 3 OPENED 2026-10-07** — boundary refresh complete per AGENTS §5/§26 (all 7
-  ProjectSpec docs + `AGENTS.md` re-read in full at this boundary; targeted re-reads of
-  `ARCHITECTURE.md` §4 and Plan §Phase 3); Phase 3 contract written before delegation.
-  Worker plan (sequential, D-2.1): **W-3.1 QlooGateway** (`src/server/qloo/`,
-  unblocked) → **W-3.2 DeepSeek controller + Prior Lock** (`src/server/agent/`, blocked
-  on B-02) → orchestrator integration + phase verification.
-- **PHASE 2 CLOSED 2026-10-06 — exit gate PASSED on a real fresh checkout** (evidence in
-  Verified Tests below; gate checklist at "Phase 2 Exit-Gate Status"). Phase boundary
-  refresh had been executed per AGENTS §5/§26 (`AGENTS.md` + all 7 ProjectSpec sources
-  re-read in full) and the contract written before any delegation.
-- Workers executed sequentially in one checkout (decision D-2.1), each with a written
-  contract; workers never committed — orchestrator reviewed every diff (AGENTS §17),
-  independently re-ran all gates, and committed 6 coherent Phase 2 commits
-  (`9d67bb6` docs → `73f0e9d` foundation → `197f8cb` server → `704af3a` server tests →
-  `4a143d3` e2e → `6eb397f` deploy contract + docs).
-- Two worker stalls occurred (W-2.2 first spawn; then W-2.2 itself mid-task) and were
-  recovered by surgical continuation workers on user instruction — disk state preserved,
-  no work lost, no duplicated responsibility.
-- Carried constraint (provenance for `ARCHITECTURE.md` §4): gateway must support **POST**
-  for `signal.interests.entities.query` / `filter.exclude.entities.query` (JSON-body params)
-  in addition to GET — **now Phase 3 scope (next)**.
-- Phase 1 completed same date: `ARCHITECTURE.md` locked, Gate A fully proven (REST + MCP),
-  README honest, phantom-route note corrected (sole API family = the 11 `/api/runs`
-  routes), all Phase 1 commits pushed.
 
 ## Worker Status
 
@@ -579,7 +530,7 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 | W-5.1 | Persistence port + adapters | NEW: `src/server/persistence/` (RunStore interface, in-memory adapter, Turso adapter env-gated, schema, config wiring, healthz check) + `tests/persistence/` | **DONE 2026-10-09 — reviewed (§17), independently re-verified, committed `d912ebb`.** typecheck 0, lint 0; **339 pass / 5 gated-live skips** (+46); build PASS; e2e 3/3; secret scan clean; package.json only adds `@libsql/client`. Turso adapter testable via `:memory:`/file URL (B-06 mitigation). |
 | W-5.2 | Orchestration core | NEW: `src/server/orchestrator/` (status machine, rehydrate, write-through ledger, start/resume/stop/retry, wall-clock, event sink) + `tests/orchestrator/` | **DONE 2026-10-09 — reviewed (§17), independently re-verified, committed `5fb61c0`.** typecheck 0, lint 0; **354 pass / 5 gated-live skips** (+15); build PASS; e2e 3/3; secret scan clean; zero edits to agent/ (stop stays orchestrator-local). |
 | W-5.3 | SSE + API routes | EDIT: `src/shared/run.ts` (13-node expansion), `src/server/routes.ts` (real handlers), SSE emitter + replay + `src/server/app.ts` wiring + `tests/` | **DONE 2026-10-09 — reviewed (§17), independently re-verified, committed `6ec2531`.** typecheck 0, lint 0; **369 pass / 5 gated-live skips** (+15); build PASS; e2e 3/3; secret scan clean; 4 Phase 5 routes real, other 7 still 503. First two spawns stalled with zero writes (provider) → third succeeded. |
-| W-5.4 | Recovery + exit-gate suite | NEW: `tests/orchestrator/recovery.test.ts` + SSE reconnect e2e-style tests + exit-gate proof | **PENDING — depends on W-5.3.** |
+| W-5.4 | Recovery + exit-gate suite | NEW: `tests/orchestrator/recovery.test.ts` + `tests/orchestrator/exitGate.test.ts` + exit-gate proof | **DONE 2026-10-09 — reviewed (§17), independently re-verified, committed `7f11d7f`.** typecheck 0, lint 0; **386 pass / 5 gated-live skips** (+17); build PASS; e2e 3/3; secret scan clean; no src changes needed. First two spawns stalled with zero writes (provider) → third succeeded. |
 
 **Orchestrator integration review (AGENTS §17):** both diffs inspected; W-1.1 touched only `ARCHITECTURE.md`;
 W-1.2 touched only temp-dir files (repo `git status` shows no spike artifacts); key never echoed; worker claims
@@ -600,6 +551,32 @@ returned the pre-persist Prior object (unfrozen, separate object from the persis
 (`62f29af`).
 
 ## Verified Tests / Evidence
+
+### Phase 5 — persistence + orchestrator + SSE/API + recovery exit gate (2026-10-09, commits `d912ebb`/`5fb61c0`/`6ec2531`/`7f11d7f`)
+
+- **W-5.1 (`d912ebb`):** typecheck 0; lint 0; Vitest **339 pass /
+  5 gated-live skips** (+46 vs Phase 4's 293). RunStore contract suite runs against
+  both in-memory and Turso (`:memory:` / file URL) adapters; structuredClone isolation
+  proven both directions; close/reopen durability proven on file-backed libsql.
+- **W-5.2 (`5fb61c0`, orchestrator independently re-ran all five):** typecheck 0;
+  lint 0; Vitest **354 pass / 5 gated-live skips** (+15). Stop idempotency, wall-clock
+  cap → partial, resume-from-investigation, RunBusyError on concurrent resume/retry,
+  zero agent/ edits (stop is orchestrator-local status).
+- **W-5.3 (`6ec2531`, first two spawns stalled → third succeeded):** typecheck 0;
+  lint 0; Vitest **369 pass / 5 gated-live skips** (+15: 7 API + 8 SSE). Four Phase 5
+  routes real (POST create 201, GET state+evidence 200, POST stop 200, GET SSE);
+  other seven still honest 503. SSE first frame always `state`; Last-Event-ID replays
+  contiguous ledger only; non-contiguous gap → state-only fallback (no silent miss);
+  terminal run → state frame then `res.end()`; heartbeat injectable (default 15 s).
+- **W-5.4 (`7f11d7f`, first two spawns stalled → third succeeded):** typecheck 0;
+  lint 0; Vitest **386 pass / 5 gated-live skips** (+17: 7 recovery + 10 exit-gate).
+  Exit-gate file maps each clause of the gate sentence to a named test: stop ✓,
+  refresh ✓, disconnect ✓, reconnect ✓, retry ✓, resume ✓, no corruption ✓,
+  no duplicate effects ✓, no fabricated completion ✓, gap fallback ✓. Suite uses
+  real createOrchestrator + createMemoryStore + fake LLM/gateway over real HTTP
+  (createApp + startServer) — no store mocks. Zero src changes were needed.
+- **Full gates independently re-run at every worker commit:** typecheck 0, lint 0,
+  build PASS, e2e 3/3; secret scan clean at each boundary.
 
 ### Phase 4 — engine core + composition math + triangulation/grades + exit gate (2026-10-08, commits `ac63f63`/`3eb298b`/`04e8d3a`/`b759e83`)
 
@@ -776,6 +753,11 @@ response data in a public repository — only aggregate statistics appear above)
 | D-4.9 | **Triangulation precedence (exact):** `failed` (route1 ≠ measured OR `focalInTopHalf === null`) → `thin` (resultCount < 5) → `confirmed` (≥5 + top-half) → `contested` (≥5 + not top-half). Exactly 5 results counts as usable/strong. Structurally invalid route2 input **throws** `INVALID_GRAPH_INPUT`; present-but-undeterminable classifies as `failed`. Duplicate classification for the same pair → throw (never last-wins). | Spec fixes the four states and the <5 threshold (ProductSpec §12, Architecture §11.6) but not the precedence edge cases; this mapping is the smallest reading that never overstates evidence. | No (spec-locked states; precedence is defensive only). |
 | D-4.10 | **Grade honest-gap rule:** a finalist member-pair with NO supplied classification is scored `failed` → B. Reasons enumerate ALL detected failures (every non-measured member, every non-confirmed edge) — member reasons in input order, then edge reasons in sorted-pair order — not only the cap-level ones. Grade is a CAP: C > B > A, never an average. | Zero-evidence compositions must never earn A (AGENTS §13 honesty); full reason lists let the UI "show these states rather than average them away" (Architecture §11.6). | No. |
 | D-4.11 | Evidence module gained exactly one additive error code `UNKNOWN_EVIDENCE_ID`; `resolveClaimEvidence` dedups in first-occurrence claim order and throws naming ALL missing ids; malformed lookup records → `INVALID_RECORD`; `isResolvableClaim` converts any `EvidenceError` to `false`. Existing exports/schemas/provenance validation untouched (diff verified + existing tests green unmodified). | D-3.1 reserved claim→citation validation for Phase 4; frozen existing behavior (W-3.2) must not regress (AGENTS §17). | No. |
+| D-5.1 | **Persistence port, not a concrete DB binding.** `RunStore` interface + in-memory adapter (default) + Turso adapter (env-gated on `TURSO_DATABASE_URL`/`TURSO_AUTH_TOKEN`). Tests run the same contract suite against both. | B-06 (Turso not provisioned) must not block Phase 5. ARCH §2 makes the DB the recovery source of truth; a port lets the memory adapter serve as a proven stand-in until credentials appear, with zero code change on provisioning. Turso adapter is still real `@libsql/client` code, exercised via `:memory:`/file URL. | Yes — swap adapter via env when Turso is provisioned. |
+| D-5.2 | **Stop is orchestrator-local; `agent/` untouched.** Cooperative stop is implemented by the orchestrator flipping local status to `stopped` and refusing further phase advancement; the agent's own state machine (`agent/state.ts`) is not modified. | Keeps Phase 3's agent controller stable; stop semantics live at the layer that owns run lifecycle and persistence. Matches Plan §Phase 5 ("the orchestrator, not the agent, owns stop"); the agent will learn about stop only if a later phase introduces a need for mid-turn cancellation. | Yes — if mid-turn cancellation is ever needed, teach the agent about stop without changing the orchestrator contract. |
+| D-5.3 | **SSE first frame is always the full authoritative `state`; ledger frames are additive, not load-bearing.** On connect (with or without `Last-Event-ID`) the server sends the current RunState; subsequent `event.*` frames append to it. A non-contiguous `Last-Event-ID` gap falls back to state-only rather than attempting partial replay. | DB is recovery truth; SSE is progressive visibility (ARCH §2). A client that misses frames can always resynchronize from state; a client that trusts partial ledger replay could render a corrupted view. State-first also makes the "refreshed" clause trivially true. | No (invariant — D-5.3 is a recovery-safety invariant). |
+| D-5.4 | **`RunState` expanded additively; nine Phase 6–7 fields are `z.unknown()` placeholders.** `evidence` is a typed array; the remaining future fields (`priorDiff`, `challenge`, `blueprint`, …) are optional unknown keys that survive parse/rehydrate without schema churn. | Zod v4 strips unknown keys on parse; fields must be declared to survive round-trips. Freezing their shape now would over-constrain Phase 6–7 before their product contracts exist; leaving them `unknown()` preserves forward-compatibility without fabrication. | Yes — Phase 6–7 replaces each placeholder with a real schema when its product contract exists. |
+| D-5.5 | **Four real Phase 5 routes; remaining seven stay honest 503.** Only `POST /api/runs`, `GET /api/runs/:id` (with evidence), `POST /api/runs/:id/stop`, and `GET /api/runs/:id/events` (SSE) are wired to the orchestrator; the other seven Phase 3 routes continue returning `NOT_YET_WIRED` 503. | Plan §Phase 5 names exactly these four; wiring the rest before their owning phases exist would create dead code and fake-looking surfaces. Honest 503 is the established contract from Phases 3–4 and is a judge-visible signal of deliberate sequencing. | Yes — wire the remaining seven as their owning phases land. |
 
 ## Deviations from contract
 
@@ -804,34 +786,67 @@ response data in a public repository — only aggregate statistics appear above)
 | B-03 | ~~Docker not installed~~ | **Closed by D-0.6** (accepted risk). | Local container tests skipped; Dockerfile validated on Render. | — |
 | B-04 | ~~No public GitHub repo~~ | **Closed by D-0.9**: https://github.com/louji2308/zorq is PUBLIC, pushed, MIT detected, About set. | R2/R5 satisfied. | — |
 | B-05 | ~~Cache/storage + key-lifetime terms unconfirmed~~ | **Closed 2026-10-06 from the official developer guide**: private server-side caching allowed with no time limit; never store Qloo output publicly; keys valid through end of judging. | `PERSIST_QLOO_DERIVED` remains `false` until Phase 5 gives storage a private owner. | — |
-| B-06 | Medium | MapTiler key, Turso database not provisioned. | Map/geocoding (S0/S1) and durable Run state (Phase 5). Not needed for Phase 1–2. | User |
-| B-07 | Medium | Deadline Oct 30 2026 23:45 EDT; internal freeze Oct 28. **24 days from today.** | Schedule pressure; see `HACKATHON_TRACKER.md`. | Orchestrator |
+| B-06 | Medium | MapTiler key, Turso database not provisioned. | Map/geocoding (S0/S1) and durable Run state. **Non-blocking for Phase 5** — in-memory adapter is the default; Turso adapter is env-gated and activates when credentials appear. MapTiler becomes a hard requirement at Phase 6 (S0/S1 screens). | User |
+| B-07 | Medium | Deadline Oct 30 2026 23:45 EDT; internal freeze Oct 28. **21 days from today.** | Schedule pressure; see `HACKATHON_TRACKER.md`. Phase 5 closed on time with buffer remaining. | Orchestrator |
 | B-08 | Medium | Qloo `qloo mcp` needs Node 22.19+ and a long-lived backend; serverless unsupported. | Constrains hosting to Render Free (locked). | Locked, no action |
 
 ## Last Verified Commit
 
-`b759e83` — *test: prove the Phase 4 exit gate over one controlled candidate pool.*
-(suite **293 pass / 5 gated-live skips**). Preceded by `04e8d3a` (W-4.3 triangulation +
-grades + claim citations), `0952c76` (W-4.2 records), `3eb298b` (W-4.2 composition
-math), `ac63f63` (W-4.1b engine core), `cec7b11` (Phase 4 contract), `62f29af` (Phase 3
-exit gate), `8d5b422`, `7e69523`, `b7a1de4`, `c59fdeb`, `e41d89a`, `8a4c367`, `edc9a62`,
-`1a5c993`. All gates green on current head: typecheck, lint, **293 unit + 5 gated live
+`7f11d7f` — *test: prove the Phase 5 exit gate over stop, resume, retry and SSE recovery.*
+(suite **386 pass / 5 gated-live skips**). Preceded by `6ec2531` (W-5.3 SSE + API),
+`7989d16`/`b3c38f1` (state records), `5fb61c0` (W-5.2 orchestration core),
+`d912ebb` (W-5.1 persistence), `aeea073` (Phase 5 contract), `9e91da0` (Phase 4
+close). All gates green on current head: typecheck, lint, **386 unit + 5 gated live
 skips**, build, **3 e2e**. Push target: **https://github.com/louji2308/zorq**
 (`main`, PUBLIC, MIT).
 
 ## Next Highest-Value Action
 
-**Open Phase 5 — Orchestrator, Durable State, SSE & Recovery (Plan line 538)** via the
-full AGENTS §5/§26 phase-start protocol: inspect git + structure + this file, re-read
-ALL 7 ProjectSpec sources in full at the boundary, write the Phase 5 contract (AGENTS §7)
-before any delegation, then delegate per worker contracts (§8). Phase 4 deliverables
-(`src/server/engine/` + extended `src/server/evidence/`) are the measurement kernel
-Phase 5 will drive; do not re-implement them. Protect: AGENTS §13 determinism; run-state
-recovery and SSE replay are the known high-risk areas of Phase 5 (independent review
-required per §17). User-side (non-blocking): DeepSeek balance (enables
-`LIVE_DEEPSEEK=1`), MapTiler + Turso (B-06 — Phase 5 durable state will likely need
-Turso; treat as a blocker candidate at Phase 5 contract time), Devpost registration.
-Deadline context: Oct 30 2026, internal freeze Oct 28.
+**Open Phase 6 — S0 Brief + S1 Investigate Screens (Plan line 607)** via the full
+AGENTS §5/§26 phase-start protocol: inspect git + structure + this file, re-read
+ALL 7 ProjectSpec sources in full at the boundary, write the Phase 6 contract (AGENTS §7)
+before any delegation, then delegate per worker contracts (§8). Phase 5 deliverables
+(`src/server/persistence/` + `src/server/orchestrator/` + `src/server/sse/` + the four
+real Phase 5 routes) are the durable runtime Phase 6 will drive; do not re-implement
+them. Protect: AGENTS §13 evidence/provenance boundaries; SSE is progressive visibility
+only (DB is recovery truth); the four real routes must keep working under the new
+screens. User-side (non-blocking): DeepSeek balance (enables `LIVE_DEEPSEEK=1`),
+MapTiler key (S0/S1 map), Turso (optional — memory adapter is the default until
+provisioned), Devpost registration. Deadline context: Oct 30 2026, internal freeze Oct 28.
+
+## Phase 5 Exit-Gate Status (PASSED 2026-10-09)
+
+Gate text (ARCHITECTURE §6 / Plan line 597): *"A run can be stopped, refreshed,
+disconnected, reconnected, retried or resumed without corrupting state, duplicating
+effects or fabricating completion."*
+
+Proof: `tests/orchestrator/exitGate.test.ts` (commit `7f11d7f`), 10/10 green, orchestrator-
+authored over the four workers' landed APIs; suite at sign-off **386 pass / 5 gated
+skips**, typecheck 0, lint 0, build PASS, e2e 3/3.
+
+- [x] **Stopped** — cooperative stop mid-investigation lands exactly one `run.stopped`
+  marker; the gated pass settles as `stopped`; Prior stays frozen; phase stays
+  `investigation` (not upgraded).
+- [x] **Refreshed** — a fresh SSE client mid-run always receives the authoritative
+  `state` frame first, with zero ledger replay (no stale assumptions).
+- [x] **Disconnected** — aborting the SSE client removes the hub subscriber
+  (`subscriberCount` → 0) and leaves durable run state intact.
+- [x] **Reconnected** — `Last-Event-ID` replays only the missed contiguous ledger
+  window; the already-seen prefix is never re-sent; a non-contiguous gap falls back
+  to state-only (no silent partial replay).
+- [x] **Retried** — retry after stop re-enters investigation and reaches a terminal
+  `complete` run with real observations; `measure.compose` appears after the stop
+  marker in ledger order.
+- [x] **Resumed** — resuming a terminal run is a no-op with **zero new LLM spend**
+  (call counter unchanged) and zero ledger growth.
+- [x] **No corruption** — durable store matches the final orchestrator state; Prior
+  rehydrates frozen; ledger sequences strictly increasing and unique; the pre-stop
+  ledger prefix is byte-identical after retry.
+- [x] **No duplicate effects** — one `run.stopped`, one `measure.compose`, Qloo probe
+  count equals evidence-record count, each counted once per real attempt.
+- [x] **No fabricated completion** — the stopped pass that finished its turns was not
+  upgraded to complete; completion required real observations (`evidenceCount > 0`
+  and post-stop Qloo probes present).
 
 ## Phase 4 Exit-Gate Status (PASSED 2026-10-08)
 
