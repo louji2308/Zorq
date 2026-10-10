@@ -7,26 +7,112 @@
 
 ## Current Phase
 
-**PHASE 5 — Orchestrator, Durable State, SSE & Recovery**. Status: **CLOSED 2026-10-09 — exit gate PASSED** (HEAD `7f11d7f`, tree clean, 386 pass / 5 gated-live skips, e2e 3/3).
-Phase 4 closed 2026-10-08 with exit gate PASSED (HEAD `9e91da0`, tree clean, 293 pass /
-5 gated-live skips). Boundary refresh completed 2026-10-09 (all 7 ProjectSpec sources
-+ AGENTS + this file re-read at the boundary). Phase 5 contract written below before
+**PHASE 6 — Frontend S0/S1: Brief, Prior & Investigation**. Status: **OPEN 2026-10-09 — boundary refresh done, contract written, not yet delegated.**
+Phase 5 closed 2026-10-09 with exit gate PASSED (HEAD `e8a83a6` / `7f11d7f`, tree clean,
+386 pass / 5 gated-live skips, e2e 3/3). Boundary refresh completed 2026-10-09 (all 7
+ProjectSpec sources + AGENTS + this file re-read). Phase 6 contract written below before
 any delegation.
 
 ## Current Objective
 
-Execute Phase 5 through its exit gate: "A run can be stopped, refreshed, disconnected,
-reconnected, retried or resumed without corrupting state, duplicating effects or
-fabricating completion." (Plan line 597.) Sequential workers W-5.1 → W-5.4; orchestrator
-reviews and commits each verified increment (AGENTS §17). B-06 (Turso not provisioned)
-is mitigated by a persistence port with an in-memory adapter — Turso adapter is
-env-gated and activates when credentials appear, with zero code change.
+Execute Phase 6 through its exit gate: "A judge can land, choose a preset, see the Prior,
+watch real investigation, and understand what Qloo is doing without reading the source
+code." (Plan line 653 / ARCHITECTURE §6.) Sequential workers W-6.1 → W-6.n; orchestrator
+reviews and commits each verified increment (AGENTS §17). B-06 MapTiler key is **required
+before S0/S1 map work can be verified against real tiles** (VITE_MAPTILER_KEY currently
+empty); S0/S1 UI structure and API wiring can proceed without it; real MapLibre tiles,
+geocoding and the map-as-hero layout cannot.
 
-**RESULT:** All four workers delivered; independent §17 reviews at each commit; full
-gates (typecheck, lint, 386 unit / 5 gated-live skips, build, e2e 3/3) green on
-`7f11d7f`. Exit-gate clause map is in the Phase 5 Exit-Gate Status section below.
+**BLOCKED ON USER INPUT (non-optional):** MapTiler Free account + public API key for
+`.env` `VITE_MAPTILER_KEY`. Without it the map cannot load real vector tiles or geocode
+addresses; Phase 6 cannot exit the gate honestly.
 
-### PHASE 5 CONTRACT (written 2026-10-09, before delegation)
+### PHASE 6 CONTRACT (written 2026-10-09, before delegation)
+
+```text
+PHASE:        6 — Frontend S0/S1: Brief, Prior & Investigation
+MISSION:      Build the first half of the judge experience so the product explains
+              itself immediately. (Plan §Phase 6, verbatim.)
+WHY:          The judge path is the hackathon gate that decides whether all prior
+              engineering is visible. A working backend with no S0/S1 screens cannot
+              prove Prior Lock, live Qloo investigation, or evidence provenance to a
+              judge who never reads source. ARCHITECTURE §6 makes this the first
+              user-visible surface; Product Spec §7 S0/S1 and Final Design §7.0/§7.1
+              define the exact layouts and states.
+CURRENT-STATE ASSUMPTIONS:
+              Phase 5 closed 2026-10-09 (HEAD e8a83a6, tree clean; 386 unit + 5 gated
+              live + 3 e2e green). Four real routes live (POST /api/runs 201, GET
+              /api/runs/:id 200, POST /api/runs/:id/stop 200, GET /api/runs/:id/events
+              SSE); seven stay honest 503. Orchestrator drives prior → investigation →
+              measurement with Prior Lock, stop/resume, SSE Last-Event-ID replay.
+              src/web/ is four placeholder routes plus App.tsx/main.tsx; no design
+              system, no MapLibre, no API client, no state store. package.json has
+              react/react-router/zod but NOT zustand, NOT maplibre-gl, NOT maptiler.
+              vite.config.ts roots at ./src/web, port 5173, no proxy to Express.
+              Express serves dist/web only in production via staticWeb.ts SPA
+              fallback. .env has VITE_MAPTILER_KEY=<EMPTY> (B-06); QLOO_API_KEY and
+              DEEPSEEK_API_KEY set; TURSO_* empty (memory adapter default).
+IN-SCOPE:     src/web/ only (S0 HomeRoute + S1 RunRoute Investigate tab) + minimal
+              client utilities (api client, run-state projection, MapLibre wrapper)
+              + adding zustand and maplibre-gl as the two justified new deps + Vite
+              env wiring for VITE_MAPTILER_KEY + e2e specs for judge-path entry and
+              degraded S1 states. Prior reveal: POST /api/runs → 201 (brief+prior) →
+              /run/:id → GET /api/runs/:id → EventSource /events → first frame `state`
+              → ledger frames stream as orchestrator runs. Extend src/shared/run.ts
+              placeholder fields ONLY when a typed client projection is required.
+INVARIANTS:   AGENTS §13 — no fabricated Qloo data, no LLM-authored numbers, unknown
+              evidence IDs never render as confirmed. Prior card shows frozen state
+              from server with lock time and "No cultural data used." SSE is
+              progressive visibility only; client reconciles from GET. MapTiler key
+              is VITE_ only (public, non-secret); QLOO/DEEPSEEK keys never in frontend.
+              Design language: black ink on white, L1–L5 weights, solid/dashed/dotted/
+              hatch, circle/square/pill shape language, no colour-only meaning,
+              accessible focus, reduced-motion, no gradients or neon. ProjectSpec/
+              read-only. No new API routes — consume the four real Phase 5 routes only.
+              PROTECTED: src/server/{orchestrator,persistence,sse,engine,qloo,agent}/
+              — Phase 6 consumes, does not modify.
+DEPENDENCIES: Phase 5 routes + Prior Lock + SSE replay (landed). MapTiler Free key
+              must be supplied by user into .env VITE_MAPTILER_KEY before map tiles/
+              geocoding can be verified live (B-06, non-optional for Phase 6 exit).
+              Zustand + maplibre-gl must be added to package.json. DeepSeek balance
+              unpaid (B-02) blocks only LIVE_DEEPSEEK=1, not the UI build. Turso
+              unprovisioned — in-memory adapter is sufficient for Phase 6 e2e.
+NON-GOALS:    S2–S5 screens (Phases 7–8), Challenge/Replace/Blueprint routes, full
+              /method page, unpin-anchor UX, MapTiler billing beyond free key,
+              deployment changes, rate-limit tuning, multi-agent runtime, auth,
+              payments, vector DB, new API routes, Phase 5 internals.
+RISK HOTSPOTS:SSE client double-apply of frames; Prior card showing a client guess
+              instead of server-frozen state; design-language drift (gradients, neon,
+              colour-coded statuses); VITE_MAPTILER_KEY leaked in bundle/screenshots;
+              maplibre bundle size vs S0 first-paint; e2e hang when map tiles fail;
+              missing zustand/maplibre-gl breaking the build.
+ACCEPTANCE:   A judge can land on S0, see three presets and "Design what belongs
+              together on a site", click a preset, land on S1, see the frozen Prior
+              card with lock time and "No cultural data used.", watch Agent Ledger
+              rows stream with specific work and Qloo/Compute/LLM pills and durations,
+              see the map (site marker/radius/anchor pins/heat), see Cultural DNA
+              filling, and understand what Qloo is doing without reading source.
+              Degraded paths: S0 geocode fail → map-picker fallback; S1 rate-limit →
+              dashed retry row; S1 hard fail → partial results + Retry. Full suite
+              green. No fabricated Qloo data in the render path.
+VERIFY:       Orchestrator reviews every worker diff (§17); independently re-runs
+              typecheck/lint/test/build/e2e; opens S0 in a real browser and confirms
+              presets + landing line match Final Design §7.0; clicks a preset and
+              confirms navigation to /run/:id; confirms Prior card is server-frozen;
+              confirms EventSource delivers `state` then ledger frames; greps
+              dist/web/assets for key prefixes; confirms degraded-path copy matches
+              Final Design §14; confirms reduced-motion and keyboard focus on CTA.
+EXIT GATE:    "A judge can land, choose a preset, see the Prior, watch real
+              investigation, and understand what Qloo is doing without reading the
+              source code." (Plan line 653 / ARCHITECTURE §6, verbatim.)
+COMMIT EXPECT:4 coherent commits:
+              feat: build the Zorq brief and site-entry experience.
+              feat: reveal the immutable pre-Qloo Prior in the live workspace.
+              feat: build the evidence-driven investigation ledger and map.
+              test: cover judge-path entry and degraded S1 states.
+```
+
+### PHASE 5 CONTRACT (ARCHIVED — written 2026-10-09, closed same date)
 
 ```text
 PHASE:        5 — Orchestrator, Durable State, SSE & Recovery
