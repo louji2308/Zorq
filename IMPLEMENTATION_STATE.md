@@ -2,26 +2,24 @@
 
 > Canonical implementation-state record. Contract: `AGENTS.md` + `ProjectSpec/IMPLEMENTATION_PLAN.md`.
 > Read-only authorities live in `ProjectSpec/`. Do not duplicate them here.
-> Session briefing for the next orchestrator: `SESSION_HANDOFF.md` (supplement only —
-> this file wins on any conflict; delete it once Phase 4 absorbs it).
+> `SESSION_HANDOFF.md` deleted 2026-10-08 — its briefing is fully absorbed by this
+> file and the git history; this file wins on any conflict.
 
 ## Current Phase
 
-**PHASE 4 — Deterministic Cultural Measurement Engine**. Status: **OPENED 2026-10-08**
-— boundary refresh complete per AGENTS §5/§26 (all 7 ProjectSpec sources re-read in
-full at this boundary; targeted re-reads of Plan Phase 4 lines 476–536, ARCHITECTURE
-§6 gate, ProductSpec §12 Measurements, Spec Architecture §11–12), contract written
-below before any delegation (AGENTS §7). Phase 3 **SIGNED OFF 2026-10-08**.
+**PHASE 4 — Deterministic Cultural Measurement Engine**. Status: **CLOSED 2026-10-08,
+exit gate PASSED** (checklist at "Phase 4 Exit-Gate Status"; evidence in Verified
+Tests). All three workers landed (`ac63f63`, `3eb298b`, `04e8d3a`) plus orchestrator
+integration (`b759e83`). Phase 5 (Orchestrator, Durable State, SSE & Recovery — Plan
+line 538) **not yet opened**: requires its own boundary refresh per AGENTS §5/§26.
 
 ## Current Objective
 
-Execute the Phase 4 contract (below): deterministic cultural measurement in
-`src/server/engine/` + extending `src/server/evidence/` — neighborhoods, IDF-weighted
-graph, coherence, exact percentile, distinctiveness, weakest link, triangulation and
-evidence grades, all without LLM-generated numbers. Gate: "A controlled candidate pool
-can produce a complete graph, ranked role-valid compositions, percentile,
-distinctiveness, weakest links and evidence classifications without LLM-generated
-numbers." Next action: delegate per the contract's worker plan (Active Work).
+Next orchestrator session: open Phase 5 (Orchestrator, Durable State, SSE & Recovery —
+Plan line 538) via the full phase-start protocol (Git + structure + this file + all 7
+ProjectSpec sources re-read in full at the boundary), then write the Phase 5 contract
+before any delegation (AGENTS §5–§7). Phase 4 is closed — do not reopen it without new
+failing evidence.
 
 ### PHASE 4 CONTRACT (written 2026-10-08, before delegation)
 
@@ -377,6 +375,25 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
   lint 0, **248 pass / 5 gated-live skips** (was 193 → +55); `index.ts` diff append-only;
   hand-worked z (±√1.5) and flip-at-index-50 assertions inspected in source. Decisions
   D-4.5…D-4.8 recorded.
+- **W-4.3 DONE 2026-10-08 — reviewed (AGENTS §17), independently re-verified, committed
+  `04e8d3a`; orchestrator integration committed `b759e83`.** `src/server/engine/`
+  (+`triangulation.ts`, `grades.ts`), `src/server/evidence/index.ts` (additive:
+  `resolveClaimEvidence`, `isResolvableClaim`, code `UNKNOWN_EVIDENCE_ID`),
+  `tests/engine/` (+`triangulation.test.ts`, `grade.test.ts`, `exitGate.test.ts`),
+  `tests/evidence/claimCitations.test.ts` (new dir). Triangulation precedence
+  failed > thin > confirmed > contested (exactly 5 results = usable); grade precedence
+  C > B > A (cap, worst wins); unclassified finalist edge counts as failed → B
+  (honest gap — no vacuous A). Barrel exports wired by orchestrator. Independent
+  orchestrator verification: typecheck 0, lint 0, **286 pass / 5 gated-live skips**
+  (+38) at worker handoff; after integration **293 pass / 5 skips** (+7 exit-gate
+  tests); build PASS; **e2e 3/3 PASS**; evidence diff verified additive-only; existing
+  `tests/agent/evidence.test.ts` untouched. Decisions D-4.9…D-4.11 recorded.
+- **PHASE 4 EXIT GATE PASSED 2026-10-08** — see "Phase 4 Exit-Gate Status" below.
+  One controlled K=6 pool drives the full chain (neighborhoods → IDF → complete graph →
+  4 role-valid compositions → percentiles {0,25,50,75} → distinctiveness → ranking +
+  101-point rival sweep → triangulation classes → grades A/B/C → claim-citation
+  rejection of unknown ids) with zero LLM/Qloo/network involvement; full pipeline
+  byte-identical across reruns. `SESSION_HANDOFF.md` deleted.
 - **PHASE 3 SIGNED OFF 2026-10-08 — exit gate PASSED with live Qloo evidence** (checklist at
   "Phase 3 Exit-Gate Status"; evidence in Verified Tests). Landed this phase: gateway
   (`8a4c367` + budget fix `e41d89a`), agent controller + Prior Lock (`7e69523`), assembler
@@ -443,7 +460,7 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 | W-4.1 | Engine core (first spawn) | `src/server/engine/` + `tests/engine/` | **STALLED 2026-10-08** — returned an empty result, wrote zero files (provider-level stall; tree clean, nothing lost). |
 | W-4.1b | Engine core (fresh spawn) | `src/server/engine/` (types, neighborhoods, idf, graph, index) + `tests/engine/` (fixtures + 5 test files) | **DONE 2026-10-08 — reviewed (§17), independently re-verified, committed `ac63f63`.** typecheck/lint green; **193 pass / 5 gated skips** (+40 tests); byte-identical determinism + shuffle tests; decisions D-4.1…D-4.4 recorded. |
 | W-4.2 | Composition mathematics | `src/server/engine/` (+`compositions.ts`, `distinctiveness.ts`, `ranking.ts`, `index.ts` append-only) + `tests/engine/` (+4 test files) | **DONE 2026-10-08 — reviewed (§17), independently re-verified, committed `3eb298b`.** typecheck 0, lint 0; **248 pass / 5 gated skips** (+55 tests); barrel append-only confirmed (`git diff` zero deletions); decisions D-4.5…D-4.8 recorded. |
-| W-4.3 | Triangulation + evidence grades + claim→citation validation | NEW: `src/server/engine/triangulation*.ts` (+tests); EDIT: `src/server/evidence/index.ts` (+`tests/evidence/`); barrel `engine/index.ts` off-limits (orchestrator wires exports) | **NOT STARTED 2026-10-08** — first spawn interrupted at dispatch before any write (tree clean). Re-spawn next with the same §8 contract. |
+| W-4.3 | Triangulation + evidence grades + claim→citation validation | NEW: `src/server/engine/` (+`triangulation.ts`, `grades.ts`) + `tests/engine/` (+2) + `tests/evidence/` (new dir); EDIT: `src/server/evidence/index.ts` (additive); barrel wired by orchestrator | **DONE 2026-10-08 — reviewed (§17), independently re-verified, committed `04e8d3a`** (+ integration `b759e83`). First spawn interrupted at dispatch (no writes, tree clean) → re-spawn succeeded. typecheck 0, lint 0; **286 pass / 5 gated skips** (+38); evidence diff additive-only (verified via `git diff`); decisions D-4.9…D-4.11 recorded. |
 
 **Orchestrator integration review (AGENTS §17):** both diffs inspected; W-1.1 touched only `ARCHITECTURE.md`;
 W-1.2 touched only temp-dir files (repo `git status` shows no spike artifacts); key never echoed; worker claims
@@ -465,7 +482,7 @@ returned the pre-persist Prior object (unfrozen, separate object from the persis
 
 ## Verified Tests / Evidence
 
-### Phase 4 — engine core + composition mathematics (2026-10-08, commits `ac63f63`/`3eb298b`)
+### Phase 4 — engine core + composition math + triangulation/grades + exit gate (2026-10-08, commits `ac63f63`/`3eb298b`/`04e8d3a`/`b759e83`)
 
 - **W-4.1b (`ac63f63`):** typecheck (dual tsconfig) 0; eslint 0; Vitest **193 pass /
   5 gated-live skips** (+40 engine tests vs Phase 3's 153); byte-identical determinism +
@@ -476,6 +493,12 @@ returned the pre-persist Prior object (unfrozen, separate object from the persis
   tests). Hand-worked arithmetic inspected in source: population z = ±√1.5 for
   `[1,2,3]`; rival-sweep leadership flip exactly at index 50 (w=0.5); `index.ts` diff is
   append-only (+38/−0).
+- **W-4.3 (`04e8d3a`):** typecheck 0; lint 0; Vitest **286 pass / 5 gated-live skips**
+  (+38 triangulation/grade/claim-citation tests); evidence diff additive-only; existing
+  `tests/agent/evidence.test.ts` untouched and green.
+- **Integration (`b759e83`, orchestrator):** barrel exports wired; exit-gate demonstration
+  `tests/engine/exitGate.test.ts` (7 tests) green; full gates re-run: typecheck 0,
+  lint 0, **293 pass / 5 gated-live skips**, build PASS, **e2e 3/3 PASS**.
 
 ### Phase 3 — agent controller + Prior Lock + exit gate (2026-10-08, commits `7e69523`/`8d5b422`/`62f29af`)
 
@@ -631,6 +654,9 @@ response data in a public repository — only aggregate statistics appear above)
 | D-4.6 | **Population z-scores with σ=0 → all z=0** (not NaN, not ±∞); rank weight `w ∈ [0,1]` validated; sweep granularity `SWEEP_POINT_COUNT = 101` (w = 0.00…1.00 step 0.01); rank tie-break: score → weakest link → members lex (total order, deterministic). | Spec gives the formula but no degenerate-σ or sweep-granularity rule; the zero-σ fallback keeps rankScore finite and honest; fixed 101 points make flip indices reproducible. | Yes if measured pools show degenerate σ in practice. |
 | D-4.7 | **Two validity notions**: *coherence-valid* (all members measured + all internal edges measured + required roles present) = percentile domain; *rankable* = coherence-valid AND distinctiveness mean non-null = ranking domain. Rankable-but-excluded compositions are reported via `excluded: [{members, reason: "distinctiveness_unavailable"}]`, never silently dropped. | Percentile is a statement about the graph alone; ranking additionally requires D̄. Honest partial states required (AGENTS §13) — exclusion must be visible, not erased. | No (both notions are spec-necessary). |
 | D-4.8 | W-4.2 reused existing `EngineError` codes (no new `INVALID_COMPOSITION_INPUT`) because `types.ts` is frozen after W-4.1b — composition-input errors surface as `INVALID_GRAPH_INPUT`/`INVALID_COMPONENT`. Accepted as a **limitation**: error-code granularity is coarser than ideal on the composition surface. | Frozen-file boundary (contract) outranks error-taxonomy aesthetics (AGENTS §2). | Yes — fold a dedicated code into `types.ts` only if a higher phase needs it. |
+| D-4.9 | **Triangulation precedence (exact):** `failed` (route1 ≠ measured OR `focalInTopHalf === null`) → `thin` (resultCount < 5) → `confirmed` (≥5 + top-half) → `contested` (≥5 + not top-half). Exactly 5 results counts as usable/strong. Structurally invalid route2 input **throws** `INVALID_GRAPH_INPUT`; present-but-undeterminable classifies as `failed`. Duplicate classification for the same pair → throw (never last-wins). | Spec fixes the four states and the <5 threshold (ProductSpec §12, Architecture §11.6) but not the precedence edge cases; this mapping is the smallest reading that never overstates evidence. | No (spec-locked states; precedence is defensive only). |
+| D-4.10 | **Grade honest-gap rule:** a finalist member-pair with NO supplied classification is scored `failed` → B. Reasons enumerate ALL detected failures (every non-measured member, every non-confirmed edge) — member reasons in input order, then edge reasons in sorted-pair order — not only the cap-level ones. Grade is a CAP: C > B > A, never an average. | Zero-evidence compositions must never earn A (AGENTS §13 honesty); full reason lists let the UI "show these states rather than average them away" (Architecture §11.6). | No. |
+| D-4.11 | Evidence module gained exactly one additive error code `UNKNOWN_EVIDENCE_ID`; `resolveClaimEvidence` dedups in first-occurrence claim order and throws naming ALL missing ids; malformed lookup records → `INVALID_RECORD`; `isResolvableClaim` converts any `EvidenceError` to `false`. Existing exports/schemas/provenance validation untouched (diff verified + existing tests green unmodified). | D-3.1 reserved claim→citation validation for Phase 4; frozen existing behavior (W-3.2) must not regress (AGENTS §17). | No. |
 
 ## Deviations from contract
 
@@ -665,27 +691,65 @@ response data in a public repository — only aggregate statistics appear above)
 
 ## Last Verified Commit
 
-`3eb298b` — *feat: implement exact composition percentiles and distinctive ranking.*
-(W-4.2; 248 unit pass / 5 gated skips). Preceded by `ac63f63` (W-4.1b engine core,
-193 pass), `cec7b11` (Phase 4 contract), `62f29af` (Phase 3 exit gate), `8d5b422`
-(assembler frozen-Prior review catch), `7e69523` (agent controller + Prior Lock),
-`b7a1de4`, `c59fdeb`, `e41d89a`, `8a4c367` (gateway), `edc9a62`, `1a5c993`. All gates
-green on current head: typecheck, lint, **248 unit + 5 gated live skips**, build, **3 e2e**.
-Push target: **https://github.com/louji2308/zorq** (`main`, PUBLIC, MIT).
+`b759e83` — *test: prove the Phase 4 exit gate over one controlled candidate pool.*
+(suite **293 pass / 5 gated-live skips**). Preceded by `04e8d3a` (W-4.3 triangulation +
+grades + claim citations), `0952c76` (W-4.2 records), `3eb298b` (W-4.2 composition
+math), `ac63f63` (W-4.1b engine core), `cec7b11` (Phase 4 contract), `62f29af` (Phase 3
+exit gate), `8d5b422`, `7e69523`, `b7a1de4`, `c59fdeb`, `e41d89a`, `8a4c367`, `edc9a62`,
+`1a5c993`. All gates green on current head: typecheck, lint, **293 unit + 5 gated live
+skips**, build, **3 e2e**. Push target: **https://github.com/louji2308/zorq**
+(`main`, PUBLIC, MIT).
 
 ## Next Highest-Value Action
 
-**Delegate W-4.3** (triangulation classification + evidence grades A/B/C + claim→citation
-validation in `src/server/evidence/index.ts`, per the §8 contract already written: route
-precedence failed > thin > confirmed > contested; grade precedence C > B > A with the
-honest-gap rule that unclassified finalist edges count as failed → B; barrel exports wired
-by the orchestrator, not the worker), then orchestrator review (AGENTS §17), commit,
-independent full-gate re-run (typecheck/lint/test/build/e2e), the controlled-candidate-pool
-exit-gate demonstration ("evidence classifications **without LLM-generated numbers**"),
-Phase 4 exit-gate record, delete `SESSION_HANDOFF.md`, and reassess. Protect: AGENTS §13
-determinism; unknown evidence IDs must never render as confirmed; fixtures isolated from
-production execution. User-side (non-blocking): DeepSeek balance (enables
-`LIVE_DEEPSEEK=1`), MapTiler + Turso (B-06), Devpost registration.
+**Open Phase 5 — Orchestrator, Durable State, SSE & Recovery (Plan line 538)** via the
+full AGENTS §5/§26 phase-start protocol: inspect git + structure + this file, re-read
+ALL 7 ProjectSpec sources in full at the boundary, write the Phase 5 contract (AGENTS §7)
+before any delegation, then delegate per worker contracts (§8). Phase 4 deliverables
+(`src/server/engine/` + extended `src/server/evidence/`) are the measurement kernel
+Phase 5 will drive; do not re-implement them. Protect: AGENTS §13 determinism; run-state
+recovery and SSE replay are the known high-risk areas of Phase 5 (independent review
+required per §17). User-side (non-blocking): DeepSeek balance (enables
+`LIVE_DEEPSEEK=1`), MapTiler + Turso (B-06 — Phase 5 durable state will likely need
+Turso; treat as a blocker candidate at Phase 5 contract time), Devpost registration.
+Deadline context: Oct 30 2026, internal freeze Oct 28.
+
+## Phase 4 Exit-Gate Status (PASSED 2026-10-08)
+
+Gate text (ARCHITECTURE §6): *"A controlled candidate pool can produce a complete
+graph, ranked role-valid compositions, percentile, distinctiveness, weakest links and
+evidence classifications without LLM-generated numbers."*
+
+Proof: `tests/engine/exitGate.test.ts` (commit `b759e83`), 7/7 green, orchestrator-
+authored over the three workers' landed APIs; suite at sign-off **293 pass / 5 gated
+skips**, typecheck 0, lint 0, build PASS, e2e 3/3.
+
+- [x] **One controlled pool** (K=6, roles Anchor/Social/Discovery/Anchor/Social/Night)
+  — pure fixtures, no Qloo, no LLM, no network, no `Date.now`/`Math.random` in any
+  measurement path (grep-verified across `src/server/engine/` + `src/server/evidence/`).
+- [x] **Complete graph**: 6 nodes, C(6,2)=15 edges, every edge `measured` with finite
+  value (shared entities survive the IDF floor at K=6 — consistent with D-4.4).
+- [x] **Role-valid compositions**: exact enumeration C(6,3)=20 candidates → exactly 4
+  valid (one Anchor + one Social + the Discovery, all members measured, all internal
+  edges measured); no sampling.
+- [x] **Percentile**: family percentiles are exactly {0, 25, 50, 75} under the
+  strictly-less rule (D-4.5); monotone with coherence; hand-checked weakest link =
+  min internal edge and coherence = mean internal edge against the graph itself.
+- [x] **Distinctiveness**: per-member d̄ ∈ [0,1] attached to every composition;
+  honest exclusion proven — removing c3's city vector nulls all 4 d̄ → ranked empty +
+  4 exclusions with reason `distinctiveness_unavailable` (never silently dropped, D-4.7).
+- [x] **Ranking + rival sweep**: rank scores non-increasing; sweep = 101 points
+  (w = 0.00…1.00); every leader is a 3-member composition or null on empty input.
+- [x] **Evidence classifications**: route pair classified `confirmed`/`contested`/`thin`
+  exactly per D-4.9; grades `B` (mixed), `A` (all confirmed), `C` (member unmeasured
+  even with all-confirmed edges) exactly per D-4.10.
+- [x] **Unknown evidence ids never render as confirmed**: `resolveClaimEvidence` throws
+  `UNKNOWN_EVIDENCE_ID` for a missing id (D-4.11).
+- [x] **Determinism**: the full pipeline (graph + distinctiveness + ranking incl. sweep)
+  is byte-identical across two independent reruns (JSON stringify compare).
+
+No LLM-generated number exists anywhere in this chain: every numeric output descends
+from fixture inputs through Zorq's pure arithmetic.
 
 ## Phase 3 Exit-Gate Status (PASSED 2026-10-08)
 
