@@ -7,21 +7,131 @@
 
 ## Current Phase
 
-**PHASE 4 — Deterministic Cultural Measurement Engine**. Status: **CLOSED 2026-10-08,
-exit gate PASSED** (checklist at "Phase 4 Exit-Gate Status"; evidence in Verified
-Tests). All three workers landed (`ac63f63`, `3eb298b`, `04e8d3a`) plus orchestrator
-integration (`b759e83`). Phase 5 (Orchestrator, Durable State, SSE & Recovery — Plan
-line 538) **not yet opened**: requires its own boundary refresh per AGENTS §5/§26.
+**PHASE 5 — Orchestrator, Durable State, SSE & Recovery**. Status: **OPENED 2026-10-09**.
+Phase 4 closed 2026-10-08 with exit gate PASSED (HEAD `9e91da0`, tree clean, 293 pass /
+5 gated-live skips). Boundary refresh completed 2026-10-09 (all 7 ProjectSpec sources
++ AGENTS + this file re-read at the boundary). Phase 5 contract written below before
+any delegation.
 
 ## Current Objective
 
-Next orchestrator session: open Phase 5 (Orchestrator, Durable State, SSE & Recovery —
-Plan line 538) via the full phase-start protocol (Git + structure + this file + all 7
-ProjectSpec sources re-read in full at the boundary), then write the Phase 5 contract
-before any delegation (AGENTS §5–§7). Phase 4 is closed — do not reopen it without new
-failing evidence.
+Execute Phase 5 through its exit gate: "A run can be stopped, refreshed, disconnected,
+reconnected, retried or resumed without corrupting state, duplicating effects or
+fabricating completion." (Plan line 597.) Sequential workers W-5.1 → W-5.4; orchestrator
+reviews and commits each verified increment (AGENTS §17). B-06 (Turso not provisioned)
+is mitigated by a persistence port with an in-memory adapter — Turso adapter is
+env-gated and activates when credentials appear, with zero code change.
 
-### PHASE 4 CONTRACT (written 2026-10-08, before delegation)
+### PHASE 5 CONTRACT (written 2026-10-09, before delegation)
+
+```text
+PHASE:        5 — Orchestrator, Durable State, SSE & Recovery
+MISSION:      Turn the intelligence core into a resilient autonomous runtime that can
+              stop, resume and recover. (Plan §Phase 5, verbatim.)
+WHY:          Phases 6–8 (screens, challenge, blueprint) all depend on a Run that
+              survives disconnects and process restarts. An assumed recovery model
+              discovered late invalidates SSE, judge UX and the final judge path
+              simultaneously. ARCH §1 names orchestrator/ + persistence/ as first
+              made real here; ARCH §2 makes the DB the recovery source of truth and
+              SSE progressive visibility only.
+CURRENT-STATE ASSUMPTIONS:
+              Phase 4 closed 2026-10-08 (HEAD 9e91da0, tree clean; 293 unit + 5 gated
+              live + 3 e2e green). src/server/agent/ holds a working in-memory run
+              state machine (prior_pending → investigating → complete/partial/failed;
+              Prior Lock write-once; bounded controller ≤3 turns). src/server/qloo/
+              holds a working gateway (MCP+REST, cache TTL 6h, budget 180 calls,
+              p-limit concurrency). src/server/engine/ holds the frozen measurement
+              kernel. src/shared/events.ts defines SSE frame schemas (state/ledger/
+              error + TBD payloads) and Last-Event-ID header; routes.ts registers all
+              11 routes as honest 503 stubs. No src/server/orchestrator/ and no
+              src/server/persistence/ exist yet. Turso not provisioned (B-06);
+              DeepSeek balance unpaid (B-02). Docker absent (D-0.6).
+IN-SCOPE:     NEW dirs (ARCH §1):
+              - src/server/persistence/: RunStore port (create/load/save run, append
+                ledger events, append evidence, idempotent write guards), in-memory
+                adapter (tests + degraded boot), Turso/libSQL adapter gated on
+                TURSO_DATABASE_URL+TURSO_AUTH_TOKEN (schema: runs / ledger_events /
+                evidence), config wiring so absence of Turso degrades cleanly (same
+                pattern as QLOO/DEEPSEEK), PERSIST_QLOO_DERIVED respected.
+              - src/server/orchestrator/: run lifecycle driver that sequences
+                prior → investigation → measurement (engine) → terminal; idempotency
+                keys; resume from durable state; stop/cancel (new "stopped" status
+                added to agent state machine without breaking existing transitions);
+                bounded retries; wall-clock cap; best-so-far; wires agent controller
+                + gateway + engine + persistence; emits typed events for SSE.
+              - Shared RunState expansion (src/shared/run.ts) toward the 13-node
+                canonical tree — only the fields Phase 5 needs (SiteRead, CulturalDNA,
+                CandidatePool, Neighborhoods, Graph, Compositions, Evidence,
+                LedgerEvents as typed optional nodes; StressReport/ConstraintFit/
+                Revisions deferred to Phases 7–8).
+              - Real route handlers for POST /api/runs, GET /api/runs/:id,
+                GET /api/runs/:id/events (SSE: first frame = state, heartbeat,
+                Last-Event-ID replay from ledger_events, gap → fresh state),
+                POST /api/runs/:id/stop. Other routes stay honest 503.
+              - Tests: port contract suite (both adapters), orchestration lifecycle,
+                SSE ordering/replay/reconnect, stop idempotency, resume-after-
+                interruption, Qloo-outage mid-run → honest partial, no-key-leak.
+INVARIANTS:   AGENTS §13 + ARCH §2 recovery-vs-visibility: the database (or in-memory
+              adapter standing in for it) is the recovery source of truth; SSE is
+              progressive visibility only — the client tolerates missing events and
+              reconciles from authoritative Run state. Prior Lock survives rehydrate
+              (frozen after load). No Qloo call before stored Prior. LLM never authors
+              numeric truth. No fabricated completion — a stopped/failed/interrupted
+              run returns the best defensible state with explicit incomplete marker.
+              Budgets locked (≤3 turns, ≤180 calls, ≤8 concurrency, ≤$2). No secrets
+              in tracked files / logs / SSE frames. Exactly one API family (the 11
+              routes). ProjectSpec/ read-only. Fixture/canned data isolated from
+              production paths. Field projection before any persistence/SSE.
+DEPENDENCIES: Phase 3 gateway + agent controller; Phase 4 engine (measurement phase
+              consumes engine barrel). B-06 Turso NOT required to open the phase
+              (in-memory adapter is the default and the test double); Turso adapter
+              is complete and env-gated so B-06 unblocks it without code change.
+              B-02 DeepSeek balance blocks only the live-Prior path (unit tests use
+              a fake LlmClient). Docker absent (D-0.6, unchanged).
+NON-GOALS:    Challenge/stress operator execution (Phase 8), bridge/replace search
+              (Phases 7–8), constraint/format library + footprint fit (Phase 8),
+              frontend screens beyond what e2e needs to drive the runtime (Phase 6),
+              live Qloo/DeepSeek calls in the default suite, MapTiler, deployment
+              changes, rate-limit number tuning, multi-agent runtime, chat UI.
+RISK HOTSPOTS:SSE reconnect correctness (Last-Event-ID gap detection must never claim
+              completeness it cannot prove — fall back to fresh state); Prior Lock
+              lost or mutable across rehydrate; status machine drift when adding
+              "stopped" (must not break Phase 3 transition tests); double-effects on
+              resume (idempotency keys required on every phase transition); Turso
+              schema drift between adapters (one shared contract suite); event
+              payload leaking keys or raw Qloo bodies; wall-clock cap racing a phase
+              transition; heartbeat missing so idle SSE connections die behind
+              proxies; POST /api/runs returning before Prior is persisted.
+ACCEPTANCE:   A real (or fake-LLM) brief creates a run with a frozen Prior; the
+              orchestrator advances prior → investigation → measurement against
+              fake/fixture tools; the run is durable across a simulated process
+              restart (reload from store → identical state, Prior still frozen);
+              stop mid-phase yields status "stopped" with best-so-far state and an
+              explicit incomplete marker, idempotent on double-stop; SSE delivers a
+              first state frame, monotonic ids, heartbeats, and on reconnect replays
+              missed ledger events from the store — or falls back to a fresh state
+              event when the gap cannot be proven complete; a Qloo outage mid-run
+              preserves prior + partial ledger/evidence and marks the run partial/
+              failed honestly; no fabricated completion anywhere; full suite green
+              (typecheck/lint/unit/build/e2e) with live tests still gated.
+VERIFY:       Orchestrator reviews every worker diff (AGENTS §17); independently re-runs
+              typecheck/lint/test/build/e2e; hand-traces one run through stop → reload
+              → resume; asserts Prior reference-equality and frozenness after rehydrate;
+              asserts SSE replay does not re-execute side effects; secret grep scan on
+              changed files; confirms in-memory adapter is the only store used by the
+              default suite (no accidental Turso dependency in tests).
+EXIT GATE:    "A run can be stopped, refreshed, disconnected, reconnected, retried or
+              resumed without corrupting state, duplicating effects or fabricating
+              completion." (Plan §Phase 5, quoted in ARCHITECTURE.md §6.)
+COMMIT EXPECT:5 coherent commits, plan-suggested boundaries:
+              docs: open Phase 5 and record the durable-runtime contract.
+              feat: add durable Run persistence behind a Turso-ready port.
+              feat: implement resumable run orchestration with stop and recovery.
+              feat: stream authoritative Run state over SSE with reconnect replay.
+              test: cover resume, interruption and partial-failure recovery.
+```
+
+### PHASE 4 CONTRACT (ARCHIVED — written 2026-10-08, closed same date)
 
 ```text
 PHASE:        4 — Deterministic Cultural Measurement Engine
@@ -341,18 +451,23 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 
 ## Active Work
 
-- **PHASE 4 OPENED 2026-10-08** — boundary refresh complete per AGENTS §5/§26 (all 7
-  ProjectSpec sources re-read in full at this boundary; targeted re-reads of Plan
-  Phase 4 lines 476–536, ARCHITECTURE §6 gate, ProductSpec §12 Measurements, Spec
-  Architecture §11–12); Phase 4 contract written above before any delegation.
-  Worker plan (contracts written at delegation, AGENTS §8): **W-4.1 engine core**
-  (`src/server/engine/`: pool model → taste neighborhoods → IDF → cosine edges →
-  complete graph) → **W-4.2 composition mathematics** (coherence, exact percentile,
-  weakest link, distinctiveness, w-ranking + rival sweep — depends on W-4.1 edges) →
-  **W-4.3 triangulation + evidence grades** (classification logic + `src/server/evidence/`
-  extension) → orchestrator integration + phase verification. Sequential in one checkout
-  (D-2.1 rationale re-applied: shared tree makes concurrent typecheck/test runs
-  cross-contaminate). `SESSION_HANDOFF.md` deleted once delegation absorbs it.
+- **PHASE 5 OPENED 2026-10-09** — boundary refresh complete per AGENTS §5/§26 (all 7
+  ProjectSpec sources + AGENTS + this file re-read at the boundary; targeted re-reads
+  of Plan Phase 5 lines 538–605, ARCHITECTURE §1/§2/§3.4/§6, ProductSpec §15 edge
+  cases, Tools §4/§14/§16). Phase 5 contract written above before any delegation.
+  Worker plan (contracts written at delegation, AGENTS §8; sequential, D-2.1):
+  **W-5.1 persistence port** (`src/server/persistence/`: RunStore interface +
+  in-memory adapter + Turso adapter gated on env + config wiring + healthz check) →
+  **W-5.2 orchestration core** (`src/server/orchestrator/`: phase sequencing over
+  extended agent state machine with new `stopped` status, idempotency, resume, stop/
+  cancel, bounded retries, wall-clock cap, best-so-far, wires agent+gateway+engine+
+  persistence) → **W-5.3 SSE + API routes** (real handlers for POST /api/runs,
+  GET /api/runs/:id, GET /api/runs/:id/events with Last-Event-ID replay, POST
+  /api/runs/:id/stop; expand shared/run.ts toward the 13-node tree) →
+  **W-5.4 recovery + exit-gate suite** (disconnect/reconnect/retry/resume/stop,
+  Qloo-outage mid-run, exit-gate proof) → orchestrator integration + phase
+  verification. B-06 Turso is non-blocking (in-memory adapter default; Turso adapter
+  env-gated and ready).
 - **W-4.1b DONE 2026-10-08 — reviewed (AGENTS §17), committed `ac63f63`.**
   `src/server/engine/` (types/neighborhoods/idf/graph/index) + `tests/engine/` (6 files,
   40 tests): pool validation, provenance path, affinity-vs-1/rank weights, top-30 cap,
@@ -461,6 +576,10 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 | W-4.1b | Engine core (fresh spawn) | `src/server/engine/` (types, neighborhoods, idf, graph, index) + `tests/engine/` (fixtures + 5 test files) | **DONE 2026-10-08 — reviewed (§17), independently re-verified, committed `ac63f63`.** typecheck/lint green; **193 pass / 5 gated skips** (+40 tests); byte-identical determinism + shuffle tests; decisions D-4.1…D-4.4 recorded. |
 | W-4.2 | Composition mathematics | `src/server/engine/` (+`compositions.ts`, `distinctiveness.ts`, `ranking.ts`, `index.ts` append-only) + `tests/engine/` (+4 test files) | **DONE 2026-10-08 — reviewed (§17), independently re-verified, committed `3eb298b`.** typecheck 0, lint 0; **248 pass / 5 gated skips** (+55 tests); barrel append-only confirmed (`git diff` zero deletions); decisions D-4.5…D-4.8 recorded. |
 | W-4.3 | Triangulation + evidence grades + claim→citation validation | NEW: `src/server/engine/` (+`triangulation.ts`, `grades.ts`) + `tests/engine/` (+2) + `tests/evidence/` (new dir); EDIT: `src/server/evidence/index.ts` (additive); barrel wired by orchestrator | **DONE 2026-10-08 — reviewed (§17), independently re-verified, committed `04e8d3a`** (+ integration `b759e83`). First spawn interrupted at dispatch (no writes, tree clean) → re-spawn succeeded. typecheck 0, lint 0; **286 pass / 5 gated skips** (+38); evidence diff additive-only (verified via `git diff`); decisions D-4.9…D-4.11 recorded. |
+| W-5.1 | Persistence port + adapters | NEW: `src/server/persistence/` (RunStore interface, in-memory adapter, Turso adapter env-gated, schema, config wiring, healthz check) + `tests/persistence/` | **PENDING — awaiting contract at delegation.** |
+| W-5.2 | Orchestration core | NEW: `src/server/orchestrator/` (+ agent state machine extension for `stopped`) + `tests/orchestrator/` | **PENDING — depends on W-5.1.** |
+| W-5.3 | SSE + API routes | EDIT: `src/shared/run.ts` (13-node expansion), `src/server/routes.ts` (real handlers), SSE emitter + replay + `src/server/app.ts` wiring + `tests/` | **PENDING — depends on W-5.2.** |
+| W-5.4 | Recovery + exit-gate suite | NEW: `tests/orchestrator/recovery.test.ts` + SSE reconnect e2e-style tests + exit-gate proof | **PENDING — depends on W-5.3.** |
 
 **Orchestrator integration review (AGENTS §17):** both diffs inspected; W-1.1 touched only `ARCHITECTURE.md`;
 W-1.2 touched only temp-dir files (repo `git status` shows no spike artifacts); key never echoed; worker claims
