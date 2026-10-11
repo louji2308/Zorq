@@ -8,7 +8,8 @@
 ## Current Phase
 
 **PHASE 7 — S2/S3: Compositions, Field, Graph & Evidence**. Status: **OPEN 2026-10-11 —
-contract written below before any delegation; no worker dispatched yet.**
+contract written before delegation (`ee3bddd`); W-7.1 reviewed & committed (`99b53bd`);
+next: W-7.2 measurement wiring.**
 Phase 6 remains OPEN with all build work committed (`579b23e`…`64bba88`); its exit gate
 waits only on the B-02 DeepSeek live click-through (user-side payment). User directed
 2026-10-11 to start Phase 7 while that box waits — recorded under Deviations. Boundary
@@ -683,6 +684,14 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 
 ## Active Work
 
+- **PHASE 7 OPEN 2026-10-11 (contract `ee3bddd`) — W-7.1 DONE, committed `99b53bd`.**
+  Typed `siteRead`/`culturalDna`/`candidatePool` landed in `shared/run.ts`; the agent now
+  forms an engine-validated, observation-grounded candidate pool inside the ≤3-turn budget;
+  the orchestrator persists anchors/heat/pool with a `investigate:capture` ledger event.
+  Verified: 516 pass / 6 skips, e2e 4/4 on fresh dist, secret scan 0 hits. Next: **W-7.2
+  measurement wiring** (neighborhoods → graph → compositions → CulturalDNA → typed
+  persistence) — the phase bottleneck. Limitations recorded in the W-7.1 row (anchor
+  selection deterministic-interim; stop/cap paths drop outputs until resume).
 - **PHASE 5 CLOSED 2026-10-09 — exit gate PASSED** (HEAD `7f11d7f`, tree clean,
   386 pass / 5 gated-live skips, e2e 3/3). See "Phase 5 Exit-Gate Status" below for
   the clause-by-clause proof map. Landed: W-5.1 persistence (`d912ebb`), W-5.2
@@ -763,6 +772,7 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 | W-6.2b | S0 Brief screen (presets, address search, site map) | EDIT: `src/web/routes/HomeRoute.tsx`; NEW: `src/web/screens/s0/` (MapPanel, AddressSearch, BriefForm, briefFormState, PresetCard, runFailure, s0.css), `src/web/lib/map.ts`, `src/web/lib/geocode.ts`, `src/web/presets.ts`, `src/web/env.d.ts`, `tests/web/s0{Brief,Geocode,Presets,RunFailure}`; orchestrator: `src/server/app.ts` CSP fix (D-6.3), `e2e/smoke.spec.ts` S0 assertions | **DONE 2026-10-09 — reviewed (§17), independently re-verified, committed `7f5380c` (screen) + `e85fdde` (CSP) + `c130166` (state).** typecheck 0, lint 0; **455 pass / 5 gated-live skips** (+37); build PASS; e2e 3/3 (S0 assertions); secret scan clean; live browser proof: real MapTiler vector tiles + preset dots render, console clean (no CSP violations). First spawn interrupted (no commits) → continuation worker completed on the same tree; orchestrator diagnosed the pre-existing tile failure (default helmet CSP vs MapLibre module worker) and verified the fix end-to-end. |
 | W-6.3 | S1 Investigate screen (Frozen Prior card, live Agent Ledger, Cultural DNA strip, site map) | EDIT: `src/web/routes/RunRoute.tsx`, `src/web/lib/map.ts`; NEW: `src/web/screens/s1/` (PriorCard, LedgerPanel, DnaStrip, InvestigateMap, s1Model, stopAction, s1.css) + `tests/web/s1{Dna,Ledger,Prior,Stop,Stream}`; orchestrator: `e2e/smoke.spec.ts` RUN_NOT_FOUND assertions | **DONE 2026-10-09 — reviewed (§17), independently re-verified, committed `b71dd00` (screen) + `7dfb688` (e2e).** typecheck 0, lint 0; **498 pass / 5 gated-live skips** (+43); build PASS; e2e 3/3; §17 live-browser review caught 4 defects (string `symbol-sort-key`, MapTiler `" "` Town-labels image warning, Prior card covering the DNA strip, status pill stuck on "Opening…") → orchestrator corrective patches → final render verified with **zero console messages**. First spawn failed at provider after partial disk work → continuation worker completed on the same tree. |
 | W-6.4 | Judge-path/degraded e2e + exit-gate clause map (**orchestrator-executed** — `e2e/**` and `playwright.config.ts` are orchestrator-owned by contract) | EDIT: `e2e/smoke.spec.ts` (console-clean gate + typed run-creation contract), `IMPLEMENTATION_STATE.md` (clause map); audits: bundle secret scan, reduced-motion, geocode-fallback, degraded S1 states | **DONE 2026-10-09 — committed `91c6788` (e2e).** typecheck 0, lint 0; **498 pass / 5 gated-live skips**; build PASS; **e2e 4/4** (healthz, console-clean S0 landing, typed `POST /api/runs` 201-or-DEPENDENCY_UNAVAILABLE, RUN_NOT_FOUND recovery). `dist/web` secret scan **0 hits** (Qloo/DeepSeek/Turso values + env names). Clause map below; gate stays OPEN on the B-02 live click-through only. |
+| W-7.1 | Investigation-output capture + typed run-state schemas | EDIT: `src/shared/run.ts` (typed `siteRead`/`culturalDna`/`candidatePool` replacing `z.unknown()`), `src/server/agent/{controller,tools,index}.ts`, `src/server/orchestrator/orchestrator.ts`; NEW: `src/server/agent/pool.ts`, `tests/agent/pool.test.ts`, `tests/orchestrator/capture.test.ts` | **DONE 2026-10-11 — reviewed (§17), independently re-verified, committed `99b53bd`** (contract `ee3bddd`). Mechanism: new `propose_candidate_pool` LLM tool (agent proposes inside the locked ≤3 turns) → engine `validatePool` → grounding checks against an observation index (every exemplar id+name and every tag must appear in a real tool result; rejection returns an honest tool error, never repaired). Orchestrator persists `siteRead` (lettered anchors A–E + heat from observed located entities/heatmap cells with evidenceIds) + validated pool via a `investigate:capture` Compute ledger event; `culturalDna` typed but only ever set by W-7.2. Shared↔engine shape conformance proven by tests (role/evidence-state vocabularies byte-equal; cross-parse equal). **Orchestrator corrective:** pool cap 24 → **10** (spec K ≈ 8–10, ProductSpec §12 / Final Design 45-edge math / engine 10k enumeration cap) + description nudge + boundary tests (10 accept / 11 reject). Gates independently re-run: typecheck 0, lint 0, **516 pass / 6 skips** (clean rerun; one transient vitest worker crash on `persistence/contract.test.ts` reproduced zero times — passes in isolation 28/28), build PASS, **e2e 4/4** against fresh dist, `dist/web` secret scan 0 hits. Known limitations: anchor selection is deterministic first-5-located-observed (spec assigns anchor selection to the agent — revisit when unpin/replace anchor identity lands); outputs not applied on stop/wall-clock-cap return paths (honest absence; resume re-derives). |
 
 **Orchestrator integration review (AGENTS §17):** both diffs inspected; W-1.1 touched only `ARCHITECTURE.md`;
 W-1.2 touched only temp-dir files (repo `git status` shows no spike artifacts); key never echoed; worker claims
@@ -783,6 +793,26 @@ returned the pre-persist Prior object (unfrozen, separate object from the persis
 (`62f29af`).
 
 ## Verified Tests / Evidence
+
+### Phase 7 — W-7.1 typed investigation outputs (2026-10-11, commit `99b53bd`)
+
+- **Independent orchestrator re-run (post-correction):** typecheck 0 (`tsc -p
+  tsconfig.json` + `tsconfig.build.json`), lint 0, Vitest **516 pass / 6 skips**
+  (6 = 5 gated-live + 1 degradedBoot port-3000 skip), build PASS (server + web),
+  **e2e 4/4** against a restarted production server on the fresh dist,
+  `dist/web` secret scan **0 hits / 5 files**. One earlier full-suite run showed a
+  transient vitest worker crash (0xC0000005) on `tests/persistence/contract.test.ts`;
+  file passes in isolation (28/28) and the clean re-run reproduced nothing.
+- **New coverage:** `tests/agent/pool.test.ts` (13 — tool JSON-schema contract,
+  lettered-anchor/heat derivation incl. caps/dedup/no-synthetic, exemplar/tag
+  grounding rejections, engine-without-repair rejection, cap boundary 10/11,
+  shared↔engine vocabulary + cross-parse conformance), `tests/orchestrator/capture.test.ts`
+  (4 — scripted LLM + fake gateway end-to-end: typed siteRead+pool persisted,
+  `validatePool` re-acceptance, S1 readers `anchorsFromRun`/`heatFromRun`/
+  `parseCulturalDna` accept the shapes, evidenceId↔store linkage, ledger ordering
+  agent.candidate_pool → investigate:capture → measure.compose, fabrication
+  rejection, single-proposal rule, no-pool honest capture), `tests/api/runs.test.ts`
+  (+2 — JSON round-trip + strict/strip assertions for the new nodes).
 
 ### Phase 6 — W-6.1 web foundation + W-6.2b S0 Brief + W-6.3 S1 Investigate (2026-10-09, commits `579b23e`/`7f5380c`/`e85fdde`/`b71dd00`/`7dfb688`)
 
@@ -1015,6 +1045,8 @@ response data in a public repository — only aggregate statistics appear above)
 | D-6.1 | **Add `zustand@5` + `maplibre-gl@6` (user-approved 2026-10-09).** State and map renderer per Tools §2 lock ("Zustand", "MapLibre GL JS + MapTiler Free"). MapTiler integration via public tile/style URLs keyed with `VITE_MAPTILER_KEY` (client-visible by design); no `@maptiler/*` SDK needed — MapLibre consumes MapTiler endpoints directly. | Locked-stack choices, not new inventions (Tools §2); user approval obtained in-session. Avoiding the MapTiler SDK keeps the dependency surface minimal (AGENTS §3). | No (stack-locked). |
 | D-6.2 | **Vite glue: `envDir` set to repo root + dev proxy for `/api` and `/healthz` → `:3000`.** `root` is `./src/web`, and Vite's `envDir` defaults to `root`, so repo-root `.env` (where `VITE_MAPTILER_KEY` lives) would otherwise be invisible; dev server now proxies API/SSE to Express. | Minimal integration glue (AGENTS §4.1 allows orchestrator-owned glue). Production path unaffected — Express serves the built SPA same-origin; proxy only serves `npm run dev:web`. | Yes. |
 | D-6.3 | **Widen helmet CSP for the MapTiler/MapLibre browser surface:** `connect-src`/`img-src`/`font-src` += `https://api.maptiler.com`; `worker-src`/`child-src` += `blob:`; every other directive stays on helmet defaults. | Default helmet policy has no `connect-src`, so `default-src 'self'` blocks MapLibre's **module-worker** tile fetches: main-thread style/sprite/tiles.json load, but every vector tile fails pre-network with `AJAXError(0)` (proven live — a control `fetch` of the identical URL inside the same worker returned 200 only under the patched policy). MapTiler is the locked tile provider (Tools §2) and the key is public-by-design (D-6.1). **Operational trap recorded:** hashed assets are served `Cache-Control: immutable` for 1 year (`staticWeb.ts`), so this header change stayed invisible in browsers until the cached worker response was purged — the stale cache masked the fix during diagnosis. | No — smallest safe deviation from helmet defaults; required by the locked stack. |
+| D-7.1 | **Candidate pool draft cap = 10 components** (`POOL_DRAFT_COMPONENT_CAP`, orchestrator corrective during W-7.1 review); min stays 1 (honest thin-evidence pools allowed); tool description states the K≈8–10 design target. | Worker shipped 24; spec locks **K ≈ 8–10** (ProductSpec §12, Architecture line 145, Plan line 481, Tools line 178) and Final Design's 45-edge math assumes ≤10; engine exact-enumeration safety cap (10,000) breaks at C(16,8). The enforcement point is the tool schema the LLM sees. Lower bound kept at 1 rather than 8 so thin evidence can never force fabrication (AGENTS §13). | No (spec-locked ceiling). |
+| D-7.2 | **Interim `siteRead.anchors` derivation:** first 5 located observed entities in observation order (letters A–E, each carrying its `evidenceId`); heat = observed projected heatmap cells (cap 200). Agent-chosen anchor *selection* deferred to the unpin/replace anchor-identity work (routes 3.6/3.7). | ProductSpec line 291 assigns anchor selection to the agent, but no anchor-selection tool or pin identity exists yet; the deterministic capture is real observed data with provenance (never synthetic) and unblocks S1 rendering + W-7.2 provenance. Revisit when routes 3.6/3.7 define anchor identity. | Yes — revisit with unpin/replace. |
 
 ## Deviations from contract
 
@@ -1054,29 +1086,32 @@ response data in a public repository — only aggregate statistics appear above)
 
 ## Last Verified Commit
 
-`91c6788` — *test: cover judge-path run creation and the console-clean landing gate.*
-Preceded by `3b21c8d` (state docs), `7dfb688` (RUN_NOT_FOUND e2e), `b71dd00` (W-6.3
-S1 Investigate screen). Suite **498 pass / 5 gated-live skips**. Gates green on current
-head: typecheck, lint, **498 unit + 5 gated live skips**, build, **e2e 4/4**, plus live
-`LIVE_QLOO=1` run **4/4** (`tests/qloo/live.test.ts` + `tests/agent/exit-gate.live.test.ts`
-against real Qloo); `dist/web` secret scan 0 hits. Earlier Phase 6 commits: `c130166`/
-`1727c15` (state docs), `7f5380c` (W-6.2b S0), `e85fdde` (D-6.3 CSP), `579b23e` (W-6.1),
-`0c8d357` (deps glue), `367b4f7` (Phase 6 contract). Push target:
-**https://github.com/louji2308/zorq** (`main`, PUBLIC, MIT).
+`99b53bd` — *feat: persist typed site read and an engine-validated candidate pool.*
+Preceded by `ee3bddd` (Phase 7 contract), `64bba88` (Phase 6 clause map), `91c6788`
+(W-6.4 e2e). Suite **516 pass / 6 skips** (5 gated-live + 1 degradedBoot port skip);
+gates green on current head: typecheck, lint, unit, build, **e2e 4/4** (fresh dist,
+production server restarted), `dist/web` secret scan 0 hits. Earlier Phase 6 commits:
+`c130166`/`1727c15` (state docs), `7f5380c` (W-6.2b S0), `e85fdde` (D-6.3 CSP),
+`b71dd00`/`7dfb688` (W-6.3 S1), `0c8d357` (deps glue), `367b4f7` (Phase 6 contract),
+`3b21c8d` (state docs). Push target: **https://github.com/louji2308/zorq**
+(`main`, PUBLIC, MIT; push only on explicit user request).
 
 ## Next Highest-Value Action
 
-**Dispatch W-7.1** (server: typed `siteRead`/`culturalDna`/`candidatePool` schemas in
-`src/shared/run.ts` matched to the S1 readers + investigation-output capture + candidate
-pool formation via engine `validatePool`) against the Phase 7 contract above; §17-review
-the diff, re-run gates, commit. Then W-7.2 (measurement wiring — the bottleneck), W-7.3
-(S2 web), W-7.4 (S3 + Evidence drawer), W-7.5 (Replace); orchestrator then runs the
-clause map + fixture-browser review toward the exit gate. Parallel user-side: **top up
-DeepSeek (B-02 — HTTP 402 "balance is insufficient")** → one real browser judge pass
-closes Phase 6's two open boxes. Protect: engine-only numeric truth; evidence chain
-claim→id→ledger→inputs→Qloo path; Prior immutable; Qloo ≤180/run; state-first SSE;
-design language; existing four real routes keep working. Sequential in one checkout
-(D-2.1); workers never commit. Deadline: Oct 30 2026, internal freeze Oct 28.
+**Dispatch W-7.2** (server: the real measurement pass) against the Phase 7 contract above.
+Inputs ready from W-7.1: `run.candidatePool` (engine-validated, `tags`+`exemplars`+
+`provenancePath` per component) and `run.siteRead` (lettered anchors with `evidenceId`s;
+heat cells); schemas for `neighborhoods`/`graph`/`compositions` still `z.unknown()` and
+belong to this worker. The bottleneck: gateway taste neighborhoods (local + city) →
+`buildNeighborhoods` → `computeIdf` → `buildGraph` → `buildCompositions` → percentiles /
+distinctiveness / ranking / triangulation / grades → typed persistence + Compute ledger
+events + CulturalDNA (S1 DnaStrip shape) + additive shared-entities-per-edge helper for
+W-7.4's edge inspection; Qloo budget ≤180/run. Then W-7.3 (S2 web) → W-7.4 (S3 +
+Evidence drawer) → W-7.5 (Replace); orchestrator runs clause map + fixture-browser
+review toward the exit gate. Parallel user-side: **top up DeepSeek (B-02 — HTTP 402)**
+→ one real browser judge pass closes Phase 6's two open boxes. Sequential in one
+checkout (D-2.1); workers never commit; orchestrator reviews (§17) and commits.
+Deadline: Oct 30 2026, internal freeze Oct 28.
 
 ## Phase 6 Exit-Gate Status (OPEN 2026-10-09 — every clause proven except the B-02 live click-through)
 
