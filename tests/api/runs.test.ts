@@ -220,6 +220,23 @@ describe("runStateSchema (expanded tree)", () => {
       evidenceState: "measured"
     }
   ];
+  const TEST_GRAPH = { nodes: ["comp-anchor"], edges: [] };
+  const TEST_COMPOSITIONS = {
+    family: {
+      poolSize: 1,
+      size: 0,
+      requiredRoles: [],
+      totalCandidates: 0,
+      totalValid: 0,
+      coherenceDistribution: [],
+      reason: "fewer than 2 pool components; no composition can be measured from this pool"
+    },
+    ranked: [],
+    excluded: [],
+    triangulation: [],
+    rivalFlips: [],
+    prior: { state: "not measured", reason: "the run carries no persisted Prior" }
+  };
 
   it("keeps evidence and the expanded node fields through a parse and strips stray keys", () => {
     const evidence = [
@@ -235,8 +252,8 @@ describe("runStateSchema (expanded tree)", () => {
       siteRead: TEST_SITE_READ,
       culturalDna: TEST_CULTURAL_DNA,
       candidatePool: TEST_POOL,
-      graph: { nodes: [{ id: "n1" }], edges: [] },
-      compositions: [{ name: "daytime corner" }],
+      graph: TEST_GRAPH,
+      compositions: TEST_COMPOSITIONS,
       revisions: [1, 2],
       apiKey: "should-not-survive"
     });
@@ -245,8 +262,8 @@ describe("runStateSchema (expanded tree)", () => {
     expect(parsed.siteRead).toEqual(TEST_SITE_READ);
     expect(parsed.culturalDna).toEqual(TEST_CULTURAL_DNA);
     expect(parsed.candidatePool).toEqual(TEST_POOL);
-    expect(parsed.graph).toEqual({ nodes: [{ id: "n1" }], edges: [] });
-    expect(parsed.compositions).toEqual([{ name: "daytime corner" }]);
+    expect(parsed.graph).toEqual(TEST_GRAPH);
+    expect(parsed.compositions).toEqual(TEST_COMPOSITIONS);
     expect(parsed.revisions).toEqual([1, 2]);
     expect((parsed as Record<string, unknown>).apiKey).toBeUndefined();
   });

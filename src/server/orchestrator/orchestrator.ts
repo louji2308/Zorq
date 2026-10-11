@@ -12,6 +12,7 @@ import { createInitialRun, transitionRun } from "../agent/state.js";
 import type { EvidenceRecord } from "../evidence/index.js";
 import { EvidenceConflict, RunNotFound, type StoredRun } from "../persistence/index.js";
 import { OrchestratorStateError, RunBusyError } from "./errors.js";
+import { runMeasurement } from "./measure.js";
 import { rehydrateRun } from "./rehydrate.js";
 import {
   isResumableStatus,
@@ -266,15 +267,26 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
     if (result.outputs.siteRead !== undefined || result.outputs.candidatePool !== undefined) {
       input.ledger.append(captureEvent(result.outputs));
     }
+    const measurement = await runMeasurement({
+      state: applyInvestigationOutputs(input.state, result.outputs),
+      gateway: deps.gateway,
+      ledger: input.ledger,
+      now,
+      shouldStop: () => input.record.stopped
+    });
+    await persistEvidence(runId, measurement.evidence);
     input.ledger.append(measurementEvent());
 
     let finalStatus: OrchestratorRunStatus = terminal;
+    if (measurement.degraded && finalStatus === "complete") {
+      finalStatus = "partial";
+    }
     const afterMeasurement = Math.max(0, now() - input.startedAt);
     if (afterMeasurement > wallClockCapMs) {
       input.ledger.append(wallClockEvent(afterMeasurement, wallClockCapMs));
       finalStatus = "partial";
     }
-    const next = transitionTo(applyInvestigationOutputs(input.state, result.outputs), finalStatus, "measurement");
+    const next = transitionTo(measurement.state, finalStatus, "measurement");
     await input.ledger.flush();
     return saveUnlessStopped(runId, next);
   };

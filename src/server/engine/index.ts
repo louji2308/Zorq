@@ -102,3 +102,8 @@ export {
   type EvidenceGradeInput,
   type EvidenceGradeResult
 } from "./grades.js";
+export {
+  DEFAULT_EDGE_SHARED_ENTITY_CAP,
+  sharedEntitiesForEdge,
+  type EdgeSharedEntity
+} from "./edgeEntities.js";

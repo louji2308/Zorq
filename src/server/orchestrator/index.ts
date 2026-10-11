@@ -9,6 +9,8 @@ export {
   transitionTo
 } from "./status.js";
 export type { OrchestratorRunPhase, OrchestratorRunStatus } from "./status.js";
+export { runMeasurement } from "./measure.js";
+export type { MeasurementInput, MeasurementResult } from "./measure.js";
 export { rehydrateRun } from "./rehydrate.js";
 export { WriteThroughLedger } from "./writeThroughLedger.js";
 export type { WriteThroughLedgerOptions } from "./writeThroughLedger.js";

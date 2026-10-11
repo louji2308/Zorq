@@ -77,6 +77,193 @@ export const poolComponentRoles = [
 
 export type PoolComponentRole = (typeof poolComponentRoles)[number];
 
+export const runNeighborhoodDomains = ["artist", "movie", "brand"] as const;
+
+export type RunNeighborhoodDomain = (typeof runNeighborhoodDomains)[number];
+
+export const runNeighborhoodScopes = ["site", "city"] as const;
+
+export type RunNeighborhoodScope = (typeof runNeighborhoodScopes)[number];
+
+export const runNeighborhoodStates = ["measured", "not measured", "incomplete"] as const;
+
+export type RunNeighborhoodState = (typeof runNeighborhoodStates)[number];
+
+export const runNeighborhoodEntrySchema = z.strictObject({
+  entityId: z.string().trim().min(1).max(200),
+  rank: z.number().int().min(1),
+  weight: z.number().finite().positive(),
+  affinityUsed: z.boolean()
+});
+
+export type RunNeighborhoodEntry = z.infer<typeof runNeighborhoodEntrySchema>;
+
+export const runTasteNeighborhoodSchema = z.strictObject({
+  componentId: z.string().trim().min(1).max(200),
+  domains: z.strictObject({
+    artist: z.array(runNeighborhoodEntrySchema).max(30),
+    movie: z.array(runNeighborhoodEntrySchema).max(30),
+    brand: z.array(runNeighborhoodEntrySchema).max(30)
+  }),
+  state: z.enum(runNeighborhoodStates)
+});
+
+export type RunTasteNeighborhood = z.infer<typeof runTasteNeighborhoodSchema>;
+
+export const runNeighborhoodSourceSchema = z.strictObject({
+  componentId: z.string().trim().min(1).max(200),
+  domain: z.enum(runNeighborhoodDomains),
+  scope: z.enum(runNeighborhoodScopes),
+  evidenceId: z.string().min(1)
+});
+
+export type RunNeighborhoodSource = z.infer<typeof runNeighborhoodSourceSchema>;
+
+export const runNeighborhoodsSchema = z.strictObject({
+  components: z.array(runTasteNeighborhoodSchema).max(10),
+  city: z.array(runTasteNeighborhoodSchema).max(10),
+  sources: z.array(runNeighborhoodSourceSchema).max(120)
+});
+
+export type RunNeighborhoods = z.infer<typeof runNeighborhoodsSchema>;
+
+export const runEdgeBands = ["strong", "typical", "weak"] as const;
+
+export type RunEdgeBand = (typeof runEdgeBands)[number];
+
+export const runEdgeStates = ["measured", "unmeasured"] as const;
+
+export type RunEdgeState = (typeof runEdgeStates)[number];
+
+export const runSharedEntitySchema = z.strictObject({
+  entityId: z.string().trim().min(1).max(200),
+  domain: z.enum(runNeighborhoodDomains),
+  aWeight: z.number().finite().min(0).max(1),
+  bWeight: z.number().finite().min(0).max(1),
+  idf: z.number().finite().min(0),
+  dotContribution: z.number().finite().min(0)
+});
+
+export type RunSharedEntity = z.infer<typeof runSharedEntitySchema>;
+
+export const runGraphEdgeSchema = z.strictObject({
+  a: z.string().trim().min(1),
+  b: z.string().trim().min(1),
+  value: z.number().finite().min(0).max(1).nullable(),
+  band: z.enum(runEdgeBands).nullable(),
+  state: z.enum(runEdgeStates),
+  sharedEntities: z.array(runSharedEntitySchema).max(8).optional()
+});
+
+export type RunGraphEdge = z.infer<typeof runGraphEdgeSchema>;
+
+export const runGraphSchema = z.strictObject({
+  nodes: z.array(z.string().trim().min(1)).max(10),
+  edges: z.array(runGraphEdgeSchema).max(45)
+});
+
+export type RunGraph = z.infer<typeof runGraphSchema>;
+
+export const runWeakestLinkSchema = z.strictObject({
+  a: z.string().trim().min(1),
+  b: z.string().trim().min(1),
+  value: z.number().finite().min(0).max(1)
+});
+
+export type RunWeakestLink = z.infer<typeof runWeakestLinkSchema>;
+
+export const runEvidenceGrades = ["A", "B", "C"] as const;
+
+export type RunEvidenceGrade = (typeof runEvidenceGrades)[number];
+
+export const runRankedCompositionSchema = z
+  .strictObject({
+    members: z.array(z.string().trim().min(1)).min(2),
+    size: z.number().int().min(2),
+    coherence: z.number().finite().min(0).max(1),
+    percentile: z.number().finite().min(0).max(100).nullable(),
+    distinctivenessMean: z.number().finite().min(0).max(1),
+    weakestLink: runWeakestLinkSchema,
+    rankScore: z.number().finite(),
+    grade: z.enum(runEvidenceGrades),
+    gradeReasons: z.array(z.string()).max(60)
+  })
+  .refine((composition) => composition.size === composition.members.length, {
+    message: "size must equal members.length"
+  });
+
+export type RunRankedComposition = z.infer<typeof runRankedCompositionSchema>;
+
+export const runExcludedCompositionSchema = z.strictObject({
+  members: z.array(z.string().trim().min(1)).min(2),
+  reason: z.enum(["distinctiveness_unavailable"])
+});
+
+export type RunExcludedComposition = z.infer<typeof runExcludedCompositionSchema>;
+
+export const runTriangulationStates = ["confirmed", "contested", "thin", "failed"] as const;
+
+export type RunTriangulationState = (typeof runTriangulationStates)[number];
+
+export const runTriangulationClassificationSchema = z.strictObject({
+  a: z.string().trim().min(1),
+  b: z.string().trim().min(1),
+  state: z.enum(runTriangulationStates),
+  route1State: z.enum(runEdgeStates),
+  route1Value: z.number().finite().min(0).max(1).nullable(),
+  resultCount: z.number().int().min(0),
+  focalInTopHalf: z.boolean().nullable()
+});
+
+export type RunTriangulationClassification = z.infer<typeof runTriangulationClassificationSchema>;
+
+export const runSweepFlipSchema = z.strictObject({
+  index: z.number().int().min(1),
+  weight: z.number().finite().min(0).max(1),
+  from: z.array(z.string().trim().min(1)).nullable(),
+  to: z.array(z.string().trim().min(1)).nullable()
+});
+
+export type RunSweepFlip = z.infer<typeof runSweepFlipSchema>;
+
+export const runCompositionFamilySchema = z.strictObject({
+  poolSize: z.number().int().min(0),
+  size: z.number().int().min(0),
+  requiredRoles: z.array(z.enum(poolComponentRoles)),
+  totalCandidates: z.number().int().min(0),
+  totalValid: z.number().int().min(0),
+  coherenceDistribution: z.array(z.number().finite().min(0).max(1)).max(252),
+  reason: z.string().max(300).optional()
+});
+
+export type RunCompositionFamily = z.infer<typeof runCompositionFamilySchema>;
+
+export const runPriorMarkerSchema = z.discriminatedUnion("state", [
+  z.strictObject({
+    state: z.literal("measured"),
+    members: z.array(z.string().trim().min(1)).min(2),
+    coherence: z.number().finite().min(0).max(1),
+    percentile: z.number().finite().min(0).max(100).nullable()
+  }),
+  z.strictObject({
+    state: z.literal("not measured"),
+    reason: z.string().trim().min(1).max(300)
+  })
+]);
+
+export type RunPriorMarker = z.infer<typeof runPriorMarkerSchema>;
+
+export const runCompositionsSchema = z.strictObject({
+  family: runCompositionFamilySchema,
+  ranked: z.array(runRankedCompositionSchema).max(252),
+  excluded: z.array(runExcludedCompositionSchema).max(252),
+  triangulation: z.array(runTriangulationClassificationSchema).max(45),
+  rivalFlips: z.array(runSweepFlipSchema).max(100),
+  prior: runPriorMarkerSchema
+});
+
+export type RunCompositions = z.infer<typeof runCompositionsSchema>;
+
 export const poolComponentEvidenceStates = [
   "measured",
   "not measured",
@@ -128,9 +315,9 @@ export const runStateSchema = z.object({
   siteRead: siteReadSchema.optional(),
   culturalDna: culturalDnaSchema.optional(),
   candidatePool: candidatePoolSchema.optional(),
-  neighborhoods: z.unknown().optional(),
-  graph: z.unknown().optional(),
-  compositions: z.unknown().optional(),
+  neighborhoods: runNeighborhoodsSchema.optional(),
+  graph: runGraphSchema.optional(),
+  compositions: runCompositionsSchema.optional(),
   stressReport: z.unknown().optional(),
   constraintFit: z.unknown().optional(),
   revisions: z.unknown().optional()
