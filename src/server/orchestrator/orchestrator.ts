@@ -4,7 +4,7 @@ import type { Brief } from "../../shared/brief.js";
 import type { Prior, RunState } from "../../shared/run.js";
 import { LOCK_LLM_BUDGET_USD } from "../config.js";
 import { LlmBudget } from "../agent/budget.js";
-import { runController, type ControllerResult } from "../agent/controller.js";
+import { runController, type ControllerResult, type InvestigationOutputs } from "../agent/controller.js";
 import { toError } from "../agent/errors.js";
 import type { LedgerEntry } from "../agent/ledger.js";
 import { generatePrior, persistPrior } from "../agent/prior.js";
@@ -48,6 +48,27 @@ function measurementEvent(): LedgerEvent {
     "measure.compose",
     "measurement phase boundary recorded; numeric measurement is owned by the deterministic engine and none is fabricated here"
   );
+}
+
+function captureEvent(outputs: InvestigationOutputs): LedgerEvent {
+  const anchors = outputs.siteRead?.anchors?.length ?? 0;
+  const heat = outputs.siteRead?.heat?.length ?? 0;
+  const components = outputs.candidatePool?.length ?? 0;
+  return computeEvent(
+    "investigate:capture",
+    `persisted investigation outputs: siteRead with ${anchors} anchor(s) and ${heat} heat cell(s); candidate pool with ${components} component(s)`
+  );
+}
+
+function applyInvestigationOutputs(state: RunState, outputs: InvestigationOutputs): RunState {
+  if (outputs.siteRead === undefined && outputs.candidatePool === undefined) {
+    return state;
+  }
+  return {
+    ...state,
+    ...(outputs.siteRead !== undefined ? { siteRead: outputs.siteRead } : {}),
+    ...(outputs.candidatePool !== undefined ? { candidatePool: outputs.candidatePool } : {})
+  };
 }
 
 function stopEvent(reason: string): LedgerEvent {
@@ -242,6 +263,9 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
     }
 
     emit({ type: "phase", runId, payload: { phase: "measurement", status: input.state.status } });
+    if (result.outputs.siteRead !== undefined || result.outputs.candidatePool !== undefined) {
+      input.ledger.append(captureEvent(result.outputs));
+    }
     input.ledger.append(measurementEvent());
 
     let finalStatus: OrchestratorRunStatus = terminal;
@@ -250,7 +274,7 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
       input.ledger.append(wallClockEvent(afterMeasurement, wallClockCapMs));
       finalStatus = "partial";
     }
-    const next = transitionTo(input.state, finalStatus, "measurement");
+    const next = transitionTo(applyInvestigationOutputs(input.state, result.outputs), finalStatus, "measurement");
     await input.ledger.flush();
     return saveUnlessStopped(runId, next);
   };

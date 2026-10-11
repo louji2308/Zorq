@@ -93,7 +93,8 @@ describe("bounded controller", () => {
     expect(result.toolErrors).toHaveLength(0);
     expect(result.error).toBeUndefined();
     expect(s.llm.calls).toHaveLength(2);
-    expect(s.llm.calls[0]?.tools).toHaveLength(AGENT_TOOLS.length);
+    expect(s.llm.calls[0]?.tools).toHaveLength(AGENT_TOOLS.length + 1);
+    expect(s.llm.calls[0]?.tools?.map((tool) => tool.name)).toContain("propose_candidate_pool");
     expect(s.gateway.calls).toHaveLength(1);
 
     const kinds = s.ledger.list().map((entry) => entry.event.kind);

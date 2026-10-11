@@ -154,7 +154,7 @@ function renderObservation(name: string, envelope: QlooEnvelope<unknown>): strin
   return `${json.slice(0, MAX_OBSERVATION_CHARS)}...[truncated]`;
 }
 
-function parseToolArguments(call: LlmToolCall): unknown {
+export function parseToolArguments(call: LlmToolCall): unknown {
   const raw = typeof call.arguments === "string" ? call.arguments.trim() : "";
   if (raw === "") {
     return {};

@@ -187,6 +187,40 @@ describe("POST /api/runs/:id/stop", () => {
 });
 
 describe("runStateSchema (expanded tree)", () => {
+  const TEST_SITE_READ = {
+    anchors: [
+      {
+        id: "urn:entity:place-blue-note",
+        label: "Blue Note Corner",
+        letter: "A",
+        lat: 40.7144,
+        lon: -73.9614,
+        evidenceId: "ev-1"
+      }
+    ],
+    heat: [{ lat: 40.715, lon: -73.962, weight: 0.42 }]
+  };
+  const TEST_CULTURAL_DNA = {
+    artists: [{ name: "Alice Coltrane", local: 0.86, city: 0.31 }],
+    films: [{ name: "Paris, Texas", local: 74, city: 40 }]
+  };
+  const TEST_POOL = [
+    {
+      id: "comp-anchor",
+      role: "Anchor",
+      tags: ["urn:tag:coffee"],
+      exemplars: [{ id: "urn:entity:place-devocion", name: "Devoción" }],
+      provenancePath: {
+        anchorPlace: "Williamsburg, Brooklyn, NY",
+        qlooSignal: "coffee",
+        resolvedCategory: "urn:tag:coffee",
+        exemplarSet: "specialty coffee roasteries",
+        tasteNeighborhood: "daytime coffee culture"
+      },
+      evidenceState: "measured"
+    }
+  ];
+
   it("keeps evidence and the expanded node fields through a parse and strips stray keys", () => {
     const evidence = [
       { id: "ev-1", kind: "search", label: "jazz cafe", summary: "one measured anchor", grade: "A" }
@@ -198,8 +232,9 @@ describe("runStateSchema (expanded tree)", () => {
       brief: TEST_BRIEF,
       prior: TEST_PRIOR,
       evidence,
-      siteRead: { footprint: "narrow corner" },
-      culturalDna: { jazz: 0.4 },
+      siteRead: TEST_SITE_READ,
+      culturalDna: TEST_CULTURAL_DNA,
+      candidatePool: TEST_POOL,
       graph: { nodes: [{ id: "n1" }], edges: [] },
       compositions: [{ name: "daytime corner" }],
       revisions: [1, 2],
@@ -207,11 +242,62 @@ describe("runStateSchema (expanded tree)", () => {
     });
 
     expect(parsed.evidence).toEqual(evidence);
-    expect(parsed.siteRead).toEqual({ footprint: "narrow corner" });
-    expect(parsed.culturalDna).toEqual({ jazz: 0.4 });
+    expect(parsed.siteRead).toEqual(TEST_SITE_READ);
+    expect(parsed.culturalDna).toEqual(TEST_CULTURAL_DNA);
+    expect(parsed.candidatePool).toEqual(TEST_POOL);
     expect(parsed.graph).toEqual({ nodes: [{ id: "n1" }], edges: [] });
     expect(parsed.compositions).toEqual([{ name: "daytime corner" }]);
     expect(parsed.revisions).toEqual([1, 2]);
     expect((parsed as Record<string, unknown>).apiKey).toBeUndefined();
+  });
+
+  it("round-trips the typed nodes through a JSON serialize and re-parse", () => {
+    const parsed = runStateSchema.parse({
+      id: "44444444-4444-4444-8444-444444444444",
+      status: "complete",
+      phase: "measurement",
+      siteRead: TEST_SITE_READ,
+      culturalDna: TEST_CULTURAL_DNA,
+      candidatePool: TEST_POOL
+    });
+
+    const reloaded = runStateSchema.parse(JSON.parse(JSON.stringify(parsed)));
+
+    expect(reloaded.siteRead).toEqual(TEST_SITE_READ);
+    expect(reloaded.culturalDna).toEqual(TEST_CULTURAL_DNA);
+    expect(reloaded.candidatePool).toEqual(TEST_POOL);
+  });
+
+  it("rejects unknown keys inside siteRead and pool components, and strips unknown DNA domains", () => {
+    expect(() =>
+      runStateSchema.parse({
+        id: "run-1",
+        status: "complete",
+        phase: "measurement",
+        siteRead: { footprint: "narrow corner" }
+      })
+    ).toThrow();
+
+    expect(() =>
+      runStateSchema.parse({
+        id: "run-1",
+        status: "complete",
+        phase: "measurement",
+        candidatePool: [
+          {
+            ...TEST_POOL[0],
+            mood: "sunny"
+          }
+        ]
+      })
+    ).toThrow();
+
+    const stripped = runStateSchema.parse({
+      id: "run-1",
+      status: "investigating",
+      phase: "investigation",
+      culturalDna: { ...TEST_CULTURAL_DNA, jazz: [{ name: "x", local: 0.5, city: 0.5 }] }
+    });
+    expect(stripped.culturalDna).toEqual(TEST_CULTURAL_DNA);
   });
 });

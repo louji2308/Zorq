@@ -1,16 +1,29 @@
 import type { Brief } from "../../shared/brief.js";
 import { ApiError } from "../../shared/errors.js";
-import type { Prior, RunState } from "../../shared/run.js";
+import type { LedgerEvent } from "../../shared/events.js";
+import type { CandidatePool, Prior, RunState, SiteRead } from "../../shared/run.js";
 import type { QlooGateway } from "../qloo/index.js";
 import type { EvidenceRecord } from "../evidence/index.js";
 import type { LlmBudget } from "./budget.js";
 import { AgentStateError, AgentToolError, LlmBudgetError } from "./errors.js";
 import { completeBounded, type LlmClient, type LlmCompletionResult, type LlmMessage } from "./llm.js";
 import type { Ledger } from "./ledger.js";
+import {
+  PROPOSE_CANDIDATE_POOL_TOOL,
+  POOL_EVENT_LABEL,
+  createObservationIndex,
+  deriveSiteRead,
+  formCandidatePool,
+  poolFormationSummary,
+  poolRejectionSummary,
+  proposeCandidatePoolTool
+} from "./pool.js";
 import { transitionRun, type AgentRunStatus } from "./state.js";
-import { AGENT_TOOLS, executeToolCall } from "./tools.js";
+import { AGENT_TOOLS, executeToolCall, parseToolArguments } from "./tools.js";
 
 export const PLANNER_TURN_LIMIT = 3;
+
+export const PLANNER_TOOLS = [...AGENT_TOOLS, proposeCandidatePoolTool];
 
 export type ControllerStopReason = "llm_final" | "turn_limit" | "budget" | "outage" | "llm_error";
 
@@ -27,6 +40,11 @@ function buildSystemPrompt(maxTurns: number): string {
     "- A concept or tag is unresolved: resolve it first with qloo_resolve_tags.",
     "- A component must be replaced: search role-preserving candidates with qloo_replace or qloo_search.",
     "- Keep probes decision-critical; you have at most " + String(maxTurns) + " turns, so do not repeat a probe that already answered you.",
+    "",
+    "Candidate pool (part of your job):",
+    "- Before you stop, call propose_candidate_pool exactly once with the component structure the evidence supports.",
+    "- Each component needs a role (Anchor, Social, Discovery, Experience, Night, Community), tags you actually resolved or saw, 1-5 exemplars copied exactly (id and name) from entities you observed, a provenance path (anchorPlace, qlooSignal, resolvedCategory, exemplarSet, tasteNeighborhood) and an evidenceState (measured, not measured, incomplete, unavailable).",
+    "- The engine validates the draft; if it is rejected, read the error and correct the draft using the observed ids, names and tags — never invent substitutes.",
     "",
     "Hard rules:",
     "- Never invent entities, tags, numbers, percentages, or evidence. Numbers may only come from tool results.",
@@ -48,6 +66,11 @@ export interface ControllerOptions {
   maxTurns?: number;
 }
 
+export interface InvestigationOutputs {
+  siteRead?: SiteRead;
+  candidatePool?: CandidatePool;
+}
+
 export interface ControllerResult {
   run: RunState;
   evidence: EvidenceRecord[];
@@ -57,6 +80,7 @@ export interface ControllerResult {
   error?: Error;
   toolErrors: AgentToolError[];
   finalText: string | null;
+  outputs: InvestigationOutputs;
 }
 
 function stopStatus(reason: ControllerStopReason, observations: number): AgentRunStatus {
@@ -64,6 +88,17 @@ function stopStatus(reason: ControllerStopReason, observations: number): AgentRu
     return "complete";
   }
   return "partial";
+}
+
+function poolLedgerEvent(summary: string, resultCount: number): LedgerEvent {
+  return {
+    kind: "Compute",
+    label: POOL_EVENT_LABEL,
+    summary,
+    duration: 0,
+    cacheState: "n/a",
+    resultCount
+  };
 }
 
 export async function runController(options: ControllerOptions): Promise<ControllerResult> {
@@ -76,6 +111,8 @@ export async function runController(options: ControllerOptions): Promise<Control
   const maxTurns = Math.min(Math.max(1, options.maxTurns ?? PLANNER_TURN_LIMIT), PLANNER_TURN_LIMIT);
   const toolErrors: AgentToolError[] = [];
   const evidence: EvidenceRecord[] = [];
+  const observationIndex = createObservationIndex();
+  let candidatePool: CandidatePool | undefined;
   let observations = 0;
   let turns = 0;
 
@@ -90,7 +127,19 @@ export async function runController(options: ControllerOptions): Promise<Control
     }
   ];
 
-  const finish = (stopReason: ControllerStopReason, error?: Error, finalText: string | null = null): ControllerResult => ({
+  const outputs = (): InvestigationOutputs => {
+    const siteRead = deriveSiteRead(observationIndex);
+    return {
+      ...(siteRead !== undefined ? { siteRead } : {}),
+      ...(candidatePool !== undefined ? { candidatePool } : {})
+    };
+  };
+
+  const finish = (
+    stopReason: ControllerStopReason,
+    error?: Error,
+    finalText: string | null = null
+  ): ControllerResult => ({
     run: transitionRun(options.state, stopStatus(stopReason, observations), "investigation"),
     evidence,
     observations,
@@ -98,8 +147,65 @@ export async function runController(options: ControllerOptions): Promise<Control
     stopReason,
     ...(error !== undefined ? { error } : {}),
     toolErrors,
-    finalText
+    finalText,
+    outputs: outputs()
   });
+
+  const rejectPoolProposal = (call: { id: string; name: string }, error: AgentToolError): void => {
+    toolErrors.push(error);
+    options.ledger.append(poolLedgerEvent(poolRejectionSummary(error.message), 0));
+    messages.push({
+      role: "tool",
+      toolCallId: call.id,
+      name: call.name,
+      content: JSON.stringify({
+        error: {
+          code: "TOOL_REJECTED",
+          reason: error.reason,
+          message: error.message,
+          hint: "This proposal never became the run's candidate pool. Correct the draft with observed ids, names and tags, or leave the pool unformed."
+        }
+      })
+    });
+  };
+
+  const handlePoolProposal = (call: { id: string; name: string; arguments: string }): void => {
+    if (candidatePool !== undefined) {
+      rejectPoolProposal(
+        call,
+        new AgentToolError(
+          "invalid_arguments",
+          PROPOSE_CANDIDATE_POOL_TOOL,
+          "a candidate pool was already accepted for this run; a second proposal is refused"
+        )
+      );
+      return;
+    }
+    let pool: CandidatePool;
+    try {
+      pool = formCandidatePool({ draft: parseToolArguments(call), index: observationIndex });
+    } catch (error) {
+      if (error instanceof AgentToolError) {
+        rejectPoolProposal(call, error);
+        return;
+      }
+      throw error;
+    }
+    candidatePool = pool;
+    options.ledger.append(poolLedgerEvent(poolFormationSummary(pool), pool.length));
+    messages.push({
+      role: "tool",
+      toolCallId: call.id,
+      name: call.name,
+      content: JSON.stringify({
+        tool: call.name,
+        status: "ok",
+        accepted: true,
+        componentCount: pool.length,
+        note: "The engine validated the pool. Finish with a short plain-text summary and no tool calls."
+      })
+    });
+  };
 
   for (let turn = 1; turn <= maxTurns; turn += 1) {
     let result: LlmCompletionResult;
@@ -111,7 +217,7 @@ export async function runController(options: ControllerOptions): Promise<Control
         request: {
           label: `investigate:turn ${turn}/${maxTurns}`,
           messages,
-          tools: AGENT_TOOLS
+          tools: PLANNER_TOOLS
         }
       });
     } catch (error) {
@@ -146,6 +252,10 @@ export async function runController(options: ControllerOptions): Promise<Control
     });
 
     for (const call of result.toolCalls) {
+      if (call.name === PROPOSE_CANDIDATE_POOL_TOOL) {
+        handlePoolProposal(call);
+        continue;
+      }
       try {
         const outcome = await executeToolCall({
           gateway: options.gateway,
@@ -154,6 +264,7 @@ export async function runController(options: ControllerOptions): Promise<Control
           now
         });
         evidence.push(outcome.evidence);
+        observationIndex.record(outcome.envelope, outcome.evidence.id);
         observations += 1;
         messages.push({ role: "tool", toolCallId: call.id, name: call.name, content: outcome.observation });
       } catch (error) {

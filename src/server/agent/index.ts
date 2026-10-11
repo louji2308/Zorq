@@ -116,10 +116,29 @@ export type { LlmBudgetSnapshot, TokenUsage } from "./budget.js";
 export { MAX_PRIOR_ATTEMPTS, PRIOR_SYSTEM_PROMPT, generatePrior, persistPrior } from "./prior.js";
 export { createLedger } from "./ledger.js";
 export type { Ledger, LedgerEntry } from "./ledger.js";
-export { AGENT_TOOLS, executeToolCall, provenanceFromEnvelope } from "./tools.js";
+export { AGENT_TOOLS, executeToolCall, parseToolArguments, provenanceFromEnvelope } from "./tools.js";
 export type { ToolObservation } from "./tools.js";
-export { PLANNER_TURN_LIMIT, runController } from "./controller.js";
-export type { ControllerOptions, ControllerResult, ControllerStopReason } from "./controller.js";
+export {
+  PROPOSE_CANDIDATE_POOL_TOOL,
+  POOL_DRAFT_COMPONENT_CAP,
+  POOL_EVENT_LABEL,
+  SITE_READ_ANCHOR_CAP,
+  SITE_READ_HEAT_CAP,
+  createObservationIndex,
+  deriveSiteRead,
+  formCandidatePool,
+  poolFormationSummary,
+  poolRejectionSummary,
+  proposeCandidatePoolTool
+} from "./pool.js";
+export type { ObservationIndex, ObservedEntity } from "./pool.js";
+export { PLANNER_TOOLS, PLANNER_TURN_LIMIT, runController } from "./controller.js";
+export type {
+  ControllerOptions,
+  ControllerResult,
+  ControllerStopReason,
+  InvestigationOutputs
+} from "./controller.js";
 export { agentRunPhases, agentRunStatuses, createInitialRun, transitionRun } from "./state.js";
 export type { AgentRunPhase, AgentRunStatus } from "./state.js";
 export {
