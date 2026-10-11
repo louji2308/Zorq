@@ -1,0 +1,124 @@
+/*
+ * Zorq base styles — element defaults every route inherits. Depends on tokens.css
+ * (import order: tokens.css, then base.css, via styles/index.css).
+ * Locks: black ink on paper, left-aligned, no shadows, print-safe neutrals.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--zq-paper);
+  color: var(--zq-ink);
+  font-family: var(--zq-font-ui);
+  font-size: var(--zq-text-body);
+  font-weight: var(--zq-weight-body);
+  line-height: var(--zq-leading-body);
+  /* Final Design §5.1: left-aligned everywhere. No centred body text. */
+  text-align: left;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
+  font-family: var(--zq-font-ui);
+  font-weight: var(--zq-weight-strong);
+  line-height: var(--zq-leading-heading);
+}
+
+p,
+ul,
+ol,
+dl,
+figure,
+blockquote {
+  margin: 0;
+}
+
+ul,
+ol {
+  padding: 0;
+}
+
+a {
+  color: var(--zq-ink);
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+hr {
+  border: 0;
+  border-top: var(--zq-l1) solid var(--zq-ink-200);
+  margin: 0;
+}
+
+/* Focus (Final Design §10.1): double-ring read via ink outline + paper gap offset.
+   Visible on every interactive element; mouse focus stays quiet, keyboard focus rings. */
+:focus-visible {
+  outline: var(--zq-focus-ring-width) solid var(--zq-ink);
+  outline-offset: var(--zq-focus-ring-offset);
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Utility: lining, tabular numerals wherever numbers appear (Final Design §4.2). */
+.zq-nums {
+  font-variant-numeric: lining-nums tabular-nums;
+  font-feature-settings:
+    "lnum" 1,
+    "tnum" 1;
+}
+
+/* Reduced motion (Final Design §8): every motion token has a static equivalent. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Print (Final Design §3.1, §5.5): the product must photocopy cleanly.
+   Ink on paper, no reliance on fills that printers drop. */
+@media print {
+  body {
+    background: var(--zq-paper);
+    color: var(--zq-ink);
+  }
+
+  a {
+    text-decoration: none;
+  }
+}

@@ -1,0 +1,113 @@
+/*
+ * Zorq design tokens — the single source of the Final Design language for the web app.
+ * Spec: ProjectSpec/Final_design.md §3 (colour), §4 (typography), §5 (layout, lines,
+ * shapes), §8 (motion), §10 (accessibility).
+ *
+ * FONT HOOK (single documented place): the stacks below name Raleway (UI) and
+ * Bricolage Grotesque (display) first with system fallbacks. Self-hosted @font-face
+ * rules (or one <link> in index.html) belong here only — never scattered across
+ * components. If fonts stay unavailable, the fallback stacks keep the layout honest.
+ *
+ * Design locks encoded here: untinted black/white ramp, 0px radius except
+ * pills/circles, five drafting line weights, 8px base spacing unit, no shadows
+ * (elevation is expressed only by line weight and ink-50 fills).
+ */
+:root {
+  /* Colour ramp (Final Design §3.2) — untinted greys; every text level passes AA on paper. */
+  --zq-ink: #000000;
+  --zq-ink-800: #262626;
+  --zq-ink-600: #595959;
+  --zq-ink-500: #6b6b6b;
+  --zq-ink-450: #767676; /* lowest permitted text grey on paper; never on grey fills */
+  --zq-ink-350: #949494; /* UI boundaries only, never text */
+  --zq-ink-200: #d4d4d4; /* hairlines and gridlines; never meaning alone */
+  --zq-ink-100: #eeeeee; /* hover fill, selected-row fill */
+  --zq-ink-50: #f7f7f7; /* drawers, recessed regions */
+  --zq-paper: #ffffff;
+
+  /* Line weights (Final Design §5.2, drafting L1–L5). */
+  --zq-l1: 1px;
+  --zq-l2: 1.5px;
+  --zq-l3: 2px;
+  --zq-l4: 3px;
+  --zq-l5: 4px;
+
+  /* Unmeasured hatch fill (Final Design §5.3): 45°, 4px pitch, 1px stroke.
+     Never replaced with a guess. */
+  --zq-hatch-unmeasured: repeating-linear-gradient(
+    45deg,
+    transparent 0 3px,
+    var(--zq-ink) 3px 4px
+  );
+
+  /* Spacing scale (Final Design §5.1) — base unit 8px. */
+  --zq-space-4: 4px;
+  --zq-space-8: 8px;
+  --zq-space-12: 12px;
+  --zq-space-16: 16px;
+  --zq-space-24: 24px;
+  --zq-space-32: 32px;
+  --zq-space-48: 48px;
+  --zq-space-72: 72px;
+  --zq-space-120: 120px;
+
+  /* Typography (Final Design §4) — ratio 1.25, base 16px.
+     Raleway rules: never below 14px readable text; weight 500 below 16px,
+     400+ at 16px and up; Micro (13px/600) is badges and sheet references only.
+     Bricolage: display only, never below ~24px, weights 600–700. */
+  --zq-font-ui: "Raleway", "Avenir Next", "Segoe UI", "Helvetica Neue", Arial,
+    sans-serif;
+  --zq-font-display: "Bricolage Grotesque", "Arial Black", "Segoe UI", sans-serif;
+  --zq-font-mono: ui-monospace, "Cascadia Mono", Consolas, "DejaVu Sans Mono",
+    monospace;
+
+  --zq-text-display-xl: 76px;
+  --zq-text-display-l: 49px;
+  --zq-text-display-m: 31px;
+  --zq-text-heading: 25px;
+  --zq-text-subheading: 20px;
+  --zq-text-body: 16px;
+  --zq-text-small: 14px;
+  --zq-text-micro: 13px;
+  --zq-text-mono: 14px;
+
+  --zq-weight-regular: 400;
+  --zq-weight-body: 500;
+  --zq-weight-strong: 600;
+  --zq-weight-display: 700;
+
+  --zq-leading-body: 1.55;
+  --zq-leading-heading: 1.25;
+  --zq-tracking-display: -0.02em; /* wordmark (Final Design §5.7) */
+
+  /* Shape language (Final Design §5.4): radius follows role — sheets/cards/buttons
+     are 0px; only pills and circles are round. */
+  --zq-radius-sheet: 0px;
+  --zq-radius-pill: 9999px;
+
+  /* Focus (Final Design §10.1): 2px ink ring with a 2px paper gap (via offset).
+     Never remove the ring. */
+  --zq-focus-ring-width: var(--zq-l3);
+  --zq-focus-ring-offset: var(--zq-space-4);
+
+  /* Motion (Final Design §8) — motion answers an action or marks one real event.
+     Every duration has a static equivalent under prefers-reduced-motion (base.css). */
+  --zq-motion-ledger: 120ms;
+  --zq-motion-tab: 150ms;
+  --zq-motion-drawer: 200ms;
+  --zq-motion-dial: 250ms;
+  --zq-motion-flyto: 400ms;
+  --zq-motion-pulse: 600ms;
+  --zq-ease-out: ease-out;
+
+  /* The product is paper-and-ink; keep browser chrome light and printable. */
+  color-scheme: light;
+}
+
+/* Mobile type floor (Final Design §4.4): only the two display steps drop. */
+@media (max-width: 767px) {
+  :root {
+    --zq-text-display-xl: 40px;
+    --zq-text-display-l: 31px;
+  }
+}
