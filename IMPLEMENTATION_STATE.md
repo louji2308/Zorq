@@ -844,6 +844,8 @@ response data in a public repository — only aggregate statistics appear above)
 | D-5.3 | **SSE first frame is always the full authoritative `state`; ledger frames are additive, not load-bearing.** On connect (with or without `Last-Event-ID`) the server sends the current RunState; subsequent `event.*` frames append to it. A non-contiguous `Last-Event-ID` gap falls back to state-only rather than attempting partial replay. | DB is recovery truth; SSE is progressive visibility (ARCH §2). A client that misses frames can always resynchronize from state; a client that trusts partial ledger replay could render a corrupted view. State-first also makes the "refreshed" clause trivially true. | No (invariant — D-5.3 is a recovery-safety invariant). |
 | D-5.4 | **`RunState` expanded additively; nine Phase 6–7 fields are `z.unknown()` placeholders.** `evidence` is a typed array; the remaining future fields (`priorDiff`, `challenge`, `blueprint`, …) are optional unknown keys that survive parse/rehydrate without schema churn. | Zod v4 strips unknown keys on parse; fields must be declared to survive round-trips. Freezing their shape now would over-constrain Phase 6–7 before their product contracts exist; leaving them `unknown()` preserves forward-compatibility without fabrication. | Yes — Phase 6–7 replaces each placeholder with a real schema when its product contract exists. |
 | D-5.5 | **Four real Phase 5 routes; remaining seven stay honest 503.** Only `POST /api/runs`, `GET /api/runs/:id` (with evidence), `POST /api/runs/:id/stop`, and `GET /api/runs/:id/events` (SSE) are wired to the orchestrator; the other seven Phase 3 routes continue returning `NOT_YET_WIRED` 503. | Plan §Phase 5 names exactly these four; wiring the rest before their owning phases exist would create dead code and fake-looking surfaces. Honest 503 is the established contract from Phases 3–4 and is a judge-visible signal of deliberate sequencing. | Yes — wire the remaining seven as their owning phases land. |
+| D-6.1 | **Add `zustand@5` + `maplibre-gl@6` (user-approved 2026-10-09).** State and map renderer per Tools §2 lock ("Zustand", "MapLibre GL JS + MapTiler Free"). MapTiler integration via public tile/style URLs keyed with `VITE_MAPTILER_KEY` (client-visible by design); no `@maptiler/*` SDK needed — MapLibre consumes MapTiler endpoints directly. | Locked-stack choices, not new inventions (Tools §2); user approval obtained in-session. Avoiding the MapTiler SDK keeps the dependency surface minimal (AGENTS §3). | No (stack-locked). |
+| D-6.2 | **Vite glue: `envDir` set to repo root + dev proxy for `/api` and `/healthz` → `:3000`.** `root` is `./src/web`, and Vite's `envDir` defaults to `root`, so repo-root `.env` (where `VITE_MAPTILER_KEY` lives) would otherwise be invisible; dev server now proxies API/SSE to Express. | Minimal integration glue (AGENTS §4.1 allows orchestrator-owned glue). Production path unaffected — Express serves the built SPA same-origin; proxy only serves `npm run dev:web`. | Yes. |
 
 ## Deviations from contract
 
@@ -872,7 +874,7 @@ response data in a public repository — only aggregate statistics appear above)
 | B-03 | ~~Docker not installed~~ | **Closed by D-0.6** (accepted risk). | Local container tests skipped; Dockerfile validated on Render. | — |
 | B-04 | ~~No public GitHub repo~~ | **Closed by D-0.9**: https://github.com/louji2308/zorq is PUBLIC, pushed, MIT detected, About set. | R2/R5 satisfied. | — |
 | B-05 | ~~Cache/storage + key-lifetime terms unconfirmed~~ | **Closed 2026-10-06 from the official developer guide**: private server-side caching allowed with no time limit; never store Qloo output publicly; keys valid through end of judging. | `PERSIST_QLOO_DERIVED` remains `false` until Phase 5 gives storage a private owner. | — |
-| B-06 | Medium | MapTiler key, Turso database not provisioned. | Map/geocoding (S0/S1) and durable Run state. **Non-blocking for Phase 5** — in-memory adapter is the default; Turso adapter is env-gated and activates when credentials appear. MapTiler becomes a hard requirement at Phase 6 (S0/S1 screens). | User |
+| B-06 | **PARTIALLY CLEARED 2026-10-09** | **MapTiler key DELIVERED** (`VITE_MAPTILER_KEY` set in gitignored `.env`, build verified). Turso database still not provisioned. | Map/geocoding (S0/S1) unblocked — public Vite client key, safe in bundle by design. Turso still optional — in-memory adapter is default. | MapTiler: **closed**. Turso: User |
 | B-07 | Medium | Deadline Oct 30 2026 23:45 EDT; internal freeze Oct 28. **21 days from today.** | Schedule pressure; see `HACKATHON_TRACKER.md`. Phase 5 closed on time with buffer remaining. | Orchestrator |
 | B-08 | Medium | Qloo `qloo mcp` needs Node 22.19+ and a long-lived backend; serverless unsupported. | Constrains hosting to Render Free (locked). | Locked, no action |
 
@@ -888,17 +890,18 @@ skips**, build, **3 e2e**. Push target: **https://github.com/louji2308/zorq**
 
 ## Next Highest-Value Action
 
-**Open Phase 6 — S0 Brief + S1 Investigate Screens (Plan line 607)** via the full
-AGENTS §5/§26 phase-start protocol: inspect git + structure + this file, re-read
-ALL 7 ProjectSpec sources in full at the boundary, write the Phase 6 contract (AGENTS §7)
-before any delegation, then delegate per worker contracts (§8). Phase 5 deliverables
-(`src/server/persistence/` + `src/server/orchestrator/` + `src/server/sse/` + the four
-real Phase 5 routes) are the durable runtime Phase 6 will drive; do not re-implement
-them. Protect: AGENTS §13 evidence/provenance boundaries; SSE is progressive visibility
-only (DB is recovery truth); the four real routes must keep working under the new
-screens. User-side (non-blocking): DeepSeek balance (enables `LIVE_DEEPSEEK=1`),
-MapTiler key (S0/S1 map), Turso (optional — memory adapter is the default until
-provisioned), Devpost registration. Deadline context: Oct 30 2026, internal freeze Oct 28.
+**Delegate W-6.1** (Phase 6 worker 1: web foundation — design tokens/CSS system, typed
+API client over the four real routes, Zustand run-state projection, EventSource SSE
+client with Last-Event-ID + reconcile-on-gap). Phase 6 contract is committed (`367b4f7`);
+setup glue landed same session (D-6.1 deps `zustand`+`maplibre-gl`, D-6.2 `envDir` +
+dev proxy, MapTiler key in gitignored `.env`, B-06 MapTiler closed). Worker sequence:
+W-6.1 foundation → W-6.2 S0 Brief (map + presets + POST /api/runs) → W-6.3 S1 Prior
+reveal + Ledger + DNA → W-6.4 judge-path/degraded e2e + exit-gate proof. Sequential in
+one checkout (D-2.1); workers never commit; orchestrator reviews (§17) and commits.
+Protect: AGENTS §13 evidence/provenance; SSE progressive visibility (DB is recovery
+truth); Phase 5 server modules are consume-only; four real routes must keep working.
+User-side: DeepSeek balance later (enables `LIVE_DEEPSEEK=1`), Turso optional, Devpost
+registration. Deadline: Oct 30 2026, internal freeze Oct 28.
 
 ## Phase 5 Exit-Gate Status (PASSED 2026-10-09)
 
