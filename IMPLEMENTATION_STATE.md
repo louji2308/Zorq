@@ -9,7 +9,7 @@
 
 **PHASE 7 — S2/S3: Compositions, Field, Graph & Evidence**. Status: **OPEN 2026-10-11 —
 contract written before delegation (`ee3bddd`); W-7.1 reviewed & committed (`99b53bd`);
-next: W-7.2 measurement wiring.**
+W-7.2 measurement chain reviewed & committed (`7180387`); next: W-7.3 S2 web.**
 Phase 6 remains OPEN with all build work committed (`579b23e`…`64bba88`); its exit gate
 waits only on the B-02 DeepSeek live click-through (user-side payment). User directed
 2026-10-11 to start Phase 7 while that box waits — recorded under Deviations. Boundary
@@ -684,14 +684,20 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 
 ## Active Work
 
-- **PHASE 7 OPEN 2026-10-11 (contract `ee3bddd`) — W-7.1 DONE, committed `99b53bd`.**
-  Typed `siteRead`/`culturalDna`/`candidatePool` landed in `shared/run.ts`; the agent now
-  forms an engine-validated, observation-grounded candidate pool inside the ≤3-turn budget;
-  the orchestrator persists anchors/heat/pool with a `investigate:capture` ledger event.
-  Verified: 516 pass / 6 skips, e2e 4/4 on fresh dist, secret scan 0 hits. Next: **W-7.2
-  measurement wiring** (neighborhoods → graph → compositions → CulturalDNA → typed
-  persistence) — the phase bottleneck. Limitations recorded in the W-7.1 row (anchor
-  selection deterministic-interim; stop/cap paths drop outputs until resume).
+- **PHASE 7 OPEN 2026-10-11 (contract `ee3bddd`) — W-7.1 DONE (`99b53bd`); W-7.2 DONE,
+  committed `7180387`.**
+  The engine now has a production caller: `runMeasurement` in `src/server/orchestrator/measure.ts`
+  runs the full deterministic chain (site/city taste neighborhoods → IDF → culture graph →
+  exact composition family → percentiles / distinctiveness / rival sweep → Prior marker →
+  finalist triangulation → evidence grades → typed `neighborhoods`/`graph`/`compositions`/
+  `culturalDna` persistence) with per-call evidence records, Compute/Qloo ledger events,
+  budget-reserve (54) and consecutive-failure (2) stops, and degraded→partial forcing in
+  `drivePass`. Orchestrator correctives: DNA share-of-total mapping (D-7.4), `CultureGraph`
+  typing (cast removed). Verified: 539 pass / 6 skips, e2e 4/4 fresh dist, secret scan 0
+  hits. Next: **W-7.3 S2 web** (workspace shell, Field histogram, Prior/A/B/C cards,
+  dial re-rank, re-ink motion). Constraints for later workers: never feed `state.graph`
+  back into engine constructors (engine `graphEdgeSchema` is strict; `sharedEntities` is a
+  RunGraph-only extension); route-2 triangulation is single-query (D-7.5).
 - **PHASE 5 CLOSED 2026-10-09 — exit gate PASSED** (HEAD `7f11d7f`, tree clean,
   386 pass / 5 gated-live skips, e2e 3/3). See "Phase 5 Exit-Gate Status" below for
   the clause-by-clause proof map. Landed: W-5.1 persistence (`d912ebb`), W-5.2
@@ -773,6 +779,7 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 | W-6.3 | S1 Investigate screen (Frozen Prior card, live Agent Ledger, Cultural DNA strip, site map) | EDIT: `src/web/routes/RunRoute.tsx`, `src/web/lib/map.ts`; NEW: `src/web/screens/s1/` (PriorCard, LedgerPanel, DnaStrip, InvestigateMap, s1Model, stopAction, s1.css) + `tests/web/s1{Dna,Ledger,Prior,Stop,Stream}`; orchestrator: `e2e/smoke.spec.ts` RUN_NOT_FOUND assertions | **DONE 2026-10-09 — reviewed (§17), independently re-verified, committed `b71dd00` (screen) + `7dfb688` (e2e).** typecheck 0, lint 0; **498 pass / 5 gated-live skips** (+43); build PASS; e2e 3/3; §17 live-browser review caught 4 defects (string `symbol-sort-key`, MapTiler `" "` Town-labels image warning, Prior card covering the DNA strip, status pill stuck on "Opening…") → orchestrator corrective patches → final render verified with **zero console messages**. First spawn failed at provider after partial disk work → continuation worker completed on the same tree. |
 | W-6.4 | Judge-path/degraded e2e + exit-gate clause map (**orchestrator-executed** — `e2e/**` and `playwright.config.ts` are orchestrator-owned by contract) | EDIT: `e2e/smoke.spec.ts` (console-clean gate + typed run-creation contract), `IMPLEMENTATION_STATE.md` (clause map); audits: bundle secret scan, reduced-motion, geocode-fallback, degraded S1 states | **DONE 2026-10-09 — committed `91c6788` (e2e).** typecheck 0, lint 0; **498 pass / 5 gated-live skips**; build PASS; **e2e 4/4** (healthz, console-clean S0 landing, typed `POST /api/runs` 201-or-DEPENDENCY_UNAVAILABLE, RUN_NOT_FOUND recovery). `dist/web` secret scan **0 hits** (Qloo/DeepSeek/Turso values + env names). Clause map below; gate stays OPEN on the B-02 live click-through only. |
 | W-7.1 | Investigation-output capture + typed run-state schemas | EDIT: `src/shared/run.ts` (typed `siteRead`/`culturalDna`/`candidatePool` replacing `z.unknown()`), `src/server/agent/{controller,tools,index}.ts`, `src/server/orchestrator/orchestrator.ts`; NEW: `src/server/agent/pool.ts`, `tests/agent/pool.test.ts`, `tests/orchestrator/capture.test.ts` | **DONE 2026-10-11 — reviewed (§17), independently re-verified, committed `99b53bd`** (contract `ee3bddd`). Mechanism: new `propose_candidate_pool` LLM tool (agent proposes inside the locked ≤3 turns) → engine `validatePool` → grounding checks against an observation index (every exemplar id+name and every tag must appear in a real tool result; rejection returns an honest tool error, never repaired). Orchestrator persists `siteRead` (lettered anchors A–E + heat from observed located entities/heatmap cells with evidenceIds) + validated pool via a `investigate:capture` Compute ledger event; `culturalDna` typed but only ever set by W-7.2. Shared↔engine shape conformance proven by tests (role/evidence-state vocabularies byte-equal; cross-parse equal). **Orchestrator corrective:** pool cap 24 → **10** (spec K ≈ 8–10, ProductSpec §12 / Final Design 45-edge math / engine 10k enumeration cap) + description nudge + boundary tests (10 accept / 11 reject). Gates independently re-run: typecheck 0, lint 0, **516 pass / 6 skips** (clean rerun; one transient vitest worker crash on `persistence/contract.test.ts` reproduced zero times — passes in isolation 28/28), build PASS, **e2e 4/4** against fresh dist, `dist/web` secret scan 0 hits. Known limitations: anchor selection is deterministic first-5-located-observed (spec assigns anchor selection to the agent — revisit when unpin/replace anchor identity lands); outputs not applied on stop/wall-clock-cap return paths (honest absence; resume re-derives). |
+| W-7.2 | Deterministic measurement chain (neighborhoods → graph → compositions → CulturalDNA → triangulation → grades → typed persistence) | EDIT: `src/shared/run.ts` (+193 — typed `neighborhoods`/`graph`/`compositions` replacing `z.unknown()`, `runSharedEntitySchema`), `src/server/orchestrator/{index,orchestrator}.ts`, `src/server/engine/index.ts` (append-only barrel +5), `tests/api/runs.test.ts` (+25); NEW: `src/server/orchestrator/measure.ts` (827 lines), `src/server/engine/edgeEntities.ts`, `tests/orchestrator/measure.test.ts` (18), `tests/engine/edgeEntities.test.ts` (5) | **DONE 2026-10-12 — reviewed (§17), independently re-verified, committed `7180387`** (contract `ee3bddd`). Mechanism: `runMeasurement` iterates the validated pool × artist/movie/brand × site/city scopes — site via locality-ladder `signalLocation` (brief.location then last-two-segment broader form), city **unlocalized** (D-7.3) — take-30 `insights` per call, one evidence record per call with `ledgerEventId`; engine `buildNeighborhoods` → `computeIdf` → `buildGraph` (+ per-edge `sharedEntitiesForEdge`, cap 8, Evidence-drawer input) → `buildCompositions` (requiredRoles `["Anchor"]` when present, size `min(5, poolSize)`, D-7.6) → `rankCompositionSet` + `rivalSweep` → top-3 finalists → route-2 probe per unique pair (≤24, radius 400→5000m ladder, D-7.5) → `classifyTriangulation` → `gradeEvidence`; Prior marker resolves members against the pool by id/exemplar-name/tag (role-constrained) or honestly reports `not measured`; ledger Qloo `measure.neighborhood_fetch`/`resolve_tag`/`triangulate_probe` + Compute `measure.neighborhoods`/`graph`/`compositions`/`triangulate`/`dna` + boundary `measure.compose`; budget stop at reserve 54 (~30%), consecutive-failure stop at 2, degraded→partial in `drivePass`. **Orchestrator correctives:** DNA per-side-max → share-of-total (D-7.4, regression guard `local < 100`); `graph as never` removed (`resolvePriorMarker` typed `CultureGraph`). Gates independently re-run: typecheck 0, lint 0, **539 pass / 6 skips** (+23), build PASS, **e2e 4/4** fresh dist (production server restarted), `dist/web` secret scan **0 hits**. Known limitations: route-2 is a single signal-E_j place query (spec's dual-query anchor comparison deferred, D-7.5); **`state.graph` must never be fed back into engine constructors** (engine `graphEdgeSchema` is strict, `sharedEntities` is RunGraph-only — W-7.4/W-7.5 must rebuild from neighborhoods or strip the field); wall-clock 120s may truncate very slow Qloo rounds → honest partial, never fabricated compositions. |
 
 **Orchestrator integration review (AGENTS §17):** both diffs inspected; W-1.1 touched only `ARCHITECTURE.md`;
 W-1.2 touched only temp-dir files (repo `git status` shows no spike artifacts); key never echoed; worker claims
@@ -793,6 +800,30 @@ returned the pre-persist Prior object (unfrozen, separate object from the persis
 (`62f29af`).
 
 ## Verified Tests / Evidence
+
+### Phase 7 — W-7.2 deterministic measurement chain (2026-10-12, commit `7180387`)
+
+- **Independent orchestrator re-run (post-correction):** typecheck 0 (both tsconfigs),
+  lint 0, Vitest **539 pass / 6 skips** (6 = 5 gated-live + 1 degradedBoot port-3000 skip;
+  +23 vs W-7.1's 516), build PASS (server + web), **e2e 4/4** against a restarted
+  production server on the fresh dist, `dist/web` secret scan **0 hits / 5 files**.
+- **New coverage:** `tests/orchestrator/measure.test.ts` (18 — locality-ladder forms,
+  empty/missing-pool no-op, full-chain happy path with evidence↔ledger linkage +
+  `runStateSchema` round-trip, byte-identical determinism across runs, budget-reserve
+  stop with zero fetches, empty-family honest reason, `shouldStop` between fetches,
+  two-consecutive-failure stop, A/B/C grade honesty, never-confirmed-without-route-2,
+  grade-B-when-triangulation-fails, Prior marker measured / not-measured, unlocalized
+  city baseline (site calls carry `signalLocation`, city never does), failed calls emit
+  ledger events without evidence, DNA share bounds + top-local `< 100` guard, Qloo-vs-
+  Compute event-kind split), `tests/engine/edgeEntities.test.ts` (5 — dot-contribution
+  ordering, cap honored, cross-domain intersection, deterministic tie-breaks);
+  `tests/api/runs.test.ts` (+2 — JSON round-trip + strict assertions for the three new
+  nodes incl. optional `sharedEntities`).
+- **§17 review findings corrected pre-commit:** (1) DNA mapping per-side-max →
+  share-of-total per side (D-7.4) — Architecture §10 / ProductSpec line 40 define DNA
+  as over-index *versus the city*; (2) `graph as never` cast removed — `resolvePriorMarker`
+  now typed to engine `CultureGraph`; (3) `sharedEntities` re-ingestion constraint
+  recorded for W-7.4/W-7.5 (engine `graphEdgeSchema` is strict).
 
 ### Phase 7 — W-7.1 typed investigation outputs (2026-10-11, commit `99b53bd`)
 
@@ -1047,6 +1078,10 @@ response data in a public repository — only aggregate statistics appear above)
 | D-6.3 | **Widen helmet CSP for the MapTiler/MapLibre browser surface:** `connect-src`/`img-src`/`font-src` += `https://api.maptiler.com`; `worker-src`/`child-src` += `blob:`; every other directive stays on helmet defaults. | Default helmet policy has no `connect-src`, so `default-src 'self'` blocks MapLibre's **module-worker** tile fetches: main-thread style/sprite/tiles.json load, but every vector tile fails pre-network with `AJAXError(0)` (proven live — a control `fetch` of the identical URL inside the same worker returned 200 only under the patched policy). MapTiler is the locked tile provider (Tools §2) and the key is public-by-design (D-6.1). **Operational trap recorded:** hashed assets are served `Cache-Control: immutable` for 1 year (`staticWeb.ts`), so this header change stayed invisible in browsers until the cached worker response was purged — the stale cache masked the fix during diagnosis. | No — smallest safe deviation from helmet defaults; required by the locked stack. |
 | D-7.1 | **Candidate pool draft cap = 10 components** (`POOL_DRAFT_COMPONENT_CAP`, orchestrator corrective during W-7.1 review); min stays 1 (honest thin-evidence pools allowed); tool description states the K≈8–10 design target. | Worker shipped 24; spec locks **K ≈ 8–10** (ProductSpec §12, Architecture line 145, Plan line 481, Tools line 178) and Final Design's 45-edge math assumes ≤10; engine exact-enumeration safety cap (10,000) breaks at C(16,8). The enforcement point is the tool schema the LLM sees. Lower bound kept at 1 rather than 8 so thin evidence can never force fabrication (AGENTS §13). | No (spec-locked ceiling). |
 | D-7.2 | **Interim `siteRead.anchors` derivation:** first 5 located observed entities in observation order (letters A–E, each carrying its `evidenceId`); heat = observed projected heatmap cells (cap 200). Agent-chosen anchor *selection* deferred to the unpin/replace anchor-identity work (routes 3.6/3.7). | ProductSpec line 291 assigns anchor selection to the agent, but no anchor-selection tool or pin identity exists yet; the deterministic capture is real observed data with provenance (never synthetic) and unblocks S1 rendering + W-7.2 provenance. Revisit when routes 3.6/3.7 define anchor identity. | Yes — revisit with unpin/replace. |
+| D-7.3 | **City baseline for neighborhoods/distinctiveness = unlocalized Qloo audience** (city-scope fetches send no `signalLocation`); site scope uses the locality ladder (`brief.location`, then last-two-segment broader form). Ledger copy names the baseline explicitly ("city baseline (unlocalized Qloo audience)"). | Qloo exposes no dedicated city-audience signal; W-7.2's live-shape research showed district-level `signalLocation` strings systematically return empty artist/brand results while broad strings work — but a broad-string city baseline degenerates to site==city whenever `brief.location` is already broad (distinctiveness → 0 everywhere, silently). Unlocalized is always defined and always contrasts. The spec's "city audience" (ProductSpec §12 d(k)) is proxied by the unlocalized/global audience — honest approximation, recorded not hidden. | Yes — revisit if Qloo ships a city-scoped audience signal. |
+| D-7.4 | **Cultural DNA values = share-of-total per side × 100** (orchestrator corrective during W-7.2 review): each side's aggregated domain weights normalized by that side's total mass; `local > city` means the entity's *share* of local taste exceeds its share of city taste — true over-index. Regression guard: top local entity must be `< 100` in a multi-entity domain. | Worker shipped per-side-max scaling (`weight / maxSide * 100`); Architecture §10 + ProductSpec line 40 define DNA as what *over-indexes locally versus the city*; max-scaling makes a near-equal entity look locally dominant whenever the two sides' maxima belong to different entities. Share-normalization keeps 0..100 bounds (S1 `parseCulturalDna` accepts), preserves sort order, keeps determinism (pure arithmetic). Ledger copy updated to name the share semantics. | No (corrective restoring spec-faithful mapping). |
+| D-7.5 | **Route-2 triangulation = single `insights` place query** (signal = type-component exemplars, `filterTags` = resolved partner-component tag, `location` = site point with radius ladder default `brief.radius`/400m → ≤5000m, take 10); agreement = focal exemplars in the top half. The spec's second query under the locality-anchor signal is deferred. | ProductSpec §12 line 315 is ambiguous about which ranking "top half" names; the single-query form matches the literal "k-places sit in the top half" clause, feeds the engine's unchanged `{resultCount, focalInTopHalf}` input contract (D-4.9), and avoids doubling probes (24 pairs × 2 = 48 calls would blow the 54-call measurement reserve). Honest limitation recorded rather than silently claiming dual-query parity. | Yes — revisit dual-query route if budget headroom or judge feedback warrants. |
+| D-7.6 | **Composition family `requiredRoles = ["Anchor"]`** when the pool contains an Anchor component, else `[]`; `size = min(5, poolSize)`. | The spec locks size-5 worked examples and role coverage as a hard filter but never enumerates a mandatory role *set* for compositions (Final Design shows role mix, not all-six-mandatory); requiring all six roles would empty most honest 8–10-component pools. Anchor-only is the minimal defensible reading: every composition must include the site's anchor. Engine contract unchanged (`requiredRoles` is an input, D-4.5). | Yes — revisit if a role-coverage contract is specified later. |
 
 ## Deviations from contract
 
@@ -1086,31 +1121,38 @@ response data in a public repository — only aggregate statistics appear above)
 
 ## Last Verified Commit
 
-`99b53bd` — *feat: persist typed site read and an engine-validated candidate pool.*
-Preceded by `ee3bddd` (Phase 7 contract), `64bba88` (Phase 6 clause map), `91c6788`
-(W-6.4 e2e). Suite **516 pass / 6 skips** (5 gated-live + 1 degradedBoot port skip);
-gates green on current head: typecheck, lint, unit, build, **e2e 4/4** (fresh dist,
-production server restarted), `dist/web` secret scan 0 hits. Earlier Phase 6 commits:
-`c130166`/`1727c15` (state docs), `7f5380c` (W-6.2b S0), `e85fdde` (D-6.3 CSP),
-`b71dd00`/`7dfb688` (W-6.3 S1), `0c8d357` (deps glue), `367b4f7` (Phase 6 contract),
-`3b21c8d` (state docs). Push target: **https://github.com/louji2308/zorq**
+`7180387` — *feat: implement deterministic measurement chain with neighborhoods, graph, compositions, and evidence.*
+Preceded by `3bf30f5` (W-7.1 state docs), `99b53bd` (W-7.1 capture+schemas), `ee3bddd`
+(Phase 7 contract), `64bba88` (Phase 6 clause map). Suite **539 pass / 6 skips**
+(5 gated-live + 1 degradedBoot port skip); gates green on current head: typecheck, lint,
+unit, build, **e2e 4/4** (fresh dist, production server restarted), `dist/web` secret
+scan 0 hits. Push target: **https://github.com/louji2308/zorq**
 (`main`, PUBLIC, MIT; push only on explicit user request).
 
 ## Next Highest-Value Action
 
-**Dispatch W-7.2** (server: the real measurement pass) against the Phase 7 contract above.
-Inputs ready from W-7.1: `run.candidatePool` (engine-validated, `tags`+`exemplars`+
-`provenancePath` per component) and `run.siteRead` (lettered anchors with `evidenceId`s;
-heat cells); schemas for `neighborhoods`/`graph`/`compositions` still `z.unknown()` and
-belong to this worker. The bottleneck: gateway taste neighborhoods (local + city) →
-`buildNeighborhoods` → `computeIdf` → `buildGraph` → `buildCompositions` → percentiles /
-distinctiveness / ranking / triangulation / grades → typed persistence + Compute ledger
-events + CulturalDNA (S1 DnaStrip shape) + additive shared-entities-per-edge helper for
-W-7.4's edge inspection; Qloo budget ≤180/run. Then W-7.3 (S2 web) → W-7.4 (S3 +
-Evidence drawer) → W-7.5 (Replace); orchestrator runs clause map + fixture-browser
-review toward the exit gate. Parallel user-side: **top up DeepSeek (B-02 — HTTP 402)**
-→ one real browser judge pass closes Phase 6's two open boxes. Sequential in one
-checkout (D-2.1); workers never commit; orchestrator reviews (§17) and commits.
+**Dispatch W-7.3** (web: the S2 Compositions workspace) against the Phase 7 contract above.
+Inputs ready from W-7.1/W-7.2: `run.candidatePool` (tags/exemplars/provenance), `run.siteRead`
+(lettered anchors + heat), `run.neighborhoods` (site + city per-component domains, states),
+`run.graph` (nodes/edges/bands + optional per-edge `sharedEntities` — display-only,
+**never** re-fed into engine constructors), `run.compositions` (family counts/reason,
+ranked members with coherence/percentile/distinctivenessMean/weakestLink/rankScore/
+grade+reasons, triangulation per pair, rivalFlips, prior marker), `run.culturalDna`
+(share-based local-vs-city entities, S1 DnaStrip shape). S2 scope per Plan line 729 +
+Final Design §S2: workspace shell (map persist + Field + cards), Field histogram of the
+valid-family coherence distribution, Prior/A/B/C cards with the three readings
+(percentile sentence, "k of n over-index locally", weakest-link pair), dial re-rank
+(monotonicity per ARCH §13 — ranking must be a pure projection of the stored
+`rankScore`/weights, never recomputed ad hoc), re-ink motion (members morph between
+cards honoring `prefers-reduced-motion`), honest empty/partial states from
+`family.reason` / `not measured` markers. Constraints: Zustand projection-only, S1
+reader precedents in `src/web/screens/s1/s1Model.ts`, design locks (no box-shadow/
+border-radius/linear-gradient in the s1/s2 language; no color-only meaning), no new
+npm deps, `src/web/**` + `tests/web/**` only. Then W-7.4 (S3 + Evidence drawer) →
+W-7.5 (Replace); orchestrator runs clause map + fixture-browser review toward the
+exit gate. Parallel user-side: **top up DeepSeek (B-02 — HTTP 402)** → one real
+browser judge pass closes Phase 6's two open boxes. Sequential in one checkout
+(D-2.1); workers never commit; orchestrator reviews (§17) and commits.
 Deadline: Oct 30 2026, internal freeze Oct 28.
 
 ## Phase 6 Exit-Gate Status (OPEN 2026-10-09 — every clause proven except the B-02 live click-through)
