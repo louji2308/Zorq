@@ -44,10 +44,15 @@ test("unknown client route /run/does-not-exist still serves the SPA (SPA fallbac
   expect(response?.status()).toBe(200);
 
   await expect(page.getByRole("heading", { level: 1, name: "Zorq" })).toBeVisible();
-  await expect(page.getByText("Run id: does-not-exist")).toBeVisible();
+  await expect(
+    page.getByText("This investigation no longer exists on the server. Start again from the home page.")
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Start a new investigation" })).toBeVisible();
 
   const rendered = await page.locator("body").innerText();
   expect(rendered).not.toContain("Phase 6 will build this screen");
+  expect(rendered).not.toContain("Run id:");
+  expect(rendered).not.toContain("undefined");
   expect(rendered).not.toContain("Cannot GET");
   expect(rendered).not.toMatch(/\bError:/);
 });
