@@ -1,0 +1,609 @@
+/*
+ * S1 Investigate screen (Final Design §7.1). Tokens only — every colour,
+ * line weight, radius and duration comes from tokens.css. Locks: 0px radius
+ * on sheets/cards/buttons, no shadows, no gradients, left-aligned, 44px+
+ * targets, monochrome with shape+words (never colour) carrying state.
+ * Dimensions: map ~56% width, ledger fixed 480 px, DNA strip 220 px and
+ * collapsible.
+ */
+
+.s1 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 480px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "top top"
+    "map ledger"
+    "dna dna";
+  height: 100vh;
+  background: var(--zq-paper);
+}
+
+/* ---- Top region: optional banners + top bar + site line ---- */
+
+.s1-top {
+  grid-area: top;
+  display: flex;
+  flex-direction: column;
+}
+
+.s1-topbar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--zq-space-16);
+  padding: var(--zq-space-16) var(--zq-space-24);
+  border-bottom: var(--zq-l1) solid var(--zq-ink-200);
+}
+
+.s1-wordmark {
+  font-family: var(--zq-font-display);
+  font-size: var(--zq-text-heading);
+  font-weight: var(--zq-weight-display);
+  letter-spacing: var(--zq-tracking-display);
+  line-height: 1;
+}
+
+.s1-wordmark a {
+  text-decoration: none;
+}
+
+.s1-site-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--zq-space-4) var(--zq-space-16);
+  min-width: 0;
+  font-size: var(--zq-text-small);
+  color: var(--zq-ink-600);
+}
+
+.s1-site-location {
+  font-weight: var(--zq-weight-strong);
+  color: var(--zq-ink);
+  overflow-wrap: anywhere;
+}
+
+/* ---- Map (left, ~56%) ---- */
+
+.s1-map {
+  grid-area: map;
+  position: relative;
+  min-height: 0;
+  border-right: var(--zq-l1) solid var(--zq-ink-200);
+  background: var(--zq-ink-50);
+}
+
+.s1-map-panel {
+  position: absolute;
+  inset: 0;
+}
+
+.s1-map-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.s1-map-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--zq-space-16);
+  padding: var(--zq-space-48);
+  background: var(--zq-paper);
+}
+
+.s1-map-veil p {
+  max-width: 34ch;
+  font-size: var(--zq-text-small);
+  color: var(--zq-ink-600);
+}
+
+/* Map chrome status sits bottom-right: the Prior card owns the top-left
+ * corner and the north-arrow/scale-bar chrome owns the bottom-left. */
+.s1-map-loading {
+  position: absolute;
+  right: var(--zq-space-16);
+  bottom: var(--zq-space-16);
+  z-index: 3;
+  padding: var(--zq-space-4) var(--zq-space-12);
+  background: var(--zq-paper);
+  border: var(--zq-l2) solid var(--zq-ink-350);
+  font-size: var(--zq-text-micro);
+  font-weight: 600;
+  color: var(--zq-ink-600);
+}
+
+/* Honest placeholder in the Prior card's own slot (same position, so the
+ * frozen card replaces it one-for-one when the server Prior arrives). */
+.s1-prior-wait {
+  position: absolute;
+  left: var(--zq-space-16);
+  top: var(--zq-space-16);
+  z-index: 2;
+  max-width: 320px;
+  padding: var(--zq-space-8) var(--zq-space-12);
+  background: var(--zq-paper);
+  border: var(--zq-l2) dashed var(--zq-ink-350);
+  font-size: var(--zq-text-micro);
+  font-weight: 600;
+  color: var(--zq-ink-600);
+}
+
+/* ---- Prior card (floating top-left of the map) ---- */
+
+.s1-prior {
+  position: absolute;
+  left: var(--zq-space-16);
+  top: var(--zq-space-16);
+  z-index: 2;
+  width: 320px;
+  max-width: calc(100% - var(--zq-space-32));
+  max-height: calc(100% - var(--zq-space-32));
+  overflow-y: auto;
+  background: var(--zq-paper);
+  border: var(--zq-l2) dashed var(--zq-ink);
+}
+
+.s1-prior-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--zq-space-8);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--zq-space-8) var(--zq-space-12);
+  text-align: left;
+  font-size: var(--zq-text-small);
+  font-weight: var(--zq-weight-strong);
+  color: var(--zq-ink);
+  background: var(--zq-paper);
+  border: 0;
+}
+
+.s1-prior-tab-hint {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--zq-ink-600);
+}
+
+.s1-prior-lock {
+  flex: 0 0 auto;
+}
+
+.s1-prior-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--zq-space-8);
+  padding: 0 var(--zq-space-12) var(--zq-space-12);
+  border-top: var(--zq-l1) solid var(--zq-ink-200);
+}
+
+.s1-prior-locktime {
+  padding-top: var(--zq-space-8);
+  font-size: var(--zq-text-micro);
+  font-weight: 600;
+  color: var(--zq-ink-600);
+}
+
+.s1-prior-components {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--zq-space-4);
+}
+
+.s1-prior-components li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.s1-prior-component-label {
+  font-size: var(--zq-text-small);
+  font-weight: var(--zq-weight-strong);
+}
+
+.s1-prior-component-detail {
+  font-size: var(--zq-text-micro);
+  color: var(--zq-ink-600);
+}
+
+.s1-prior-note {
+  font-size: var(--zq-text-small);
+  color: var(--zq-ink-600);
+}
+
+.s1-prior-footer {
+  padding-top: var(--zq-space-4);
+  border-top: var(--zq-l1) solid var(--zq-ink-200);
+  font-size: var(--zq-text-micro);
+  font-weight: var(--zq-weight-strong);
+  color: var(--zq-ink);
+}
+
+/* ---- Ledger (right, fixed 480 px) ---- */
+
+.s1-ledger {
+  grid-area: ledger;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.s1-ledger-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--zq-space-16);
+  padding: var(--zq-space-16) var(--zq-space-24);
+  border-bottom: var(--zq-l1) solid var(--zq-ink-200);
+}
+
+.s1-ledger-title {
+  font-size: var(--zq-text-subheading);
+  font-weight: var(--zq-weight-strong);
+}
+
+.s1-tertiary {
+  min-height: 44px;
+  padding: var(--zq-space-8) 0;
+  font-size: var(--zq-text-small);
+  font-weight: 600;
+  color: var(--zq-ink);
+  background: transparent;
+  border: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.s1-tertiary:disabled {
+  color: var(--zq-ink-450);
+  cursor: progress;
+  text-decoration: none;
+}
+
+.s1-ledger-scroll {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--zq-space-8) var(--zq-space-24) var(--zq-space-24);
+}
+
+.s1-ledger-empty {
+  padding: var(--zq-space-16) 0;
+  font-size: var(--zq-text-small);
+  color: var(--zq-ink-600);
+}
+
+.s1-ledger-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- Ledger rows (40 px; state circle, label, kind badge, duration) ---- */
+
+.s1-row {
+  border-bottom: var(--zq-l1) solid var(--zq-ink-100);
+}
+
+.s1-row.is-flagged {
+  border-left: var(--zq-l2) dashed var(--zq-ink);
+  padding-left: var(--zq-space-8);
+}
+
+.s1-row-button {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--zq-space-12);
+  width: 100%;
+  min-height: 40px;
+  padding: var(--zq-space-8) 0;
+  text-align: left;
+  font: inherit;
+  color: var(--zq-ink);
+  background: transparent;
+  border: 0;
+}
+
+.s1-row-button:hover {
+  background: var(--zq-ink-50);
+}
+
+.s1-row-circle {
+  flex: 0 0 auto;
+  fill: var(--zq-ink);
+  stroke: var(--zq-ink);
+}
+
+.s1-row-circle.is-dashed {
+  fill: var(--zq-paper);
+}
+
+.s1-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.s1-row-label {
+  font-size: var(--zq-text-small);
+  font-weight: var(--zq-weight-body);
+  overflow-wrap: anywhere;
+}
+
+.s1-row-note {
+  font-size: var(--zq-text-micro);
+  color: var(--zq-ink-600);
+}
+
+/* Kind badge: square-cornered label (S0 chips are square too — radius 0).
+ * The word itself carries the meaning; the badge is structure, not signal. */
+.s1-row-kind {
+  padding: 2px var(--zq-space-8);
+  font-size: var(--zq-text-micro);
+  font-weight: 600;
+  color: var(--zq-ink);
+  border: var(--zq-l1) solid var(--zq-ink-350);
+  white-space: nowrap;
+}
+
+.s1-row-duration {
+  font-size: var(--zq-text-micro);
+  font-weight: 600;
+  color: var(--zq-ink-600);
+  white-space: nowrap;
+}
+
+.s1-row-expansion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--zq-space-8);
+  margin: 0 0 var(--zq-space-12) 28px;
+  padding: var(--zq-space-12);
+  background: var(--zq-ink-50);
+  border: var(--zq-l1) solid var(--zq-ink-200);
+}
+
+.s1-row-expansion div {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: var(--zq-space-8);
+}
+
+.s1-row-expansion dt {
+  font-size: var(--zq-text-micro);
+  font-weight: 600;
+  color: var(--zq-ink-600);
+}
+
+.s1-row-expansion dd {
+  margin: 0;
+  font-size: var(--zq-text-micro);
+  overflow-wrap: anywhere;
+}
+
+.s1-mono {
+  font-family: var(--zq-font-mono);
+}
+
+.s1-jump {
+  position: sticky;
+  bottom: var(--zq-space-8);
+  left: 0;
+  display: block;
+  margin-top: var(--zq-space-8);
+  padding: var(--zq-space-4) var(--zq-space-8);
+  background: var(--zq-paper);
+  border: var(--zq-l2) solid var(--zq-ink);
+  text-decoration: none;
+}
+
+.s1-ledger-docked {
+  padding: var(--zq-space-16) var(--zq-space-24);
+  border-top: var(--zq-l1) solid var(--zq-ink-200);
+}
+
+.s1-primary {
+  display: block;
+  width: 100%;
+  min-height: 56px;
+  font-size: var(--zq-text-body);
+  font-weight: var(--zq-weight-strong);
+  color: var(--zq-paper);
+  background: var(--zq-ink);
+  border: 0;
+}
+
+.s1-primary:disabled {
+  background: var(--zq-ink-450);
+  cursor: not-allowed;
+}
+
+.s1-secondary {
+  min-height: 44px;
+  padding: 0 var(--zq-space-16);
+  font-size: var(--zq-text-small);
+  font-weight: 600;
+  color: var(--zq-ink);
+  background: var(--zq-paper);
+  border: var(--zq-l2) solid var(--zq-ink);
+}
+
+/* ---- Banners (load failure / stream error / reconnect notice) ---- */
+
+.s1-banner {
+  padding: var(--zq-space-8) var(--zq-space-24);
+  font-size: var(--zq-text-small);
+  font-weight: var(--zq-weight-strong);
+  color: var(--zq-ink);
+  background: var(--zq-ink-50);
+  border-bottom: var(--zq-l1) solid var(--zq-ink-350);
+}
+
+/* ---- Loading / fatal states ---- */
+
+.s1-loading {
+  grid-area: map;
+  display: flex;
+  flex-direction: column;
+  gap: var(--zq-space-8);
+  justify-content: center;
+  padding: var(--zq-space-48);
+}
+
+.s1-loading p,
+.s1-fatal p {
+  max-width: 46ch;
+  font-size: var(--zq-text-small);
+  color: var(--zq-ink-600);
+}
+
+.s1-fatal {
+  grid-area: map;
+  display: flex;
+  flex-direction: column;
+  gap: var(--zq-space-16);
+  justify-content: center;
+  padding: var(--zq-space-48);
+}
+
+.s1-fatal a {
+  align-self: flex-start;
+  font-size: var(--zq-text-small);
+  font-weight: 600;
+}
+
+/* ---- Cultural DNA strip (220 px, collapsible) ---- */
+
+.s1-dna {
+  grid-area: dna;
+  display: flex;
+  flex-direction: column;
+  height: 220px;
+  border-top: var(--zq-l1) solid var(--zq-ink-200);
+}
+
+.s1-dna.is-collapsed {
+  height: auto;
+}
+
+.s1-dna-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--zq-space-16);
+  padding: var(--zq-space-8) var(--zq-space-24);
+  border-bottom: var(--zq-l1) solid var(--zq-ink-100);
+}
+
+.s1-dna-title {
+  font-size: var(--zq-text-small);
+  font-weight: var(--zq-weight-strong);
+}
+
+.s1-dna-legend {
+  font-size: var(--zq-text-micro);
+  color: var(--zq-ink-600);
+}
+
+.s1-dna-header .s1-tertiary {
+  margin-left: auto;
+}
+
+.s1-dna-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--zq-space-12) var(--zq-space-24);
+}
+
+.s1-dna-empty {
+  font-size: var(--zq-text-small);
+  color: var(--zq-ink-600);
+}
+
+.s1-dna-groups {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--zq-space-24);
+}
+
+.s1-dna-domain {
+  margin-bottom: var(--zq-space-8);
+  font-size: var(--zq-text-micro);
+  font-weight: 600;
+  color: var(--zq-ink-600);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.s1-dna-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--zq-space-4);
+}
+
+.s1-dna-entity {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--zq-space-8);
+  font-size: var(--zq-text-micro);
+}
+
+.s1-dna-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.s1-dna-nums {
+  color: var(--zq-ink-600);
+  white-space: nowrap;
+}
+
+.s1-dumbbell {
+  color: var(--zq-ink);
+}
+
+/* ---- Narrow layouts stack (Final Design §10.2: simplify, never half-render) ---- */
+
+@media (max-width: 1199px) {
+  .s1 {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 40vh auto auto;
+    grid-template-areas:
+      "top"
+      "map"
+      "ledger"
+      "dna";
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .s1-map {
+    border-right: 0;
+    border-bottom: var(--zq-l1) solid var(--zq-ink-200);
+  }
+
+  .s1-ledger {
+    min-height: 320px;
+  }
+
+  .s1-ledger-scroll {
+    max-height: 50vh;
+  }
+
+  .s1-dna-groups {
+    grid-template-columns: 1fr;
+  }
+}

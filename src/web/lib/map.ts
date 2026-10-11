@@ -1,11 +1,13 @@
 /*
  * MapLibre + MapTiler helper shared by S0 (this screen) and later screens.
  *
- * Surface (documented handoff for W-6.3):
+ * Surface (documented handoff for W-6.3; S1 additions are additive):
  *   createS0Map(container, { apiKey, onSitePick?, onReady?, onFailure? }) -> handle
  *   handle.setPresets(sites)          small site markers (no ring)
  *   handle.focusSite(site | null)     fly/jump the camera + draw the radius ring
  *   handle.setCrosshair(active)       geocode-failure point-pick mode
+ *   handle.setAnchors(anchors)        lettered square pins (S1; empty = clear)
+ *   handle.setHeat(points)            halftone heat dots (S1; empty = clear)
  *   handle.resize() / handle.destroy()
  *
  * Conventions (Final Design §7.1 map details, shared by S0):
@@ -46,6 +48,20 @@ export interface MapSite {
   readonly radiusM?: number;
 }
 
+/** S1 anchor pin: a small solid square lettered A–E (Final Design §7.1). */
+export interface MapAnchor {
+  readonly lat: number;
+  readonly lon: number;
+  readonly letter: string;
+}
+
+/** S1 heat point: halftone dot; weight 0..1 encodes affinity in four size steps. */
+export interface MapHeatPoint {
+  readonly lat: number;
+  readonly lon: number;
+  readonly weight: number;
+}
+
 export type MapFailureReason = "no-style" | "timeout";
 
 export interface S0MapOptions {
@@ -61,6 +77,10 @@ export interface S0MapHandle {
   /** Fly to a site and draw its radius ring; null clears ring + active marker. */
   focusSite(site: MapSite | null, animate?: boolean): void;
   setCrosshair(active: boolean): void;
+  /** S1: lettered anchor squares; empty array clears. Safe no-op until load. */
+  setAnchors(anchors: readonly MapAnchor[]): void;
+  /** S1: halftone heat dots (weight 0..1, four size steps); empty clears. */
+  setHeat(points: readonly MapHeatPoint[]): void;
   resize(): void;
   destroy(): void;
 }
@@ -79,10 +99,19 @@ const WORLD_PIXELS_Z0 = 512;
 const SITES_SOURCE = "zq-sites";
 const RING_SOURCE = "zq-ring";
 const CROSS_SOURCE = "zq-cross";
+const ANCHOR_SOURCE = "zq-anchors";
+const HEAT_SOURCE = "zq-heat";
 const RING_LAYER = "zq-site-ring";
 const CROSS_LAYER = "zq-site-cross";
 const PRESET_DOT_LAYER = "zq-site-dot-preset";
 const ACTIVE_DOT_LAYER = "zq-site-dot-active";
+const ANCHOR_LAYER = "zq-anchor-pins";
+const HEAT_LAYER = "zq-heat-dots";
+/** Anchor icons are drawn once per letter; the design only uses A–E. */
+const ANCHOR_ICON_LETTERS = ["A", "B", "C", "D", "E"];
+/** Final Design §7.1: dot diameter encodes affinity in four steps. */
+const HEAT_RADIUS_STEPS = [2.5, 4, 5.5, 7];
+const BLANK_STYLE_IMAGE = " ";
 
 export function mapTilerStyleUrl(apiKey: string): string {
   return `${STYLE_URL}?key=${encodeURIComponent(apiKey)}`;
@@ -124,6 +153,38 @@ function emptyPoints(): FeatureCollection<Point> {
 
 function emptyLines(): FeatureCollection<LineString> {
   return { type: "FeatureCollection", features: [] };
+}
+
+/** Small solid square with a letter (Final Design §7.1 anchor pins), drawn
+ *  once per letter from design tokens — no image assets, no colour literals.
+ *  Returns ImageData because MapLibre's addImage types (StyleImageSource)
+ *  exclude HTMLCanvasElement; null when a 2d context is unavailable. */
+function anchorIconImageData(letter: string, ink: string, paper: string): ImageData | null {
+  const size = 28;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext("2d");
+  if (context === null) {
+    return null;
+  }
+  const square = 22;
+  const offset = (size - square) / 2;
+  context.fillStyle = ink;
+  context.fillRect(offset, offset, square, square);
+  context.fillStyle = paper;
+  context.font = "600 14px sans-serif";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(letter, size / 2, size / 2 + 1);
+  return context.getImageData(0, 0, size, size);
+}
+
+/** Four-step halftone radius from a 0..1 affinity weight. */
+function heatRadiusStep(weight: number): number {
+  const clamped = Math.min(Math.max(weight, 0), 1);
+  const index = Math.min(Math.floor(clamped * HEAT_RADIUS_STEPS.length), HEAT_RADIUS_STEPS.length - 1);
+  return HEAT_RADIUS_STEPS[index] ?? HEAT_RADIUS_STEPS[0];
 }
 
 interface ChromeHandle {
@@ -217,6 +278,9 @@ export function createS0Map(container: HTMLElement, options: S0MapOptions): S0Ma
   let active: MapSite | null = null;
   let crosshair = false;
   let presetBoundsFitted = false;
+  let anchors: readonly MapAnchor[] = [];
+  let heat: readonly MapHeatPoint[] = [];
+  const anchorIcons = new Set<string>();
 
   const map = new MapLibreMap({
     container,
@@ -232,6 +296,12 @@ export function createS0Map(container: HTMLElement, options: S0MapOptions): S0Ma
   });
   (window as unknown as Record<string, unknown>).__zqMap = map;
   (window as unknown as Record<string, unknown>).__zqDbg = {};
+
+  map.setMissingStyleImageResolver((id) => {
+    if (id === BLANK_STYLE_IMAGE && !map.hasImage(id)) {
+      map.addImage(id, new ImageData(1, 1));
+    }
+  });
 
   const chrome = createMapChrome(container, map);
 
@@ -352,6 +422,50 @@ export function createS0Map(container: HTMLElement, options: S0MapOptions): S0Ma
     });
   }
 
+  function ensureAnchorIcon(letter: string, ink: string, paper: string): void {
+    const id = `zq-anchor-${letter}`;
+    if (anchorIcons.has(id) || map.hasImage(id)) {
+      return;
+    }
+    const image = anchorIconImageData(letter, ink, paper);
+    if (image === null) {
+      return;
+    }
+    map.addImage(id, image, { pixelRatio: 2 });
+    anchorIcons.add(id);
+  }
+
+  function applyAnchors(): void {
+    if (!layersReady) return;
+    for (const anchor of anchors) {
+      ensureAnchorIcon(anchor.letter.toUpperCase(), ink, paper);
+    }
+    setData(ANCHOR_SOURCE, {
+      type: "FeatureCollection",
+      features: anchors.map((anchor) => ({
+        type: "Feature" as const,
+        geometry: { type: "Point" as const, coordinates: [anchor.lon, anchor.lat] as [number, number] },
+        properties: {
+          letter: anchor.letter.toUpperCase(),
+          icon: `zq-anchor-${anchor.letter.toUpperCase()}`,
+          order: anchor.letter.toUpperCase().charCodeAt(0)
+        }
+      }))
+    });
+  }
+
+  function applyHeat(): void {
+    if (!layersReady) return;
+    setData(HEAT_SOURCE, {
+      type: "FeatureCollection",
+      features: heat.map((point) => ({
+        type: "Feature" as const,
+        geometry: { type: "Point" as const, coordinates: [point.lon, point.lat] as [number, number] },
+        properties: { r: heatRadiusStep(point.weight) }
+      }))
+    });
+  }
+
   function installLayers(): void {
     if (map.getSource(SITES_SOURCE) !== undefined) return;
 
@@ -399,6 +513,31 @@ export function createS0Map(container: HTMLElement, options: S0MapOptions): S0Ma
         "circle-stroke-width": 2.5
       }
     });
+    map.addSource(ANCHOR_SOURCE, { type: "geojson", data: emptyPoints() });
+    map.addSource(HEAT_SOURCE, { type: "geojson", data: emptyPoints() });
+    for (const letter of ANCHOR_ICON_LETTERS) {
+      ensureAnchorIcon(letter, ink, paper);
+    }
+    map.addLayer({
+      id: HEAT_LAYER,
+      type: "circle",
+      source: HEAT_SOURCE,
+      paint: {
+        "circle-radius": ["get", "r"],
+        "circle-color": ink,
+        "circle-opacity": 0.5
+      }
+    });
+    map.addLayer({
+      id: ANCHOR_LAYER,
+      type: "symbol",
+      source: ANCHOR_SOURCE,
+      layout: {
+        "icon-image": ["get", "icon"],
+        "icon-size": 1,
+        "symbol-sort-key": ["get", "order"]
+      }
+    });
   }
 
   function fitPresetBounds(): void {
@@ -433,6 +572,8 @@ export function createS0Map(container: HTMLElement, options: S0MapOptions): S0Ma
     installLayers();
     applyPresets();
     applyActive();
+    applyAnchors();
+    applyHeat();
     chrome.update();
     fitPresetBounds();
     options.onReady?.();
@@ -493,6 +634,16 @@ export function createS0Map(container: HTMLElement, options: S0MapOptions): S0Ma
     setCrosshair(active: boolean): void {
       crosshair = active;
       container.style.cursor = active ? "crosshair" : "";
+    },
+
+    setAnchors(next: readonly MapAnchor[]): void {
+      anchors = [...next];
+      applyAnchors();
+    },
+
+    setHeat(next: readonly MapHeatPoint[]): void {
+      heat = [...next];
+      applyHeat();
     },
 
     resize(): void {
