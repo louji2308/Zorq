@@ -7,23 +7,169 @@
 
 ## Current Phase
 
-**PHASE 6 — Frontend S0/S1: Brief, Prior & Investigation**. Status: **OPEN 2026-10-09 — W-6.1…W-6.4 built, reviewed and committed (`579b23e`, `7f5380c`, `e85fdde`, `b71dd00`, `7dfb688`, `91c6788`); clause map written; gate waits only on the B-02 DeepSeek live click-through.**
-Phase 5 closed 2026-10-09 with exit gate PASSED (HEAD `e8a83a6` / `7f11d7f`, tree clean,
-386 pass / 5 gated-live skips, e2e 3/3). Boundary refresh completed 2026-10-09 (all 7
-ProjectSpec sources + AGENTS + this file re-read). Phase 6 contract written below before
-any delegation.
+**PHASE 7 — S2/S3: Compositions, Field, Graph & Evidence**. Status: **OPEN 2026-10-11 —
+contract written below before any delegation; no worker dispatched yet.**
+Phase 6 remains OPEN with all build work committed (`579b23e`…`64bba88`); its exit gate
+waits only on the B-02 DeepSeek live click-through (user-side payment). User directed
+2026-10-11 to start Phase 7 while that box waits — recorded under Deviations. Boundary
+refresh completed 2026-10-11 (all 7 ProjectSpec sources + AGENTS.md + this file re-read;
+engine/orchestrator/shared/routes current-state model established — see contract).
 
 ## Current Objective
 
-Execute Phase 6 through its exit gate: "A judge can land, choose a preset, see the Prior,
-watch real investigation, and understand what Qloo is doing without reading the source
-code." (Plan line 653 / ARCHITECTURE §6.) Sequential workers W-6.1 → W-6.n; orchestrator
-reviews and commits each verified increment (AGENTS §17). MapTiler key delivered
-(`VITE_MAPTILER_KEY` in gitignored `.env`; B-06 MapTiler closed) and real vector tiles
-now render in-browser after the D-6.3 CSP fix — map/geocoding verification against real
-tiles is unblocked.
+Execute Phase 7 through its exit gate: "A judge can answer *why do these components
+belong together?* by inspecting an edge rather than trusting an unsupported narrative."
+(Plan line 724 / ARCHITECTURE §6 line 368.) Highest-value bottleneck: the Phase 4 engine
+has no production caller — the orchestrator's measurement pass is a placeholder and
+RunState's S2/S3 nodes are still `z.unknown()`. Wire measurement first (W-7.1 → W-7.2),
+then surface it (W-7.3 → W-7.5). Sequential workers in one checkout (D-2.1); orchestrator
+reviews (§17) and commits each verified increment.
 
-### PHASE 6 CONTRACT (written 2026-10-09, before delegation)
+### PHASE 7 CONTRACT (written 2026-10-11, before delegation)
+
+```text
+PHASE:        7 — S2/S3: Compositions, Field, Graph & Evidence
+MISSION:      Make the cultural composition engine technically inspectable and
+              visually memorable. (Plan §Phase 7, verbatim.)
+WHY:          Phases 4–5 built and persisted the measurement kernel, but no production
+              code path ever calls it: the orchestrator's "measurement" pass is a
+              placeholder ledger event, RunState's S2/S3 nodes are z.unknown()
+              placeholders, and RunRoute honestly withholds "See compositions".
+              Without server-side measurement wiring plus S2/S3, the judge can never
+              answer the exit-gate question from an edge — the deterministic core
+              stays invisible and the story collapses back into prose.
+CURRENT-STATE ASSUMPTIONS:
+              Phases 0–5 closed; Phase 6 OPEN only on the B-02 live click-through
+              (user-directed 2026-10-11: Phase 7 starts while that box waits).
+              src/server/engine/ is complete and test-proven (neighborhoods, idf,
+              graph, compositions, ranking, distinctiveness, triangulation, grades)
+              but imported ONLY by its own tests — no production caller exists.
+              Orchestrator pass "measurement" emits a placeholder ledger event and
+              fabricates no numbers. src/server/agent/controller.ts runs ≤3 LLM
+              turns, forms no candidate pool, captures no siteRead. src/shared/run.ts
+              still carries z.unknown() for siteRead, culturalDna, candidatePool,
+              neighborhoods, graph, compositions, stressReport, constraintFit,
+              revisions (D-5.4). shared/routes.ts already declares typed
+              replace/challenge/recompute/blueprint request+response schemas; the
+              replace route returns honest 503 "lands in Phase 7". SSE frame kinds
+              (state/ledger/phase/evidence/dna/compositions/stress/blueprint) exist;
+              state frames are authoritative (D-5.3). Gateway has proven search,
+              resolveTags, insights, describe, bridge, replace, triangulate.
+              graphSchema edges carry {a,b,value,band,state} only — no shared-entity
+              list. Prior.composition is a loose role-grouped record already parsed
+              by buildPriorModel. S1's parseCulturalDna expects per-domain
+              {name,local,city} arrays; hasCompositions keys the "See compositions"
+              button; anchorsFromRun/heatFromRun read run.siteRead defensively.
+              Baseline: 498 pass / 5 gated-live skips, e2e 4/4, HEAD 64bba88 clean.
+IN-SCOPE:     SERVER (orchestrator/agent wiring + shared schema upgrades):
+              - W-7.1: typed shared/run.ts schemas for siteRead, culturalDna,
+                candidatePool (shapes matched to the existing S1 readers); capture
+                of selected anchors/heat into siteRead during investigation;
+                candidate pool formation (agent proposes structure, engine
+                validatePool validates, exemplars from real search results) with
+                provenance paths (anchor → entity → category) — mechanism chosen
+                inside the contract, respecting the locked ≤3-turn budget.
+              - W-7.2: real measurement pass — taste neighborhoods (local + city via
+                gateway insights) → buildNeighborhoods → computeIdf → buildGraph →
+                buildCompositions → measureComposition/percentile/rank →
+                computeDistinctiveness → triangulation for finalist edges → grades;
+                persist typed neighborhoods/graph/compositions (+revisions typed as
+                needed); CulturalDNA from the same local-vs-city data in the
+                S1 DnaStrip shape; ledger Compute events; honest partial states;
+                additive deterministic shared-entities-per-edge helper for edge
+                inspection; budget ≤180 Qloo calls/run.
+              - W-7.3: web workspace shell (investigate | compositions | graph views
+                unlocking as phases complete) + S2 Field histogram + Prior/A/B/C
+                cards (role structure, coherence percentile, distinctiveness,
+                weakest link, evidence grade; NEVER a 0–100 ecosystem score) + dial
+                re-rank from cached deterministic metrics + re-ink motion
+                (dashed Prior → re-ink → additions draw → removals strike) with
+                reduced-motion static fallback + "Only N valid combinations" honest
+                error state.
+              - W-7.4: S3 Map of meaning (deterministic stable layout from
+                1−edge strength) + distance chart + edge/cell inspection → Evidence
+                drawer (claim → provenance badge → entities → measurement route →
+                computation summary → ledger links) + sorted edge-list fallback for
+                narrow viewports/hairballs + weakest-link break mark (single pulse).
+              - W-7.5: POST /api/runs/:id/replace wired per the existing shared
+                schema (role preservation, custom candidate ≤4 Qloo calls, engine
+                delta coherence/distinctiveness/weakestLink, revision rows,
+                mini-stress slot) + Replace panel (alternatives, diverging effect
+                previews, free-text candidate) + revision history UI.
+              - e2e specs for the compositions/graph/replace judge flow; clause map
+                + fixture-browser review (orchestrator-owned).
+INVARIANTS:   AGENTS §13 — numeric truth ONLY from the engine; the agent names and
+              explains compositions but authors no numbers; every S2/S3 claim traces
+              claim → evidence ID → ledger event → measurement inputs → Qloo result
+              path; unknown evidence IDs never render as confirmed; uncertainty
+              states (measured/confirmed/contested/thin/not measured/incomplete/
+              unavailable) render honestly, never averaged away; graph/percentile/
+              ranking/distinctiveness/weakest-link remain deterministic from
+              identical normalized inputs; Prior immutable before evidence; Qloo
+              ≤180 calls/run (≈200 hard), concurrency ≤8/default 6, planner turns
+              ≤3, mutation rounds ≤2, LLM ≤$2/run; no fabricated Qloo data or canned
+              compositions; fixtures only in tests/tmp, never src/**; design
+              language (black ink, L1–L5, shapes over colour, no gradients/neon/
+              box-shadow, reduced-motion honoured, visible focus, no console.* in
+              shipped code); ProjectSpec/ read-only; no new runtime deps without
+              orchestrator approval; SSE progressive visibility (state-first,
+              D-5.3); shared/run.ts changes stay additive so D-5.4 round-trips hold.
+DEPENDENCIES: Phase 4 engine (landed), Phase 5 orchestrator/persistence/SSE
+              (landed), Phase 6 S1 run route (landed), gateway replace/triangulate
+              (proven), shared replace schema (landed). B-02 still blocks real-LLM
+              runs → verify with scripted-LLM + fake-gateway harnesses + fixture
+              browser passes; live pass deferred (same posture as Phase 6).
+NON-GOALS:    Challenge/recompute/blueprint routes and stress view (Phase 8);
+              /method page; unpin-anchor UX; constraintFit/PriorDiff/Blueprint
+              typing; auth, payments, deployment changes, rate-limit tuning, vector
+              DB, multi-agent runtime; new SSE event kinds; new npm dependencies;
+              closing Phase 6's B-02 box (user-side).
+RISK HOTSPOTS:server persisting anything the engine did not compute; dial re-rank
+              drifting from the deterministic formula; Prior percentile asked of a
+              graph its loose members cannot resolve (must fall back to "not
+              measured", never a guessed number); shared-entity helper duplicating
+              engine logic in the web layer; layout jitter across SSE frames;
+              Replace blowing the Qloo budget or silently changing roles;
+              z.unknown()→typed migration breaking S1 readers or D-5.4 round-trip;
+              measurement fetches duplicated between workers; single-worker size
+              creep → continuation workers per the D-2.1 stall rule.
+ACCEPTANCE:   After a run reaches measurement: GET /api/runs/:id returns typed
+              siteRead/culturalDna/candidatePool/neighborhoods/graph/compositions;
+              S1's "See compositions" appears only then; S2 shows Prior vs A/B/C with
+              role structure, coherence percentile, distinctiveness, weakest link
+              and evidence grade over a Field histogram, with dial re-ranking and
+              re-ink motion (static under reduced motion); S3 draws components as
+              nodes and shared culture as edges, and clicking an edge opens the
+              Evidence drawer answering "why do these belong together" with two
+              components, shared entities, measurement route, triangulation status
+              and ledger links; narrow viewport shows the sorted edge-list
+              fallback; Replace computes alternatives with coherence/
+              distinctiveness/weakest-link effects, bounded calls and revision
+              history; honest partial/empty states throughout; full suite green;
+              bundle secret scan clean.
+VERIFY:       §17 review of every worker diff; independent re-run of typecheck,
+              lint, unit, build, e2e; server integration test over real HTTP with
+              fake LLM + fake gateway proving the edge-inspection chain
+              end-to-end; deterministic replay (same fixture inputs → identical
+              graph/percentiles); fixture-browser pass of S2/S3/Evidence drawer
+              (extended tmp fixture, deleted before commit); when B-02 clears, one
+              real browser judge pass; grep dist/web for key prefixes.
+EXIT GATE:    A judge can answer "why do these components belong together?" by
+              inspecting an edge rather than trusting an unsupported narrative.
+              (Plan line 724 / ARCHITECTURE §6 line 368, verbatim.)
+COMMIT EXPECT:5 coherent commits (Plan lines 727–731, verbatim):
+              feat: build composition comparison and percentile Field.
+              feat: add semantic composition graph with evidence inspection.
+              feat: implement role-preserving replacement and revisions.
+              feat: add evidence drawer with ledger-linked provenance.
+              test: verify composition ranking, graph evidence and replacement flows.
+DECOMPOSITION:sequential in one checkout (D-2.1); workers never commit:
+              W-7.1 server capture+schemas → W-7.2 server measurement → W-7.3 web
+              S2 → W-7.4 web S3+Evidence → W-7.5 Replace server+web. Orchestrator
+              owns integration, e2e, clause map and commits (§17).
+```
+
+### PHASE 6 CONTRACT (written 2026-10-09, before delegation; build complete, gate open on B-02)
 
 ```text
 PHASE:        6 — Frontend S0/S1: Brief, Prior & Investigation
@@ -887,6 +1033,11 @@ response data in a public repository — only aggregate statistics appear above)
 - **Phase 9 open item recorded, not fixed (scope boundary):** runtime derives listen port from
   `APP_BASE_URL` and does not yet honor platform-injected `PORT` (Render). Documented in
   `deployment/render.yaml` + Dockerfile comments; `src/**` was outside W-2.3's scope.
+- **Phase 7 opened 2026-10-11 while Phase 6's exit gate still waits on the B-02 live
+  click-through** (explicit user direction). Normally a phase closes before the next opens;
+  the only missing Phase 6 evidence needs a user-side payment, so idling would waste the
+  working window. Phase 6 stays OPEN with its clause map intact — its two boxes tick only
+  after the real DeepSeek pass.
 
 ## Known Risks / Blockers
 
@@ -915,19 +1066,17 @@ against real Qloo); `dist/web` secret scan 0 hits. Earlier Phase 6 commits: `c13
 
 ## Next Highest-Value Action
 
-**Close Phase 6's last two gate boxes via the B-02 live pass.** All Phase 6 build work
-is committed and verified (`579b23e`, `7f5380c`, `e85fdde`, `b71dd00`, `7dfb688`,
-`3b21c8d`, `91c6788`): S0 + S1 screens land, real vector tiles render, S1 shows zero
-console messages, e2e 4/4 (incl. typed run-creation contract), live Qloo 4/4, bundle
-secret scan clean, clause map written. **User-side action required: top up DeepSeek
-(B-02 — HTTP 402, "balance is insufficient").** Then: one real browser judge pass
-(preset → 201 → frozen Prior → live investigation → DNA), re-run the full suite, mark
-the two open clause-map boxes `[x]`, close Phase 6, open Phase 7 (S2 Blueprint).
-Sequential in one checkout (D-2.1); workers never commit; orchestrator reviews (§17) and
-commits. Protect: AGENTS §13 evidence/provenance; SSE progressive visibility (DB is
-recovery truth); Phase 5 server modules are consume-only; four real routes must keep
-working. User-side: DeepSeek balance (enables the live pass + `LIVE_DEEPSEEK=1`),
-Turso optional, Devpost registration. Deadline: Oct 30 2026, internal freeze Oct 28.
+**Dispatch W-7.1** (server: typed `siteRead`/`culturalDna`/`candidatePool` schemas in
+`src/shared/run.ts` matched to the S1 readers + investigation-output capture + candidate
+pool formation via engine `validatePool`) against the Phase 7 contract above; §17-review
+the diff, re-run gates, commit. Then W-7.2 (measurement wiring — the bottleneck), W-7.3
+(S2 web), W-7.4 (S3 + Evidence drawer), W-7.5 (Replace); orchestrator then runs the
+clause map + fixture-browser review toward the exit gate. Parallel user-side: **top up
+DeepSeek (B-02 — HTTP 402 "balance is insufficient")** → one real browser judge pass
+closes Phase 6's two open boxes. Protect: engine-only numeric truth; evidence chain
+claim→id→ledger→inputs→Qloo path; Prior immutable; Qloo ≤180/run; state-first SSE;
+design language; existing four real routes keep working. Sequential in one checkout
+(D-2.1); workers never commit. Deadline: Oct 30 2026, internal freeze Oct 28.
 
 ## Phase 6 Exit-Gate Status (OPEN 2026-10-09 — every clause proven except the B-02 live click-through)
 
