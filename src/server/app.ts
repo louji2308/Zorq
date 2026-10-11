@@ -35,7 +35,20 @@ export function createApp(logger?: ReturnType<typeof createLogger>, options?: Cr
   app.locals.logger = resolvedLogger;
 
   app.use(requestIdMiddleware);
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          "default-src": ["'self'"],
+          "connect-src": ["'self'", "https://api.maptiler.com"],
+          "img-src": ["'self'", "data:", "https://api.maptiler.com"],
+          "font-src": ["'self'", "data:", "https://api.maptiler.com"],
+          "worker-src": ["'self'", "blob:"],
+          "child-src": ["'self'", "blob:"]
+        }
+      }
+    })
+  );
 
   const limiters = createRateLimiters(options?.rateLimits);
   app.use(limiters.general);
