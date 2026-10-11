@@ -7,7 +7,7 @@
 
 ## Current Phase
 
-**PHASE 6 — Frontend S0/S1: Brief, Prior & Investigation**. Status: **OPEN 2026-10-09 — W-6.1 foundation + W-6.2b S0 Brief + W-6.3 S1 Investigate reviewed and committed (`579b23e`, `7f5380c`, `b71dd00`, `7dfb688`); W-6.4 (judge-path e2e + exit-gate proof) is next.**
+**PHASE 6 — Frontend S0/S1: Brief, Prior & Investigation**. Status: **OPEN 2026-10-09 — W-6.1…W-6.4 built, reviewed and committed (`579b23e`, `7f5380c`, `e85fdde`, `b71dd00`, `7dfb688`, `91c6788`); clause map written; gate waits only on the B-02 DeepSeek live click-through.**
 Phase 5 closed 2026-10-09 with exit gate PASSED (HEAD `e8a83a6` / `7f11d7f`, tree clean,
 386 pass / 5 gated-live skips, e2e 3/3). Boundary refresh completed 2026-10-09 (all 7
 ProjectSpec sources + AGENTS + this file re-read). Phase 6 contract written below before
@@ -616,6 +616,7 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 | W-6.1 | Web foundation (tokens, API client, SSE client, run store) | NEW: `src/web/styles/` (tokens/base/index.css), `src/web/lib/` (api.ts, sse.ts), `src/web/store/runStore.ts`, `tests/web/`; EDIT: `main.tsx` (+1 CSS import), `index.html` (+meta) | **DONE 2026-10-09 — reviewed (§17), independently re-verified, committed `579b23e`.** typecheck 0, lint 0; **418 pass / 5 gated-live skips** (+32); build PASS; e2e 3/3 (placeholders intact); secret grep clean; zero edits to src/server, src/shared, ProjectSpec, e2e. SSE frame policy (state=replace, ledger contiguity + suspend-on-gap) matches D-5.3; Zustand store is projection-only per ARCH §17. |
 | W-6.2b | S0 Brief screen (presets, address search, site map) | EDIT: `src/web/routes/HomeRoute.tsx`; NEW: `src/web/screens/s0/` (MapPanel, AddressSearch, BriefForm, briefFormState, PresetCard, runFailure, s0.css), `src/web/lib/map.ts`, `src/web/lib/geocode.ts`, `src/web/presets.ts`, `src/web/env.d.ts`, `tests/web/s0{Brief,Geocode,Presets,RunFailure}`; orchestrator: `src/server/app.ts` CSP fix (D-6.3), `e2e/smoke.spec.ts` S0 assertions | **DONE 2026-10-09 — reviewed (§17), independently re-verified, committed `7f5380c` (screen) + `e85fdde` (CSP) + `c130166` (state).** typecheck 0, lint 0; **455 pass / 5 gated-live skips** (+37); build PASS; e2e 3/3 (S0 assertions); secret scan clean; live browser proof: real MapTiler vector tiles + preset dots render, console clean (no CSP violations). First spawn interrupted (no commits) → continuation worker completed on the same tree; orchestrator diagnosed the pre-existing tile failure (default helmet CSP vs MapLibre module worker) and verified the fix end-to-end. |
 | W-6.3 | S1 Investigate screen (Frozen Prior card, live Agent Ledger, Cultural DNA strip, site map) | EDIT: `src/web/routes/RunRoute.tsx`, `src/web/lib/map.ts`; NEW: `src/web/screens/s1/` (PriorCard, LedgerPanel, DnaStrip, InvestigateMap, s1Model, stopAction, s1.css) + `tests/web/s1{Dna,Ledger,Prior,Stop,Stream}`; orchestrator: `e2e/smoke.spec.ts` RUN_NOT_FOUND assertions | **DONE 2026-10-09 — reviewed (§17), independently re-verified, committed `b71dd00` (screen) + `7dfb688` (e2e).** typecheck 0, lint 0; **498 pass / 5 gated-live skips** (+43); build PASS; e2e 3/3; §17 live-browser review caught 4 defects (string `symbol-sort-key`, MapTiler `" "` Town-labels image warning, Prior card covering the DNA strip, status pill stuck on "Opening…") → orchestrator corrective patches → final render verified with **zero console messages**. First spawn failed at provider after partial disk work → continuation worker completed on the same tree. |
+| W-6.4 | Judge-path/degraded e2e + exit-gate clause map (**orchestrator-executed** — `e2e/**` and `playwright.config.ts` are orchestrator-owned by contract) | EDIT: `e2e/smoke.spec.ts` (console-clean gate + typed run-creation contract), `IMPLEMENTATION_STATE.md` (clause map); audits: bundle secret scan, reduced-motion, geocode-fallback, degraded S1 states | **DONE 2026-10-09 — committed `91c6788` (e2e).** typecheck 0, lint 0; **498 pass / 5 gated-live skips**; build PASS; **e2e 4/4** (healthz, console-clean S0 landing, typed `POST /api/runs` 201-or-DEPENDENCY_UNAVAILABLE, RUN_NOT_FOUND recovery). `dist/web` secret scan **0 hits** (Qloo/DeepSeek/Turso values + env names). Clause map below; gate stays OPEN on the B-02 live click-through only. |
 
 **Orchestrator integration review (AGENTS §17):** both diffs inspected; W-1.1 touched only `ARCHITECTURE.md`;
 W-1.2 touched only temp-dir files (repo `git status` shows no spike artifacts); key never echoed; worker claims
@@ -902,30 +903,82 @@ response data in a public repository — only aggregate statistics appear above)
 
 ## Last Verified Commit
 
-`7dfb688` — *test: assert the honest RUN_NOT_FOUND recovery copy on unknown runs.*
-Preceded by `b71dd00` (W-6.3 S1 Investigate screen) and `1727c15` (state docs).
-Suite **498 pass / 5 gated-live skips**. Gates green on current head: typecheck, lint,
-**498 unit + 5 gated live skips**, build, **3 e2e**, plus live `LIVE_QLOO=1` run **4/4**
-(`tests/qloo/live.test.ts` + `tests/agent/exit-gate.live.test.ts` against real Qloo).
-Earlier Phase 6 commits: `c130166`/`1727c15` (state docs), `7f5380c` (W-6.2b S0),
-`e85fdde` (D-6.3 CSP), `579b23e` (W-6.1), `0c8d357` (deps glue), `367b4f7` (Phase 6
-contract). Push target: **https://github.com/louji2308/zorq** (`main`, PUBLIC, MIT).
+`91c6788` — *test: cover judge-path run creation and the console-clean landing gate.*
+Preceded by `3b21c8d` (state docs), `7dfb688` (RUN_NOT_FOUND e2e), `b71dd00` (W-6.3
+S1 Investigate screen). Suite **498 pass / 5 gated-live skips**. Gates green on current
+head: typecheck, lint, **498 unit + 5 gated live skips**, build, **e2e 4/4**, plus live
+`LIVE_QLOO=1` run **4/4** (`tests/qloo/live.test.ts` + `tests/agent/exit-gate.live.test.ts`
+against real Qloo); `dist/web` secret scan 0 hits. Earlier Phase 6 commits: `c130166`/
+`1727c15` (state docs), `7f5380c` (W-6.2b S0), `e85fdde` (D-6.3 CSP), `579b23e` (W-6.1),
+`0c8d357` (deps glue), `367b4f7` (Phase 6 contract). Push target:
+**https://github.com/louji2308/zorq** (`main`, PUBLIC, MIT).
 
 ## Next Highest-Value Action
 
-**Delegate W-6.4** (Phase 6 worker 4: judge-path/degraded e2e + exit-gate proof — assert
-the judge sentence end-to-end: land → choose preset → see Prior → watch live
-investigation → understand what Qloo is doing, plus degraded-state coverage and the
-Phase 6 clause map). W-6.1/6.2b/6.3 are committed and verified (`579b23e`, `7f5380c`,
-`e85fdde`, `b71dd00`, `7dfb688`); real MapTiler vector tiles render, S1 renders with
-**zero console messages** (fixture-injected browser proof), real Qloo live tests 4/4.
-Note: real-Prior e2e remains blocked by B-02 (DeepSeek 402) — W-6.4 must prove the
-degraded/honest paths live and leave the live-LLM leg gated until balance. Sequential in
-one checkout (D-2.1); workers never commit; orchestrator reviews (§17) and
+**Close Phase 6's last two gate boxes via the B-02 live pass.** All Phase 6 build work
+is committed and verified (`579b23e`, `7f5380c`, `e85fdde`, `b71dd00`, `7dfb688`,
+`3b21c8d`, `91c6788`): S0 + S1 screens land, real vector tiles render, S1 shows zero
+console messages, e2e 4/4 (incl. typed run-creation contract), live Qloo 4/4, bundle
+secret scan clean, clause map written. **User-side action required: top up DeepSeek
+(B-02 — HTTP 402, "balance is insufficient").** Then: one real browser judge pass
+(preset → 201 → frozen Prior → live investigation → DNA), re-run the full suite, mark
+the two open clause-map boxes `[x]`, close Phase 6, open Phase 7 (S2 Blueprint).
+Sequential in one checkout (D-2.1); workers never commit; orchestrator reviews (§17) and
 commits. Protect: AGENTS §13 evidence/provenance; SSE progressive visibility (DB is
 recovery truth); Phase 5 server modules are consume-only; four real routes must keep
-working. User-side: DeepSeek balance later (enables `LIVE_DEEPSEEK=1`), Turso optional,
-Devpost registration. Deadline: Oct 30 2026, internal freeze Oct 28.
+working. User-side: DeepSeek balance (enables the live pass + `LIVE_DEEPSEEK=1`),
+Turso optional, Devpost registration. Deadline: Oct 30 2026, internal freeze Oct 28.
+
+## Phase 6 Exit-Gate Status (OPEN 2026-10-09 — every clause proven except the B-02 live click-through)
+
+Gate text (Plan line 653 / ARCHITECTURE §6): *"A judge can land, choose a preset, see
+the Prior, watch real investigation, and understand what Qloo is doing without reading
+the source code."*
+
+Evidence: W-6.1 `579b23e`, W-6.2b `7f5380c` + `e85fdde`, W-6.3 `b71dd00` + `7dfb688`,
+W-6.4 `91c6788`. Gates at sign-off: typecheck 0, lint 0, **498 pass / 5 gated-live
+skips**, build PASS, **e2e 4/4**, live `LIVE_QLOO=1` **4/4** (50.7s against real Qloo).
+
+- [x] **Land** — `GET /` renders S0 (landing line, three presets, four steps) in e2e
+  and in the live browser; the landing test now also asserts **zero page errors and
+  zero console errors** (only `Failed to load resource` noise is filtered).
+- [x] **Choose a preset** — preset selection, address search and geocode-failure →
+  map-point-pick fallback unit-tested (`s0Brief/s0Geocode/s0Presets`); the
+  run-creation contract e2e asserts **201-with-run-or-typed-DEPENDENCY_UNAVAILABLE**
+  — today a typed 502 envelope with `requestId` + `details`, never an untyped failure;
+  after B-02 top-up the same test accepts 201 without edits.
+- [ ] **See the Prior (real run)** — S1 Frozen Prior card (lock time, roles, "No
+  cultural data used.") unit-tested (`s1Prior`) and rendered in a live browser
+  through the real `RunRoute`/`getRun` path via the client-side diagnostic fixture;
+  server-side Prior-before-Qloo proven at the Phase 3 exit gate (live Qloo, deep
+  frozen, identity-referenced). *Real click-through pending B-02: `POST /api/runs`
+  → typed 502 `DeepSeek balance is insufficient`.*
+- [ ] **Watch real investigation (in browser)** — the real `EventSource` client,
+  ledger streaming (contiguity + suspend-on-gap), expandable rows and stop control
+  verified live through the fixture; the server-side real investigation is proven by
+  the Phase 3 exit gate and today's live Qloo 4/4. *Real in-browser run pending B-02.*
+- [x] **Understand what Qloo is doing** — ledger rows carry Qloo/Compute/LLM pills,
+  durations and expandable Call/Result/Results/Source/Duration details; the site map
+  shows crosshair, dashed radius ring, lettered anchor pins and heat dots; the DNA
+  strip shows local/city dumbbells — all rendered live with **zero console
+  messages** in the final §17 screenshot; Qloo row semantics match real gateway
+  envelopes (live 4/4).
+- [x] **Degraded paths** — S0 geocode fail → map picker + honest copy (unit); S1
+  load failure → banner + `describeLoadFailure` + "Unavailable" status (e2e proves
+  RUN_NOT_FOUND recovery); rate-limit events → dashed rows with an honest note and
+  **no invented retry counters** (gateway retries internally — deviation recorded in
+  `s1Model.ts`); SSE stall → reconnect notice; stream error → banner.
+- [x] **No fabricated data** — fixtures never imported by `src/**` (red-flag scans +
+  §17 review); `dist/web` secret scan **0 hits** across all 5 output files (Qloo /
+  DeepSeek / Turso values and env-name literals); `VITE_MAPTILER_KEY` is public by
+  design (D-6.x).
+- [x] **Design language** — reduced-motion honored (`tokens.css`, `base.css`,
+  `map.ts`); no gradients/radius/shadows in s1; shape+words carry state, never
+  colour alone; 44px+ targets; keyboard-focusable controls (§17 screenshots).
+
+**Flip condition:** top up DeepSeek (B-02) → one real browser pass (click preset →
+201 → `/run/:id` → frozen server Prior → live Qloo ledger rows → DNA strip) → re-run
+the full suite → mark the two boxes `[x]` and close the phase.
 
 ## Phase 5 Exit-Gate Status (PASSED 2026-10-09)
 
