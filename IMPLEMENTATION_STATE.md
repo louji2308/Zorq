@@ -7,7 +7,7 @@
 
 ## Current Phase
 
-**PHASE 6 — Frontend S0/S1: Brief, Prior & Investigation**. Status: **OPEN 2026-10-09 — boundary refresh done, contract written, not yet delegated.**
+**PHASE 6 — Frontend S0/S1: Brief, Prior & Investigation**. Status: **OPEN 2026-10-09 — W-6.1 foundation + W-6.2b S0 Brief screen reviewed and committed (`579b23e`, `7f5380c`); W-6.3 (S1) is next.**
 Phase 5 closed 2026-10-09 with exit gate PASSED (HEAD `e8a83a6` / `7f11d7f`, tree clean,
 386 pass / 5 gated-live skips, e2e 3/3). Boundary refresh completed 2026-10-09 (all 7
 ProjectSpec sources + AGENTS + this file re-read). Phase 6 contract written below before
@@ -18,14 +18,10 @@ any delegation.
 Execute Phase 6 through its exit gate: "A judge can land, choose a preset, see the Prior,
 watch real investigation, and understand what Qloo is doing without reading the source
 code." (Plan line 653 / ARCHITECTURE §6.) Sequential workers W-6.1 → W-6.n; orchestrator
-reviews and commits each verified increment (AGENTS §17). B-06 MapTiler key is **required
-before S0/S1 map work can be verified against real tiles** (VITE_MAPTILER_KEY currently
-empty); S0/S1 UI structure and API wiring can proceed without it; real MapLibre tiles,
-geocoding and the map-as-hero layout cannot.
-
-**BLOCKED ON USER INPUT (non-optional):** MapTiler Free account + public API key for
-`.env` `VITE_MAPTILER_KEY`. Without it the map cannot load real vector tiles or geocode
-addresses; Phase 6 cannot exit the gate honestly.
+reviews and commits each verified increment (AGENTS §17). MapTiler key delivered
+(`VITE_MAPTILER_KEY` in gitignored `.env`; B-06 MapTiler closed) and real vector tiles
+now render in-browser after the D-6.3 CSP fix — map/geocoding verification against real
+tiles is unblocked.
 
 ### PHASE 6 CONTRACT (written 2026-10-09, before delegation)
 
@@ -618,6 +614,7 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 | W-5.3 | SSE + API routes | EDIT: `src/shared/run.ts` (13-node expansion), `src/server/routes.ts` (real handlers), SSE emitter + replay + `src/server/app.ts` wiring + `tests/` | **DONE 2026-10-09 — reviewed (§17), independently re-verified, committed `6ec2531`.** typecheck 0, lint 0; **369 pass / 5 gated-live skips** (+15); build PASS; e2e 3/3; secret scan clean; 4 Phase 5 routes real, other 7 still 503. First two spawns stalled with zero writes (provider) → third succeeded. |
 | W-5.4 | Recovery + exit-gate suite | NEW: `tests/orchestrator/recovery.test.ts` + `tests/orchestrator/exitGate.test.ts` + exit-gate proof | **DONE 2026-10-09 — reviewed (§17), independently re-verified, committed `7f11d7f`.** typecheck 0, lint 0; **386 pass / 5 gated-live skips** (+17); build PASS; e2e 3/3; secret scan clean; no src changes needed. First two spawns stalled with zero writes (provider) → third succeeded. |
 | W-6.1 | Web foundation (tokens, API client, SSE client, run store) | NEW: `src/web/styles/` (tokens/base/index.css), `src/web/lib/` (api.ts, sse.ts), `src/web/store/runStore.ts`, `tests/web/`; EDIT: `main.tsx` (+1 CSS import), `index.html` (+meta) | **DONE 2026-10-09 — reviewed (§17), independently re-verified, committed `579b23e`.** typecheck 0, lint 0; **418 pass / 5 gated-live skips** (+32); build PASS; e2e 3/3 (placeholders intact); secret grep clean; zero edits to src/server, src/shared, ProjectSpec, e2e. SSE frame policy (state=replace, ledger contiguity + suspend-on-gap) matches D-5.3; Zustand store is projection-only per ARCH §17. |
+| W-6.2b | S0 Brief screen (presets, address search, site map) | EDIT: `src/web/routes/HomeRoute.tsx`; NEW: `src/web/screens/s0/` (MapPanel, AddressSearch, BriefForm, briefFormState, PresetCard, runFailure, s0.css), `src/web/lib/map.ts`, `src/web/lib/geocode.ts`, `src/web/presets.ts`, `src/web/env.d.ts`, `tests/web/s0{Brief,Geocode,Presets,RunFailure}`; orchestrator: `src/server/app.ts` CSP fix (D-6.3), `e2e/smoke.spec.ts` S0 assertions | **DONE 2026-10-09 — reviewed (§17), independently re-verified, committed `7f5380c` (screen) + `e85fdde` (CSP) + `c130166` (state).** typecheck 0, lint 0; **455 pass / 5 gated-live skips** (+37); build PASS; e2e 3/3 (S0 assertions); secret scan clean; live browser proof: real MapTiler vector tiles + preset dots render, console clean (no CSP violations). First spawn interrupted (no commits) → continuation worker completed on the same tree; orchestrator diagnosed the pre-existing tile failure (default helmet CSP vs MapLibre module worker) and verified the fix end-to-end. |
 
 **Orchestrator integration review (AGENTS §17):** both diffs inspected; W-1.1 touched only `ARCHITECTURE.md`;
 W-1.2 touched only temp-dir files (repo `git status` shows no spike artifacts); key never echoed; worker claims
@@ -847,6 +844,7 @@ response data in a public repository — only aggregate statistics appear above)
 | D-5.5 | **Four real Phase 5 routes; remaining seven stay honest 503.** Only `POST /api/runs`, `GET /api/runs/:id` (with evidence), `POST /api/runs/:id/stop`, and `GET /api/runs/:id/events` (SSE) are wired to the orchestrator; the other seven Phase 3 routes continue returning `NOT_YET_WIRED` 503. | Plan §Phase 5 names exactly these four; wiring the rest before their owning phases exist would create dead code and fake-looking surfaces. Honest 503 is the established contract from Phases 3–4 and is a judge-visible signal of deliberate sequencing. | Yes — wire the remaining seven as their owning phases land. |
 | D-6.1 | **Add `zustand@5` + `maplibre-gl@6` (user-approved 2026-10-09).** State and map renderer per Tools §2 lock ("Zustand", "MapLibre GL JS + MapTiler Free"). MapTiler integration via public tile/style URLs keyed with `VITE_MAPTILER_KEY` (client-visible by design); no `@maptiler/*` SDK needed — MapLibre consumes MapTiler endpoints directly. | Locked-stack choices, not new inventions (Tools §2); user approval obtained in-session. Avoiding the MapTiler SDK keeps the dependency surface minimal (AGENTS §3). | No (stack-locked). |
 | D-6.2 | **Vite glue: `envDir` set to repo root + dev proxy for `/api` and `/healthz` → `:3000`.** `root` is `./src/web`, and Vite's `envDir` defaults to `root`, so repo-root `.env` (where `VITE_MAPTILER_KEY` lives) would otherwise be invisible; dev server now proxies API/SSE to Express. | Minimal integration glue (AGENTS §4.1 allows orchestrator-owned glue). Production path unaffected — Express serves the built SPA same-origin; proxy only serves `npm run dev:web`. | Yes. |
+| D-6.3 | **Widen helmet CSP for the MapTiler/MapLibre browser surface:** `connect-src`/`img-src`/`font-src` += `https://api.maptiler.com`; `worker-src`/`child-src` += `blob:`; every other directive stays on helmet defaults. | Default helmet policy has no `connect-src`, so `default-src 'self'` blocks MapLibre's **module-worker** tile fetches: main-thread style/sprite/tiles.json load, but every vector tile fails pre-network with `AJAXError(0)` (proven live — a control `fetch` of the identical URL inside the same worker returned 200 only under the patched policy). MapTiler is the locked tile provider (Tools §2) and the key is public-by-design (D-6.1). **Operational trap recorded:** hashed assets are served `Cache-Control: immutable` for 1 year (`staticWeb.ts`), so this header change stayed invisible in browsers until the cached worker response was purged — the stale cache masked the fix during diagnosis. | No — smallest safe deviation from helmet defaults; required by the locked stack. |
 
 ## Deviations from contract
 
@@ -881,28 +879,28 @@ response data in a public repository — only aggregate statistics appear above)
 
 ## Last Verified Commit
 
-`7f11d7f` — *test: prove the Phase 5 exit gate over stop, resume, retry and SSE recovery.*
-(suite **386 pass / 5 gated-live skips**). Preceded by `6ec2531` (W-5.3 SSE + API),
-`7989d16`/`b3c38f1` (state records), `5fb61c0` (W-5.2 orchestration core),
-`d912ebb` (W-5.1 persistence), `aeea073` (Phase 5 contract), `9e91da0` (Phase 4
-close). All gates green on current head: typecheck, lint, **386 unit + 5 gated live
-skips**, build, **3 e2e**. Push target: **https://github.com/louji2308/zorq**
+`c130166` — *docs: record the W-6.1 web foundation as verified.*
+Preceded by `7f5380c` (W-6.2b S0 Brief screen) and `e85fdde` (D-6.3 CSP fix that
+unblocks MapLibre/MapTiler tiles). Suite **455 pass / 5 gated-live skips**. Gates green
+on current head: typecheck, lint, **455 unit + 5 gated live skips**, build, **3 e2e**
+(S0 assertions). Earlier Phase 6 commits: `579b23e` (W-6.1), `0c8d357` (deps glue),
+`367b4f7` (Phase 6 contract). Push target: **https://github.com/louji2308/zorq**
 (`main`, PUBLIC, MIT).
 
 ## Next Highest-Value Action
 
-**Delegate W-6.1** (Phase 6 worker 1: web foundation — design tokens/CSS system, typed
-API client over the four real routes, Zustand run-state projection, EventSource SSE
-client with Last-Event-ID + reconcile-on-gap). Phase 6 contract is committed (`367b4f7`);
-setup glue landed same session (D-6.1 deps `zustand`+`maplibre-gl`, D-6.2 `envDir` +
-dev proxy, MapTiler key in gitignored `.env`, B-06 MapTiler closed). Worker sequence:
-W-6.1 foundation → W-6.2 S0 Brief (map + presets + POST /api/runs) → W-6.3 S1 Prior
-reveal + Ledger + DNA → W-6.4 judge-path/degraded e2e + exit-gate proof. Sequential in
-one checkout (D-2.1); workers never commit; orchestrator reviews (§17) and commits.
-Protect: AGENTS §13 evidence/provenance; SSE progressive visibility (DB is recovery
-truth); Phase 5 server modules are consume-only; four real routes must keep working.
-User-side: DeepSeek balance later (enables `LIVE_DEEPSEEK=1`), Turso optional, Devpost
-registration. Deadline: Oct 30 2026, internal freeze Oct 28.
+**Delegate W-6.3** (Phase 6 worker 3: S1 Prior reveal — Prior reveal card, Agent Ledger
+over the live SSE stream, persistent map with site marker/radius/anchor pins, Cultural
+DNA strip, degraded states, real `RunRoute.tsx` replacing the placeholder). W-6.1
+foundation and W-6.2b S0 Brief are committed and verified (`579b23e`, `7f5380c`,
+`e85fdde`); real MapTiler vector tiles render in-browser (D-6.3 CSP fix + stale
+`immutable` cache purge), console clean, e2e asserts the S0 screen. After W-6.3:
+W-6.4 judge-path/degraded e2e + exit-gate proof → Phase 6 clause map → close the phase.
+Sequential in one checkout (D-2.1); workers never commit; orchestrator reviews (§17) and
+commits. Protect: AGENTS §13 evidence/provenance; SSE progressive visibility (DB is
+recovery truth); Phase 5 server modules are consume-only; four real routes must keep
+working. User-side: DeepSeek balance later (enables `LIVE_DEEPSEEK=1`), Turso optional,
+Devpost registration. Deadline: Oct 30 2026, internal freeze Oct 28.
 
 ## Phase 5 Exit-Gate Status (PASSED 2026-10-09)
 
