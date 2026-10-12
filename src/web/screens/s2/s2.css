@@ -389,6 +389,11 @@
   color: var(--zq-ink);
 }
 
+.s2-cta-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
 @media (max-width: 1199px) {
   .s2-panel {
     min-height: 420px;

@@ -43,8 +43,11 @@ import {
 import { stopRunAction } from "../screens/s1/stopAction.js";
 import { CompositionsPanel } from "../screens/s2/CompositionsPanel.js";
 import { buildS2Model } from "../screens/s2/s2Model.js";
+import { ConnectionsPanel } from "../screens/s3/ConnectionsPanel.js";
+import { buildS3Model, pairKey } from "../screens/s3/s3Model.js";
 import "../screens/s1/s1.css";
 import "../screens/s2/s2.css";
+import "../screens/s3/s3.css";
 
 /** VITE_MAPTILER_KEY is public by design (D-6.1); never logged. */
 function readMapApiKey(): string | null {
@@ -68,7 +71,9 @@ export function RunRoute() {
   const [stopError, setStopError] = useState<string | null>(null);
   const [priorCollapsed, setPriorCollapsed] = useState(false);
   const [dnaCollapsed, setDnaCollapsed] = useState(false);
-  const [view, setView] = useState<"investigate" | "compositions">("investigate");
+  const [view, setView] = useState<"investigate" | "compositions" | "connections">("investigate");
+  const [s3Key, setS3Key] = useState<string | null>(null);
+  const [s3Pair, setS3Pair] = useState<{ a: string; b: string } | null>(null);
 
   useEffect(() => {
     if (runId === "") {
@@ -82,6 +87,8 @@ export function RunRoute() {
     setLoadError(null);
     setStopError(null);
     setView("investigate");
+    setS3Key(null);
+    setS3Pair(null);
 
     void (async () => {
       try {
@@ -120,6 +127,7 @@ export function RunRoute() {
   const heat = useMemo(() => heatFromRun(run), [run]);
   const dnaGroups = useMemo(() => parseCulturalDna(run?.culturalDna), [run]);
   const s2Model = useMemo(() => buildS2Model(run), [run]);
+  const s3Model = useMemo(() => buildS3Model(run, s3Key), [run, s3Key]);
 
   const statusCopy =
     run === null ? (loadError !== null ? "Unavailable" : "Opening…") : describeRunStatus(run.status);
@@ -131,6 +139,7 @@ export function RunRoute() {
   const ready = run !== null;
   const s2Available = s2Model !== null && hasCompositions(run);
   const showS2 = view === "compositions" && s2Available && s2Model !== null;
+  const showS3 = view === "connections" && s3Model !== null;
 
   const handleStop = useCallback(() => {
     if (runId === "" || stopping) {
@@ -187,7 +196,7 @@ export function RunRoute() {
         <>
           <div className="s1-map">
             <InvestigateMap apiKey={MAP_API_KEY} site={site} anchors={anchors} heat={heat} />
-            {!showS2 && (
+            {!showS2 && !showS3 && (
               <>
                 <PriorCard
                   model={priorModel}
@@ -201,8 +210,25 @@ export function RunRoute() {
             )}
           </div>
 
-          {showS2 && s2Model !== null ? (
-            <CompositionsPanel model={s2Model} onBack={() => setView("investigate")} />
+          {showS3 && s3Model !== null ? (
+            <ConnectionsPanel
+              run={run}
+              model={s3Model}
+              initialPairKey={s3Pair === null ? null : pairKey(s3Pair.a, s3Pair.b)}
+              onBack={() => setView("compositions")}
+              onSelectComposition={(key) => setS3Key(key)}
+              onOpenLedger={() => setView("investigate")}
+            />
+          ) : showS2 && s2Model !== null ? (
+            <CompositionsPanel
+              model={s2Model}
+              onBack={() => setView("investigate")}
+              onShowGraph={(key, pair) => {
+                setS3Key(key);
+                setS3Pair(pair);
+                setView("connections");
+              }}
+            />
           ) : (
             <LedgerPanel
               rows={rows}

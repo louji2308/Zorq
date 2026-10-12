@@ -7,6 +7,7 @@ import { DEFAULT_DIAL_WEIGHT, FINALIST_COUNT, rerankCards, type S2Model } from "
 export interface CompositionsPanelProps {
   model: S2Model;
   onBack: () => void;
+  onShowGraph?: (compositionKey: string | null, pair: { a: string; b: string } | null) => void;
 }
 
 function prefersReducedMotion(): boolean {
@@ -19,7 +20,7 @@ function prefersReducedMotion(): boolean {
 
 const LETTERS = ["A", "B", "C"];
 
-export function CompositionsPanel({ model, onBack }: CompositionsPanelProps) {
+export function CompositionsPanel({ model, onBack, onShowGraph }: CompositionsPanelProps) {
   const [weight, setWeight] = useState(DEFAULT_DIAL_WEIGHT);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const railRef = useRef<HTMLDivElement>(null);
@@ -97,6 +98,11 @@ export function CompositionsPanel({ model, onBack }: CompositionsPanelProps) {
               letter={LETTERS[index] ?? String(index + 1)}
               selected={selectedKey === card.key}
               onSelect={handleSelect}
+              onEdgeClick={
+                onShowGraph === undefined
+                  ? undefined
+                  : (a, b) => onShowGraph(selectedKey ?? card.key, { a, b })
+              }
             />
           ))}
           {ordered.length === 0 && (
@@ -107,6 +113,17 @@ export function CompositionsPanel({ model, onBack }: CompositionsPanelProps) {
             </p>
           )}
         </div>
+        {onShowGraph !== undefined && (
+          <div className="s2-cta-row">
+            <button
+              type="button"
+              className="s1-primary"
+              onClick={() => onShowGraph(selectedKey, null)}
+            >
+              Show the graph
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );
