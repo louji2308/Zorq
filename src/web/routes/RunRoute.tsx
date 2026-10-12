@@ -41,7 +41,10 @@ import {
   siteFromRun
 } from "../screens/s1/s1Model.js";
 import { stopRunAction } from "../screens/s1/stopAction.js";
+import { CompositionsPanel } from "../screens/s2/CompositionsPanel.js";
+import { buildS2Model } from "../screens/s2/s2Model.js";
 import "../screens/s1/s1.css";
+import "../screens/s2/s2.css";
 
 /** VITE_MAPTILER_KEY is public by design (D-6.1); never logged. */
 function readMapApiKey(): string | null {
@@ -65,6 +68,7 @@ export function RunRoute() {
   const [stopError, setStopError] = useState<string | null>(null);
   const [priorCollapsed, setPriorCollapsed] = useState(false);
   const [dnaCollapsed, setDnaCollapsed] = useState(false);
+  const [view, setView] = useState<"investigate" | "compositions">("investigate");
 
   useEffect(() => {
     if (runId === "") {
@@ -77,6 +81,7 @@ export function RunRoute() {
     store.reset();
     setLoadError(null);
     setStopError(null);
+    setView("investigate");
 
     void (async () => {
       try {
@@ -114,6 +119,7 @@ export function RunRoute() {
   const anchors = useMemo(() => anchorsFromRun(run), [run]);
   const heat = useMemo(() => heatFromRun(run), [run]);
   const dnaGroups = useMemo(() => parseCulturalDna(run?.culturalDna), [run]);
+  const s2Model = useMemo(() => buildS2Model(run), [run]);
 
   const statusCopy =
     run === null ? (loadError !== null ? "Unavailable" : "Opening…") : describeRunStatus(run.status);
@@ -123,6 +129,8 @@ export function RunRoute() {
   const stopVisible = run !== null && isRunActive(run.status);
   const streamNotice = describeStreamNotice(connection, run?.status ?? null);
   const ready = run !== null;
+  const s2Available = s2Model !== null && hasCompositions(run);
+  const showS2 = view === "compositions" && s2Available && s2Model !== null;
 
   const handleStop = useCallback(() => {
     if (runId === "" || stopping) {
@@ -179,29 +187,37 @@ export function RunRoute() {
         <>
           <div className="s1-map">
             <InvestigateMap apiKey={MAP_API_KEY} site={site} anchors={anchors} heat={heat} />
-            <PriorCard
-              model={priorModel}
-              collapsed={priorCollapsed}
-              onToggle={() => setPriorCollapsed((current) => !current)}
-            />
-            {priorModel === null && (
-              <p className="s1-prior-wait">Waiting for the frozen Prior…</p>
+            {!showS2 && (
+              <>
+                <PriorCard
+                  model={priorModel}
+                  collapsed={priorCollapsed}
+                  onToggle={() => setPriorCollapsed((current) => !current)}
+                />
+                {priorModel === null && (
+                  <p className="s1-prior-wait">Waiting for the frozen Prior…</p>
+                )}
+              </>
             )}
           </div>
 
-          <LedgerPanel
-            rows={rows}
-            stopVisible={stopVisible}
-            stopping={stopping}
-            onStop={handleStop}
-            docked={
-              hasCompositions(run) ? (
-                <button type="button" className="s1-primary" disabled>
-                  See compositions
-                </button>
-              ) : undefined
-            }
-          />
+          {showS2 && s2Model !== null ? (
+            <CompositionsPanel model={s2Model} onBack={() => setView("investigate")} />
+          ) : (
+            <LedgerPanel
+              rows={rows}
+              stopVisible={stopVisible}
+              stopping={stopping}
+              onStop={handleStop}
+              docked={
+                s2Available ? (
+                  <button type="button" className="s1-primary" onClick={() => setView("compositions")}>
+                    See compositions
+                  </button>
+                ) : undefined
+              }
+            />
+          )}
         </>
       )}
 
