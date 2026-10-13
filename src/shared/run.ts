@@ -77,6 +77,22 @@ export const poolComponentRoles = [
 
 export type PoolComponentRole = (typeof poolComponentRoles)[number];
 
+export const runRevisionSchema = z.strictObject({
+  rev: z.number().int().min(1),
+  replacedMember: z.string().trim().min(1).max(200),
+  newMember: z.string().trim().min(1).max(200),
+  role: z.enum(poolComponentRoles),
+  membersBefore: z.array(z.string().trim().min(1).max(200)).min(2),
+  membersAfter: z.array(z.string().trim().min(1).max(200)).min(2),
+  coherenceBefore: z.number().finite().min(0).max(1),
+  coherenceAfter: z.number().finite().min(0).max(1),
+  percentileBefore: z.number().finite().min(0).max(100).nullable(),
+  percentileAfter: z.number().finite().min(0).max(100).nullable(),
+  custom: z.boolean()
+});
+
+export type RunRevision = z.infer<typeof runRevisionSchema>;
+
 export const runNeighborhoodDomains = ["artist", "movie", "brand"] as const;
 
 export type RunNeighborhoodDomain = (typeof runNeighborhoodDomains)[number];
@@ -320,7 +336,7 @@ export const runStateSchema = z.object({
   compositions: runCompositionsSchema.optional(),
   stressReport: z.unknown().optional(),
   constraintFit: z.unknown().optional(),
-  revisions: z.unknown().optional()
+  revisions: z.array(runRevisionSchema).max(100).optional()
 });
 
 export type RunState = z.infer<typeof runStateSchema>;

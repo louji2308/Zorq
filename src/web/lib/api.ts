@@ -1,8 +1,9 @@
 /*
- * Typed same-origin API client for the four real Phase 5 routes:
+ * Typed same-origin API client for the real Phase 5–7 routes:
  *   POST /api/runs              -> create a Run (201 { run: created run })
  *   GET  /api/runs/:id          -> canonical RunState (200 { run })
  *   POST /api/runs/:id/stop     -> stop a run (200 { run })
+ *   POST /api/runs/:id/replace  -> role-preserving replacement (200 ReplaceResponse)
  * (GET /api/runs/:id/events is SSE — owned by ./sse.ts, the single stream owner.)
  *
  * Contract:
@@ -13,7 +14,7 @@
  *    and the typed error body ({ error: { code, message, requestId? } }) from
  *    src/shared/errors.ts. Untyped error bodies (e.g. a proxy HTML page) become
  *    ApiClientError("INVALID_RESPONSE") with the status preserved — never hidden.
- *  - The other seven API routes currently answer 503 SERVICE_UNAVAILABLE; that
+ *  - The remaining API routes currently answer 503 SERVICE_UNAVAILABLE; that
  *    code flows through unchanged so screens can surface it honestly.
  *  - No secrets, no credentials, no logging: paths are same-origin, bodies are
  *    the caller's own data, and nothing is echoed to the console.
@@ -24,7 +25,14 @@ import {
   type ApiErrorDetail,
   type ApiErrorCode
 } from "../../shared/errors.js";
-import { postRunsResponseSchema, runResponseSchema, type PostRunsResponse } from "../../shared/routes.js";
+import {
+  postRunsResponseSchema,
+  replaceResponseSchema,
+  runResponseSchema,
+  type PostRunsResponse,
+  type ReplaceRequest,
+  type ReplaceResponse
+} from "../../shared/routes.js";
 import type { RunState } from "../../shared/run.js";
 
 /** Error codes the client can produce: the server's typed codes plus two
@@ -181,4 +189,30 @@ export async function stopRun(
     );
   }
   return parsed.data.run;
+}
+
+/** Role-preserving replacement. Returns the full ReplaceResponse projection. */
+export async function replaceComponent(
+  id: string,
+  request: ReplaceRequest,
+  options?: ApiCallOptions
+): Promise<ReplaceResponse> {
+  const response = await requestJson(
+    `/api/runs/${encodeURIComponent(id)}/replace`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(request)
+    },
+    options
+  );
+  const parsed = replaceResponseSchema.safeParse(response.body);
+  if (!parsed.success) {
+    throw new ApiClientError(
+      "INVALID_RESPONSE",
+      "POST /api/runs/:id/replace response did not match the expected contract",
+      response.status
+    );
+  }
+  return parsed.data;
 }

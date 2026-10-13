@@ -10,7 +10,8 @@ import {
   runIdParamsSchema,
   runStateSchema,
   stopRunRequestSchema,
-  unpinAnchorRequestSchema
+  unpinAnchorRequestSchema,
+  type ReplaceRequest
 } from "../shared/index.js";
 import type { HealthzResult } from "./healthz.js";
 import { validate } from "./middleware/validate.js";
@@ -176,7 +177,20 @@ export function registerRoutes(app: Express, dependencies: RouteDependencies): v
   app.post(
     "/api/runs/:id/replace",
     validate({ params: runIdParamsSchema, body: replaceRequestSchema }),
-    unimplemented(UNIMPLEMENTED_MESSAGES.replaceComponent)
+    (req, res, next) => {
+      if (orchestrator === undefined || store === undefined) {
+        unimplemented(UNIMPLEMENTED_MESSAGES.replaceComponent)(req, res, next);
+        return;
+      }
+      void orchestrator
+        .replaceComponent(readRunId(req), req.body as ReplaceRequest)
+        .then((body) => {
+          res.status(200).json(body);
+        })
+        .catch((error: unknown) => {
+          next(mapRouteError(error));
+        });
+    }
   );
 
   app.post(

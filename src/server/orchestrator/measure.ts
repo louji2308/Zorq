@@ -34,6 +34,7 @@ import {
   type ComponentRole,
   type CompositionFamily,
   type CultureGraph,
+  type IdfLookup,
   type NeighborhoodDomain,
   type NeighborhoodSignalInput,
   type RawNeighborhoodSignal,
@@ -46,10 +47,10 @@ import { createEvidenceRecord, type EvidenceRecord } from "../evidence/index.js"
 import { toError } from "../agent/errors.js";
 import type { QlooEnvelope, QlooGateway, QlooInsightsResults } from "../qloo/index.js";
 
-const NEIGHBORHOOD_TAKE = 30;
+export const NEIGHBORHOOD_TAKE = 30;
 const MEASUREMENT_BUDGET_RESERVE = 54;
 const MAX_CONSECUTIVE_FETCH_FAILURES = 2;
-const COMPOSITION_SIZE = 5;
+export const COMPOSITION_SIZE = 5;
 const FINALIST_COUNT = 3;
 const MAX_TRIANGULATION_PROBES = 24;
 const ROUTE2_DEFAULT_RADIUS_M = 400;
@@ -89,11 +90,11 @@ interface ScopeFetch {
   evidenceId: string | null;
 }
 
-function computeEvent(label: string, summary: string, duration: number, resultCount: number): LedgerEvent {
+export function computeEvent(label: string, summary: string, duration: number, resultCount: number): LedgerEvent {
   return { kind: "Compute", label, summary, duration, cacheState: "n/a", resultCount };
 }
 
-function observationEvent(label: string, envelope: QlooEnvelope<unknown>, detail: string): LedgerEvent {
+export function observationEvent(label: string, envelope: QlooEnvelope<unknown>, detail: string): LedgerEvent {
   return {
     kind: "Qloo",
     label,
@@ -104,7 +105,7 @@ function observationEvent(label: string, envelope: QlooEnvelope<unknown>, detail
   };
 }
 
-function failedCallEvent(label: string, detail: string, error: unknown): LedgerEvent {
+export function failedCallEvent(label: string, detail: string, error: unknown): LedgerEvent {
   const failure = toError(error);
   const line = failure.message.split("\n")[0] ?? failure.name;
   return {
@@ -156,7 +157,7 @@ function recordEntityNames(context: MeasurementContext, envelope: QlooEnvelope<Q
   }
 }
 
-function projectSignals(envelope: QlooEnvelope<QlooInsightsResults>): RawNeighborhoodSignal[] {
+export function projectSignals(envelope: QlooEnvelope<QlooInsightsResults>): RawNeighborhoodSignal[] {
   const signals: RawNeighborhoodSignal[] = [];
   const seen = new Set<string>();
   (envelope.results.entities ?? []).forEach((entity, index) => {
@@ -398,7 +399,7 @@ function extractPriorMemberEntries(composition: unknown): Array<{ role?: string;
   return entries;
 }
 
-function resolvePriorMarker(
+export function resolvePriorMarker(
   prior: Prior | undefined,
   pool: readonly CandidateComponent[],
   graph: CultureGraph,
@@ -523,6 +524,108 @@ function familyReason(pool: readonly CandidateComponent[], family: CompositionFa
   return undefined;
 }
 
+export function projectRunGraph(
+  graph: CultureGraph,
+  siteNeighborhoods: readonly TasteNeighborhood[],
+  idf: IdfLookup
+): RunGraph {
+  const neighborhoodsById = new Map(siteNeighborhoods.map((entry) => [entry.componentId, entry]));
+  const runGraph: RunGraph = {
+    nodes: [...graph.nodes],
+    edges: graph.edges.map((edge) => {
+      if (edge.state !== "measured") {
+        return { a: edge.a, b: edge.b, value: edge.value, band: edge.band, state: edge.state };
+      }
+      const a = neighborhoodsById.get(edge.a);
+      const b = neighborhoodsById.get(edge.b);
+      if (a === undefined || b === undefined) {
+        return { a: edge.a, b: edge.b, value: edge.value, band: edge.band, state: edge.state };
+      }
+      const shared = sharedEntitiesForEdge(a, b, idf, EDGE_SHARED_ENTITY_CAP);
+      if (shared.length === 0) {
+        return { a: edge.a, b: edge.b, value: edge.value, band: edge.band, state: edge.state };
+      }
+      return { a: edge.a, b: edge.b, value: edge.value, band: edge.band, state: edge.state, sharedEntities: shared };
+    })
+  };
+  return runGraph;
+}
+
+export interface CompositionsProjection {
+  pool: readonly CandidateComponent[];
+  family: CompositionFamily | null;
+  familyError: string | null;
+  ranking: RankingResult | null;
+  triangulation: TriangulationClassification[];
+  prior: RunPriorMarker;
+}
+
+export function projectCompositionsNode(input: CompositionsProjection): RunCompositions {
+  const { pool, family, familyError, ranking, triangulation, prior } = input;
+  const requiredRoles: ComponentRole[] = pool.some((component) => component.role === "Anchor") ? ["Anchor"] : [];
+  const effectiveFamily: CompositionFamily =
+    family ??
+    emptyFamily(pool.length, pool.length >= 2 ? Math.min(COMPOSITION_SIZE, pool.length) : 0, requiredRoles);
+  const reason = familyReason(pool, effectiveFamily) ?? familyError ?? undefined;
+  const classifiedStates = new Map<string, TriangulationClassification["state"]>();
+  for (const entry of triangulation) {
+    classifiedStates.set(pairKey(entry.a, entry.b), entry.state);
+  }
+  const ranked: RunRankedComposition[] = (ranking?.ranked ?? []).map((composition) => {
+    const edges: Array<{ a: string; b: string; state: TriangulationClassification["state"] }> = [];
+    for (let left = 0; left < composition.members.length; left += 1) {
+      for (let right = left + 1; right < composition.members.length; right += 1) {
+        const [lowId, highId] =
+          composition.members[left] <= composition.members[right]
+            ? [composition.members[left], composition.members[right]]
+            : [composition.members[right], composition.members[left]];
+        const state = classifiedStates.get(pairKey(lowId, highId));
+        if (state !== undefined) {
+          edges.push({ a: lowId, b: highId, state });
+        }
+      }
+    }
+    const gradeResult = gradeEvidence({ members: composition.members, pool, edges });
+    return {
+      members: composition.members,
+      size: composition.size,
+      coherence: composition.coherence,
+      percentile: composition.percentile,
+      distinctivenessMean: composition.distinctivenessMean,
+      weakestLink: composition.weakestLink,
+      rankScore: composition.rankScore,
+      grade: gradeResult.grade,
+      gradeReasons: [...gradeResult.reasons]
+    };
+  });
+  const excluded = (ranking?.excluded ?? []).map((entry) => ({
+    members: entry.members,
+    reason: entry.reason
+  }));
+  const compositionsNode: RunCompositions = {
+    family: {
+      poolSize: effectiveFamily.poolSize,
+      size: effectiveFamily.size,
+      requiredRoles: effectiveFamily.requiredRoles,
+      totalCandidates: effectiveFamily.totalCandidates,
+      totalValid: effectiveFamily.totalValid,
+      coherenceDistribution: effectiveFamily.compositions.map((composition) => composition.coherence),
+      ...(reason !== undefined ? { reason } : {})
+    },
+    ranked,
+    excluded,
+    triangulation,
+    rivalFlips: (ranking?.sweep.flips ?? []).map((flip) => ({
+      index: flip.index,
+      weight: flip.weight,
+      from: flip.from,
+      to: flip.to
+    })),
+    prior
+  };
+  return compositionsNode;
+}
+
 export async function runMeasurement(input: MeasurementInput): Promise<MeasurementResult> {
   const { state } = input;
   if (state.candidatePool === undefined || state.candidatePool.length === 0 || state.brief === undefined) {
@@ -598,25 +701,7 @@ export async function runMeasurement(input: MeasurementInput): Promise<Measureme
 
   const idf = computeIdf(pool, siteNeighborhoods);
   const graph = buildGraph(pool, siteNeighborhoods, idf);
-  const neighborhoodsById = new Map(siteNeighborhoods.map((entry) => [entry.componentId, entry]));
-  const runGraph: RunGraph = {
-    nodes: [...graph.nodes],
-    edges: graph.edges.map((edge) => {
-      if (edge.state !== "measured") {
-        return { a: edge.a, b: edge.b, value: edge.value, band: edge.band, state: edge.state };
-      }
-      const a = neighborhoodsById.get(edge.a);
-      const b = neighborhoodsById.get(edge.b);
-      if (a === undefined || b === undefined) {
-        return { a: edge.a, b: edge.b, value: edge.value, band: edge.band, state: edge.state };
-      }
-      const shared = sharedEntitiesForEdge(a, b, idf, EDGE_SHARED_ENTITY_CAP);
-      if (shared.length === 0) {
-        return { a: edge.a, b: edge.b, value: edge.value, band: edge.band, state: edge.state };
-      }
-      return { a: edge.a, b: edge.b, value: edge.value, band: edge.band, state: edge.state, sharedEntities: shared };
-    })
-  };
+  const runGraph = projectRunGraph(graph, siteNeighborhoods, idf);
   const measuredEdges = graph.edges.filter((edge) => edge.state === "measured").length;
   input.ledger.append(
     computeEvent(
@@ -652,10 +737,6 @@ export async function runMeasurement(input: MeasurementInput): Promise<Measureme
       familyError = toError(error).message.split("\n")[0] ?? "engine refused the composition family";
     }
   }
-  const effectiveFamily: CompositionFamily =
-    family ??
-    emptyFamily(pool.length, pool.length >= 2 ? size : 0, requiredRoles);
-  const reason = familyReason(pool, effectiveFamily) ?? familyError ?? undefined;
 
   const finalists = (ranking?.ranked ?? []).slice(0, FINALIST_COUNT);
   const pairSet = new Set<string>();
@@ -708,63 +789,17 @@ export async function runMeasurement(input: MeasurementInput): Promise<Measureme
     )
   );
 
-  const classifiedStates = new Map<string, TriangulationClassification["state"]>();
-  for (const entry of triangulation) {
-    classifiedStates.set(pairKey(entry.a, entry.b), entry.state);
-  }
-  const ranked: RunRankedComposition[] = (ranking?.ranked ?? []).map((composition) => {
-    const edges: Array<{ a: string; b: string; state: TriangulationClassification["state"] }> = [];
-    for (let left = 0; left < composition.members.length; left += 1) {
-      for (let right = left + 1; right < composition.members.length; right += 1) {
-        const [lowId, highId] =
-          composition.members[left] <= composition.members[right]
-            ? [composition.members[left], composition.members[right]]
-            : [composition.members[right], composition.members[left]];
-        const state = classifiedStates.get(pairKey(lowId, highId));
-        if (state !== undefined) {
-          edges.push({ a: lowId, b: highId, state });
-        }
-      }
-    }
-    const gradeResult = gradeEvidence({ members: composition.members, pool, edges });
-    return {
-      members: composition.members,
-      size: composition.size,
-      coherence: composition.coherence,
-      percentile: composition.percentile,
-      distinctivenessMean: composition.distinctivenessMean,
-      weakestLink: composition.weakestLink,
-      rankScore: composition.rankScore,
-      grade: gradeResult.grade,
-      gradeReasons: [...gradeResult.reasons]
-    };
-  });
-  const excluded = (ranking?.excluded ?? []).map((entry) => ({
-    members: entry.members,
-    reason: entry.reason
-  }));
   const prior = resolvePriorMarker(state.prior, pool, graph, family);
-  const compositionsNode: RunCompositions = {
-    family: {
-      poolSize: effectiveFamily.poolSize,
-      size: effectiveFamily.size,
-      requiredRoles: effectiveFamily.requiredRoles,
-      totalCandidates: effectiveFamily.totalCandidates,
-      totalValid: effectiveFamily.totalValid,
-      coherenceDistribution: effectiveFamily.compositions.map((composition) => composition.coherence),
-      ...(reason !== undefined ? { reason } : {})
-    },
-    ranked,
-    excluded,
+  const compositionsNode = projectCompositionsNode({
+    pool,
+    family,
+    familyError,
+    ranking,
     triangulation,
-    rivalFlips: (ranking?.sweep.flips ?? []).map((flip) => ({
-      index: flip.index,
-      weight: flip.weight,
-      from: flip.from,
-      to: flip.to
-    })),
     prior
-  };
+  });
+  const ranked = compositionsNode.ranked;
+  const excluded = compositionsNode.excluded;
   input.ledger.append(
     computeEvent(
       "measure.compositions",

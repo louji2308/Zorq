@@ -237,6 +237,19 @@ describe("runStateSchema (expanded tree)", () => {
     rivalFlips: [],
     prior: { state: "not measured", reason: "the run carries no persisted Prior" }
   };
+  const TEST_REVISION = {
+    rev: 1,
+    replacedMember: "comp-anchor",
+    newMember: "urn:entity:place-devocion",
+    role: "Anchor" as const,
+    membersBefore: ["comp-anchor", "comp-social"],
+    membersAfter: ["urn:entity:place-devocion", "comp-social"],
+    coherenceBefore: 0.72,
+    coherenceAfter: 0.75,
+    percentileBefore: 81.4,
+    percentileAfter: 84.2,
+    custom: false
+  };
 
   it("keeps evidence and the expanded node fields through a parse and strips stray keys", () => {
     const evidence = [
@@ -254,7 +267,7 @@ describe("runStateSchema (expanded tree)", () => {
       candidatePool: TEST_POOL,
       graph: TEST_GRAPH,
       compositions: TEST_COMPOSITIONS,
-      revisions: [1, 2],
+      revisions: [TEST_REVISION],
       apiKey: "should-not-survive"
     });
 
@@ -264,7 +277,7 @@ describe("runStateSchema (expanded tree)", () => {
     expect(parsed.candidatePool).toEqual(TEST_POOL);
     expect(parsed.graph).toEqual(TEST_GRAPH);
     expect(parsed.compositions).toEqual(TEST_COMPOSITIONS);
-    expect(parsed.revisions).toEqual([1, 2]);
+    expect(parsed.revisions).toEqual([TEST_REVISION]);
     expect((parsed as Record<string, unknown>).apiKey).toBeUndefined();
   });
 

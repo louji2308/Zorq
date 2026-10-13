@@ -13,10 +13,11 @@
  *  - Map site/ring come from the stored brief; anchors/heat render only if
  *    run.siteRead ever carries them (today it does not — never synthetic).
  *  - DNA strip renders only real culturalDna data; otherwise an honest empty
- *    state. Evidence drawer (Phase 7), feel-picks, unpin/replace/challenge
- *    are non-goals: those server routes are honest 503s (D-5.5).
+ *    state. Evidence drawer and role-preserving Replace (Phase 7) render from
+ *    server state only; unpin/challenge/recompute/blueprint remain honest 503s
+ *    (D-5.5).
  *  - "See compositions" docks only when the server actually delivered
- *    compositions; today it never does, so it stays absent honestly.
+ *    compositions, which Phase 7 measurement now does after a run completes.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -44,6 +45,7 @@ import { stopRunAction } from "../screens/s1/stopAction.js";
 import { CompositionsPanel } from "../screens/s2/CompositionsPanel.js";
 import { buildS2Model } from "../screens/s2/s2Model.js";
 import { ConnectionsPanel } from "../screens/s3/ConnectionsPanel.js";
+import { ReplacePanel } from "../screens/s3/ReplacePanel.js";
 import { buildS3Model, pairKey } from "../screens/s3/s3Model.js";
 import "../screens/s1/s1.css";
 import "../screens/s2/s2.css";
@@ -74,6 +76,10 @@ export function RunRoute() {
   const [view, setView] = useState<"investigate" | "compositions" | "connections">("investigate");
   const [s3Key, setS3Key] = useState<string | null>(null);
   const [s3Pair, setS3Pair] = useState<{ a: string; b: string } | null>(null);
+  const [replaceTarget, setReplaceTarget] = useState<{
+    memberId: string;
+    compositionKey: string | null;
+  } | null>(null);
 
   useEffect(() => {
     if (runId === "") {
@@ -89,6 +95,7 @@ export function RunRoute() {
     setView("investigate");
     setS3Key(null);
     setS3Pair(null);
+    setReplaceTarget(null);
 
     void (async () => {
       try {
@@ -218,6 +225,9 @@ export function RunRoute() {
               onBack={() => setView("compositions")}
               onSelectComposition={(key) => setS3Key(key)}
               onOpenLedger={() => setView("investigate")}
+              onReplace={(memberId, compositionKey) =>
+                setReplaceTarget({ memberId, compositionKey })
+              }
             />
           ) : showS2 && s2Model !== null ? (
             <CompositionsPanel
@@ -252,6 +262,15 @@ export function RunRoute() {
           groups={dnaGroups}
           collapsed={dnaCollapsed}
           onToggle={() => setDnaCollapsed((current) => !current)}
+        />
+      )}
+
+      {ready && replaceTarget !== null && (
+        <ReplacePanel
+          run={run}
+          memberId={replaceTarget.memberId}
+          compositionKey={replaceTarget.compositionKey}
+          onClose={() => setReplaceTarget(null)}
         />
       )}
     </div>

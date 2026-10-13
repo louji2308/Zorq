@@ -42,7 +42,8 @@ export const replaceRequestSchema = z
   .object({
     targetComponentId: z.string().min(1),
     candidateId: z.string().min(1).optional(),
-    customQuery: z.string().min(1).optional()
+    customQuery: z.string().min(1).optional(),
+    compositionKey: z.string().trim().min(1).max(300).optional()
   })
   .refine(
     (value) => (value.candidateId !== undefined) !== (value.customQuery !== undefined),

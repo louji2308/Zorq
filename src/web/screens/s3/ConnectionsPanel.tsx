@@ -17,7 +17,7 @@ export interface ConnectionsPanelProps {
   onBack: () => void;
   onSelectComposition: (key: string) => void;
   onOpenLedger?: (evidenceId: string) => void;
-  onReplace?: (memberId: string) => void;
+  onReplace?: (memberId: string, compositionKey: string | null) => void;
   onChallenge?: () => void;
 }
 
@@ -214,7 +214,11 @@ export function ConnectionsPanel({
           sheet={sheet}
           hasSelection={hasSelection}
           onOpenLedger={onOpenLedger}
-          onReplace={onReplace}
+          onReplace={
+            onReplace === undefined
+              ? undefined
+              : (memberId) => onReplace(memberId, model.selected?.key ?? null)
+          }
           onClose={handleClose}
         />
       </div>

@@ -142,7 +142,7 @@ const cases: SchemaCase[] = [
     route: "POST /api/runs/:id/replace",
     request: {
       schema: replaceRequestSchema,
-      valid: { targetComponentId: "comp_anchor_1", candidateId: "cand_02" },
+      valid: { targetComponentId: "comp_anchor_1", candidateId: "cand_02", compositionKey: "comp_anchor_1+cand_02" },
       invalid: {
         targetComponentId: "comp_anchor_1",
         candidateId: "cand_02",
