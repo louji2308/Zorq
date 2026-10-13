@@ -11,7 +11,8 @@
 contract written before delegation (`ee3bddd`); W-7.1 reviewed & committed (`99b53bd`);
 W-7.2 measurement chain reviewed & committed (`7180387`); W-7.3 S2 workspace reviewed &
 committed (`f8717d7`); W-7.4 S3 graph + Evidence drawer reviewed & committed
-(`3591f75`); next: W-7.5 Replace.**
+(`3591f75`); W-7.5 Replace + revisions reviewed & committed (`bd1cb20`); next: Phase 7
+exit-gate work (clause map + fixture-browser review).**
 Phase 6 remains OPEN with all build work committed (`579b23e`…`64bba88`); its exit gate
 waits only on the B-02 DeepSeek live click-through (user-side payment). User directed
 2026-10-11 to start Phase 7 while that box waits — recorded under Deviations. Boundary
@@ -22,11 +23,13 @@ engine/orchestrator/shared/routes current-state model established — see contra
 
 Execute Phase 7 through its exit gate: "A judge can answer *why do these components
 belong together?* by inspecting an edge rather than trusting an unsupported narrative."
-(Plan line 724 / ARCHITECTURE §6 line 368.) Highest-value bottleneck: the Phase 4 engine
-has no production caller — the orchestrator's measurement pass is a placeholder and
-RunState's S2/S3 nodes are still `z.unknown()`. Wire measurement first (W-7.1 → W-7.2),
-then surface it (W-7.3 → W-7.5). Sequential workers in one checkout (D-2.1); orchestrator
-reviews (§17) and commits each verified increment.
+(Plan line 724 / ARCHITECTURE §6 line 368.) Highest-value bottleneck: **all five
+workers are committed (`99b53bd` → `bd1cb20`) — what remains is exit-gate verification**:
+clause-map every contract clause against observable surfaces, run the fixture-browser
+review (S2 → S3 → Replace on the production build), resolve or record any gap, then
+close Phase 7 (contract archived, status line, progress record, coherent commit).
+Sequential in one checkout (D-2.1); orchestrator reviews (§17) and commits; spawn channel
+5/5 cancelled → orchestrator-direct unless restored (see Deviations).
 
 ### PHASE 7 CONTRACT (written 2026-10-11, before delegation)
 
@@ -687,33 +690,34 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 ## Active Work
 
 - **PHASE 7 OPEN 2026-10-11 (contract `ee3bddd`) — W-7.1 DONE (`99b53bd`); W-7.2 DONE
-  (`7180387`); W-7.3 DONE (`f8717d7`); W-7.4 DONE, committed `3591f75`.**
-  The S3 Connections screen is live: `src/web/screens/s3/` renders the Map of meaning
-  (deterministic classical MDS over `1 − edge.value`, cached per graph signature,
-  positions never move on selection change; lines drawn only for the selected
-  composition; per-pair stroke/dash from evidence state — confirmed/strong L4 solid,
-  typical L3, weak L2, thin dotted, contested/failed dashed, unmeasured hatched
-  `stroke-dasharray`; weakest-link break mark + one-shot 600 ms pulse honoring
-  `prefers-reduced-motion`; locked scale note + stress sentence with distorted-pair
-  count and high-stress pointer to View B), the Distance chart (triangular matrix,
-  band-sized dots, SVG-pattern hatching, selected L3 outline, break mark, plus the
-  sorted pair-list twin which becomes the only view below 768 px), the Evidence drawer
-  (locked claim sentence, ≤8 shared-entity tiles with contribution bars, triangulation
-  sentence per `focalInTopHalf`/`resultCount`, "how computed", up to 4 ledger links
-  resolved from `run.evidence` with honest fallback), and the node sheet (real
-  exemplars, 5-step provenance chain, honest empty state, Replace button rendered only
-  when `onReplace` is provided). RunRoute gained the "connections" view (map still
-  persists; S2↔S3 via `onShowGraph(key, pair)` + back), and S2 now shows the
-  "Show the graph" primary CTA with the weakest-link sentence clickable into S3 with
-  the pair pre-selected. Orchestrator correctives during completion: 3 unused-symbol
-  errors removed, `let maxExtent` → `const` (lint), `findWeakestReason` fall-through
-  when a confirmed grade reason maps to no sentence (reason now falls back to band).
-  Delegation: 4th spawn cancelled mid-flight (D-7.9) — adopted the partial 5-file
-  write, reviewed line-by-line, completed `ConnectionsPanel` + `s3.css` + tests.
-  Verified: typecheck 0, lint 0, **598 pass / 6 skips** (+29; 6th skip = degradedBoot
-  port skip, server running), e2e 4/4 fresh dist, secret scan 0 hits. Next:
-  **W-7.5 Replace panel** (role-preserving replacement, ≤4 Qloo calls for custom
-  candidates, ΔC/ΔD preview, mini challenge pass, revision row).
+  (`7180387`); W-7.3 DONE (`f8717d7`); W-7.4 DONE (`3591f75`); W-7.5 DONE, committed
+  `bd1cb20`.**
+  Replace is live end-to-end: `POST /api/runs/:id/replace` is real (guardMutationState →
+  revision cap 100 → XOR candidate/custom → role preservation → keyed/default `before`
+  resolution → pool-alternative = swap within the unchanged ranked family with **zero
+  Qloo calls** (deltas from stored `measureComposition`), custom = ≤4 calls (resolveTags →
+  exemplar insights → site artist → city artist, budget-gated first) that grows the pool
+  and rebuilds idf/graph/family/ranking/prior honestly, refused at `POOL_CAPACITY=10`);
+  persistence via the write-through ledger + `saveRunState` + `emitState` (RunBusyError
+  during a pass); responses carry engine-true `{delta, weakestLink}` + revision row +
+  mini-stress report (`kind:"mini"`, two ledger-style attack rows: ablation + rival).
+  Web: `ReplacePanel` (440 px, focus trap/Esc/aria-live, 1600 ms auto-close on success,
+  honest failure copy, alternatives sorted ΔC desc → ΔD desc → id with signed diverging
+  bars, custom gated by `customBlockedReason`, revision rows) + `replaceModel.ts`
+  projection + `onReplace` threaded NodeSheet → EvidenceDrawer → ConnectionsPanel →
+  RunRoute with the **selected composition key** (D-7.11). Orchestrator §17 correctives
+  on the adopted spawn: (a) custom path re-derives triangulation route1 against the
+  rebuilt graph, carrying stored probes (D-7.18); (b) custom family size pinned to the
+  run's measured family size — spawn used `min(5, poolAfter)` which jumped a 3-pool run
+  to quadruples so no swap could ever match (D-7.17, found via debug reproduction);
+  (c) pool-cap guard reordered before brief/neighborhood/budget (structural refusals
+  first); (d) compositionKey added to `replaceRequestSchema` (spawn skipped it).
+  Delegation: 5th consecutive spawn cancelled mid-flight — spawn left 17 files (5 new)
+  untested and never ran gates; orchestrator adopted, reviewed line-by-line, fixed, ran
+  the full ladder. Verified: typecheck 0, lint 0, **631 pass / 5 skips** (+33; 5 skips =
+  gated-live, degradedBoot ran with the port free), build PASS, e2e 4/4 fresh dist,
+  secret scan 0 hits. Next: **Phase 7 exit-gate work** — clause map + fixture-browser
+  review of the judge question.
 - **PHASE 5 CLOSED 2026-10-09 — exit gate PASSED** (HEAD `7f11d7f`, tree clean,
   386 pass / 5 gated-live skips, e2e 3/3). See "Phase 5 Exit-Gate Status" below for
   the clause-by-clause proof map. Landed: W-5.1 persistence (`d912ebb`), W-5.2
@@ -798,6 +802,7 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 | W-7.2 | Deterministic measurement chain (neighborhoods → graph → compositions → CulturalDNA → triangulation → grades → typed persistence) | EDIT: `src/shared/run.ts` (+193 — typed `neighborhoods`/`graph`/`compositions` replacing `z.unknown()`, `runSharedEntitySchema`), `src/server/orchestrator/{index,orchestrator}.ts`, `src/server/engine/index.ts` (append-only barrel +5), `tests/api/runs.test.ts` (+25); NEW: `src/server/orchestrator/measure.ts` (827 lines), `src/server/engine/edgeEntities.ts`, `tests/orchestrator/measure.test.ts` (18), `tests/engine/edgeEntities.test.ts` (5) | **DONE 2026-10-12 — reviewed (§17), independently re-verified, committed `7180387`** (contract `ee3bddd`). Mechanism: `runMeasurement` iterates the validated pool × artist/movie/brand × site/city scopes — site via locality-ladder `signalLocation` (brief.location then last-two-segment broader form), city **unlocalized** (D-7.3) — take-30 `insights` per call, one evidence record per call with `ledgerEventId`; engine `buildNeighborhoods` → `computeIdf` → `buildGraph` (+ per-edge `sharedEntitiesForEdge`, cap 8, Evidence-drawer input) → `buildCompositions` (requiredRoles `["Anchor"]` when present, size `min(5, poolSize)`, D-7.6) → `rankCompositionSet` + `rivalSweep` → top-3 finalists → route-2 probe per unique pair (≤24, radius 400→5000m ladder, D-7.5) → `classifyTriangulation` → `gradeEvidence`; Prior marker resolves members against the pool by id/exemplar-name/tag (role-constrained) or honestly reports `not measured`; ledger Qloo `measure.neighborhood_fetch`/`resolve_tag`/`triangulate_probe` + Compute `measure.neighborhoods`/`graph`/`compositions`/`triangulate`/`dna` + boundary `measure.compose`; budget stop at reserve 54 (~30%), consecutive-failure stop at 2, degraded→partial in `drivePass`. **Orchestrator correctives:** DNA per-side-max → share-of-total (D-7.4, regression guard `local < 100`); `graph as never` removed (`resolvePriorMarker` typed `CultureGraph`). Gates independently re-run: typecheck 0, lint 0, **539 pass / 6 skips** (+23), build PASS, **e2e 4/4** fresh dist (production server restarted), `dist/web` secret scan **0 hits**. Known limitations: route-2 is a single signal-E_j place query (spec's dual-query anchor comparison deferred, D-7.5); **`state.graph` must never be fed back into engine constructors** (engine `graphEdgeSchema` is strict, `sharedEntities` is RunGraph-only — W-7.4/W-7.5 must rebuild from neighborhoods or strip the field); wall-clock 120s may truncate very slow Qloo rounds → honest partial, never fabricated compositions. |
 | W-7.3 | S2 Compositions workspace (Field histogram, Prior/A/B/C cards, dial re-rank, re-ink motion) | EDIT: `src/web/routes/RunRoute.tsx` (+36/−20 — S1↔S2 view switch, enabled dock button); NEW: `src/web/screens/s2/` (`s2Model.ts`, `CompositionsPanel.tsx`, `CompositionCard.tsx`, `Field.tsx`, `Dial.tsx`, `Marks.tsx`, `s2.css`), `tests/web/s2Model.test.ts` (29); InvestigateMap + runStore **untouched** (map persists because it stays mounted outside the view conditional) | **DONE 2026-10-12 — orchestrator-executed after 3 cancelled worker spawns (D-7.7), reviewed §17-style line-by-line, committed `f8717d7`** (contract `ee3bddd`). Mechanism: `buildS2Model(run)` (pure, 520 lines) projects persisted `run.compositions`/`neighborhoods`/`candidatePool` into the panel — Field = 12-bin histogram of `coherenceDistribution` + A/B/C marks for the top-3 + dashed prior mark; cards = Prior + finalists with role-grouped member rows (canonical pool-role order), over-index squares (site>city artist weight-sum, both neighborhoods "measured", else hollow/"not measured" — D-7.8), three locked readings in fixed order (percentile sentence from stored values with null honesty, "{k} of {n} over-index locally", weakest-link sentence with break mark), grade letters + up to 6 gradeReasons; dial (0..1 step 0.01) re-ranks `rankedAll` via population z + engine-matching tie-break (score desc → weakest desc → members lex), w=0.5 order proven identical to stored rank order in tests; FLIP re-ink in `useLayoutEffect` with `prefers-reduced-motion` guard; honest empty-family (`family.reason`), thin-pool note, not-measured prior verbatim; card `onEdgeClick` extension point left for W-7.4. Design locks held (no shadow/radius/gradient in s2.css; letter+mark grading; keyboard-reachable controls; aria on squares/field summary). Delegation deviation: first three `task` spawns were cancelled (two before any write, one left the uncommitted s2 sources with zero tests) → orchestrator adopted, reviewed, completed, and verified the increment. Gates independently run: typecheck 0, lint 0, **569 pass / 5 skips** (+30), build PASS, **e2e 4/4** fresh dist (server restarted), secret scan **0 hits**. Known limitation: Field marks always reflect stored-order finalists while the rail letters follow the dial (letters can swap under a moved dial — stored marks stay keyed by member set). |
 | W-7.4 | S3 Connections workspace (Map of meaning MDS, Distance chart, Evidence drawer, node sheet) | EDIT: `src/web/routes/RunRoute.tsx` (+34/−5 — "connections" view, s3Key/s3Pair state, S2↔S3 wiring, map persists, PriorCard hidden on S3), `src/web/screens/s2/{CompositionsPanel.tsx (+19/−1), s2.css (+5)}` (Show-the-graph CTA + weakest-link `onEdgeClick` navigation); NEW: `src/web/screens/s3/` (`s3Model.ts` (1115), `ConnectionsPanel.tsx`, `MapOfMeaning.tsx`, `DistanceChart.tsx`, `EvidenceDrawer.tsx`, `NodeSheet.tsx`, `s3.css`), `tests/web/s3Model.test.ts` (30) | **DONE 2026-10-12 — 4th spawn cancelled mid-write (D-7.9), orchestrator adopted the 5-file partial, reviewed line-by-line, completed panel/CSS/tests, committed `3591f75`** (contract `ee3bddd`). Mechanism: `buildS3Model(run, key)` — deterministic classical MDS (double-centered `1 − edge.value` dissimilarities, power iteration with index-derived starts + canonicalized eigenvectors, LRU-cached by graph signature, index-derived jitter fallback) + Kruskal-style stress with distorted-pair counting (locked sentences, high-stress ≥0.25 points to View B); per-pair state = triangulation state → band fallback, empty/absent `sharedEntities` → unmeasured; options A/B/C(+P when prior measured), default leader, unknown key falls back honestly; Evidence drawer claim locks ProductSpec line 203 wording with pool-resolved exemplar names, tiles sorted by `dotContribution` (fraction vs edge max), triangulation sentences per `focalInTopHalf`/`resultCount` (agrees/disagrees/thin-count/failed-no-returns/not-recorded), ledger links = term-matched `run.evidence` first then `kind:"insights"` fallback, cap 4, honest "recorded in the full ledger" fallback; node sheet = pool role/exemplars/5-step provenance/evidenceState with honest empty state; Distance chart = triangular matrix (SVG `<pattern>` hatch — no CSS gradients), band-sized dots (solid/hollow), selected L3 outline, break mark, sorted pair-list twin (sole view <768 px); Map = lines only for selected members, non-members hollow `ink-350`, hit-overlay buttons (keyboard + aria-labels), one-shot 600 ms pulse with reduced-motion guard; `onReplace`/`onChallenge` optional and not yet passed (W-7.5/Phase 8 hooks). **Orchestrator correctives:** removed 3 unused symbols (TS6133/6196), lint `let maxExtent`→`const`, `findWeakestReason` now falls through to band when a confirmed grade reason yields no sentence. Design locks verified by grep (no shadow/radius/gradient, no `console.*`, no comments, no `Math.random`/`Date.now`). Gates independently run: typecheck 0, lint 0, **598 pass / 6 skips** (+29; 6th = degradedBoot port skip with server up), build PASS, **e2e 4/4** fresh dist (server restarted), secret scan **0 hits**. Known limitations: `onOpenLedger` returns to the S1 ledger view without row-level highlight (LedgerPanel has no filter prop — deferred); `state.graph` display-only, never re-ingested. |
+| W-7.5 | Replace route + Replace panel + revisions | EDIT: `src/server/orchestrator/{measure.ts (+203/−95 — faithful extraction of `projectRunGraph`/`projectCompositionsNode` + exported helpers), orchestrator.ts (+47 `replaceComponent`), types.ts}`, `src/server/routes.ts` (real handler), `src/shared/{routes,run}.ts` (`compositionKey` + `runRevisionSchema`), `src/web/{lib/api.ts, routes/RunRoute.tsx, screens/s3/ConnectionsPanel.tsx, screens/s3/s3.css (+242)}`, `tests/{api/runs,routes}.test.ts`; NEW: `src/server/orchestrator/replace.ts`, `src/web/screens/s3/{ReplacePanel.tsx, replaceModel.ts}`, `tests/orchestrator/replace.test.ts` (19), `tests/web/replaceModel.test.ts` (14) | **DONE 2026-10-13 — 5th spawn cancelled after writing 17 files with zero tests and zero gates run; orchestrator adopted, reviewed line-by-line, fixed 4 defects, ran the full ladder, committed `bd1cb20`** (contract `ee3bddd`). Mechanism: `applyReplacement` — state guards (resumable/stopped/failed refuse; revision cap 100) → XOR candidate/custom → role preservation → `before` = keyed composition when `compositionKey` present (normalized delimiters, honest refusals) else first ranked containing target → pool path: swapped set must exist in ranked (refuse, never guess), zero Qloo, state untouched → custom path: cap→brief→neighborhood→budget guards then 4 probes → new component with full provenance → idf/graph/family/ranking/prior rebuild → after must be ranked → mini stress (ablation over `stressPool` + rival sweep over `stressRanked`, verdict Survived/Revised) → revision appended. **§17 correctives:** family size pinned to stored `family.size` (D-7.17 — spawn's `min(5, poolAfter)` produced one size-4 composition so no size-3 swap ever matched, proven by `tmp/debug-replace.ts` reproduction); triangulation re-derived from `graphAfter` with stored probes (D-7.18); cap guard moved ahead of brief/neighborhoods (spawn's own test expected it); `compositionKey` threaded schema→server→model→panel→ConnectionsPanel→RunRoute (D-7.11). Gates independently re-run: typecheck 0, lint 0, **631 pass / 5 skips** (+33), build PASS, **e2e 4/4** fresh dist, secret scan **0 hits**. Known limitation: a replace issued after an S4 challenge would overwrite `stressReport` (D-7.16 Phase 8 note). |
 
 **Orchestrator integration review (AGENTS §17):** both diffs inspected; W-1.1 touched only `ARCHITECTURE.md`;
 W-1.2 touched only temp-dir files (repo `git status` shows no spike artifacts); key never echoed; worker claims
@@ -818,6 +823,43 @@ returned the pre-persist Prior object (unfrozen, separate object from the persis
 (`62f29af`).
 
 ## Verified Tests / Evidence
+
+### Phase 7 — W-7.5 Replace + revisions (2026-10-13, commit `bd1cb20`)
+
+- **Orchestrator gate run (post-review):** typecheck 0 (both tsconfigs), lint 0, Vitest
+  **631 pass / 5 skips** (636 total; +33 new; the 5 skips are the gated-live suite —
+  degradedBoot ran because the port was free), build PASS, **e2e 4/4** on a freshly
+  restarted production server serving the fresh dist, `dist/web` secret scan
+  **0 hits / 5 files**.
+- **New coverage:** `tests/orchestrator/replace.test.ts` (19 — pool swap with zero Qloo
+  + engine-true deltas + exact revision row + mini-stress shape + ledger label order;
+  double-run determinism; sequential revision numbering; refusal matrix (unknown
+  candidate / already-in-composition / role mismatch / off-ranked swap / unknown target /
+  off-ranked target / XOR violations) all with zero calls; compositionKey happy path with
+  delimiter normalization proving `membersBefore` targets the *selected* composition;
+  unknown-key and wrong-member refusals with zero calls; state guards (resumable/stopped/
+  failed, revision cap 100); custom path exactly-4-call request-shape assertions, pool
+  growth, provenance, evidence count, ledger sequence; **triangulation re-derivation**
+  (stale `route1Value 0.99` → equals rebuilt graph edge value, probes `resultCount 9` /
+  `focalInTopHalf` carried forward); no-tag → `UNKNOWN_ENTITY` + untouched state; pool-cap
+  refusal without calls; budget refusal; empty query; orchestrator-level RunNotFound /
+  store persistence / RunBusyError mid-pass) + `tests/web/replaceModel.test.ts` (14 —
+  signedDelta, sameMembers, findBefore default + keyed + normalization, refusal reasons,
+  alternative listing/sort/cap/bars, custom-block reasons, revision-row projection,
+  readReplaceSuccess incl. `kind:"full"`/garbage → null) + `tests/routes.test.ts` valid
+  fixture now carries `compositionKey`. Fixture extended with a 5th ranked composition so
+  the keyed swap lands inside the family.
+- **§17 review of adopted spawn files (17 files, 5 new):** `measure.ts` diff verified a
+  faithful extraction (helpers moved verbatim, then exported); `replace.ts` validation and
+  probe budget read line-by-line; `ReplacePanel` focus/Esc/aria-live/honest-failure copy;
+  s3.css design locks (SVG-pattern hatching, no shadow/radius/gradient); grep sweep of
+  the whole surface = 0 hits for `console.*` / forbidden CSS / `Math.random` / `Date.now(`
+  and zero authored comments in the three main new files.
+- **Debug evidence:** spawn's custom path was never executed before handoff; failure
+  ("swapped composition is not ranked") root-caused with `tmp/debug-replace.ts` +
+  instrumented error output → family built as ONE size-4 composition (`min(5, poolAfter)`)
+  while the swap is size-3; fixed by pinning `size = min(stored family.size, poolAfter.length)`
+  (D-7.17).
 
 ### Phase 7 — W-7.4 S3 Connections + Evidence drawer (2026-10-12, commit `3591f75`)
 
@@ -1159,6 +1201,14 @@ response data in a public repository — only aggregate statistics appear above)
 | D-7.8 | **S2 over-index projection formula:** per component, sum site-neighborhood artist weights vs sum city-neighborhood artist weights; over-index iff `siteSum > citySum` **and both neighborhoods are "measured"** (else hollow mark + "not measured"). | ProductSpec line 194 requires "k of n over-index locally" as the middle reading; the Cultural DNA share semantics (D-7.4) already own the DNA strip, so the card reading uses a distinct, simpler signal (raw artist weight sums, not shares) that stays deterministic and honest under incomplete neighborhoods. Revisit if a shared over-index definition is later specified. | Yes. |
 | D-7.9 | **W-7.4 executed orchestrator-direct after a 4th consecutive spawn cancellation** (provider aborted mid-write, leaving 5 of 7 S3 files). Orchestrator adopted, reviewed line-by-line, completed `ConnectionsPanel.tsx` + `s3.css` + the test suite, applied three small correctives, and ran the full gate ladder itself. | Same channel failure mode as D-7.7 (tool-execution aborts at the provider level, not contract ambiguity); AGENTS §4.1 permits orchestrator implementation when delegation is unavailable, and the review/test/commit discipline is unchanged. | Yes — channel re-tested per worker; if still broken, continue orchestrator-direct and record per worker. |
 | D-7.10 | **Evidence-drawer ledger links resolve from `run.evidence` records (id/label/summary term match, then `kind:"insights"` fallback, cap 4), and `onOpenLedger` navigates back to the S1 ledger view without row-level highlight.** | `runEvidenceNodeSchema` does not expose `ledgerEventId` (stripped at the shared boundary), and `LedgerPanel` accepts no filter/highlight prop; adding either would cross the W-7.4 file scope into S1/server ownership. The drawer still shows claim → entities → triangulation → how-computed → link path, with an honest "recorded in the full ledger" fallback. | Yes — row-level highlight/expansion from a drawer link is a Phase 9 polish candidate. |
+| D-7.11 | **Replace requests may carry `compositionKey` (zod `trim().min(1).max(300).optional()`), which resolves `before` against that composition's members instead of the default (first ranked containing the target). Server normalizes delimiters (`+` or `\|`), refuses unknown keys (`badRequest("compositionKey")`) and non-member targets (`badRequest("targetComponentId")`) with distinct honest messages; the panel threads the selected key from `ConnectionsPanel` → `RunRoute` state.** | Plan's Replace spec says "replace X in the selected composition" but the original schema had no way to name the selection — with multiple size-5 compositions sharing members, a default resolution silently targets a *different* family than the one the judge is looking at. Keyed resolution is the smallest addition that makes the promise true; normalization mirrors the client's `normalizeCompositionKey`. Revises the spawn's original D-7.11 note (schema gap found in §17 review). | Yes — drop the field if a later phase redesigns composition identity. |
+| D-7.12 | **Custom (free-text) replacement = pool growth with ≤4 Qloo calls (resolveTags → exemplar insights → site artist → city artist), budget-checked before any call, refused at `POOL_CAPACITY=10` (`pool_full`); the structural guard order is cap → brief → neighborhoods → budget (cheap refusals first).** | Spec locks "≤4 Qloo calls" and role-preserving growth (ProductSpec line 233); the cap-first order lets a full pool refuse without touching brief/neighborhood inputs (the spawn's own test expected it, implementation had budget last). Never partially applies: any failure leaves state untouched. | No (spec-locked call budget). |
+| D-7.13 | **Alternative preview (diverging ΔC/ΔD bars) is a pure client projection from the stored `ranked` family — no preview endpoint, no engine re-run.** | The ranked family already stores each composition's coherence, distinctiveness and weakest link; a same-family swap's after-values are exactly the swapped composition's stored values. A server preview round-trip would double the surface for identical numbers and invite stale-computation bugs. Custom candidates are previewed only after the real replace (honest: their numbers don't exist before the calls). | Yes if preview must include cross-family effects. |
+| D-7.14 | **G12/PS260 ordering-bias mitigation deferred: revisions persist as a durable record (rev, members before/after, deltas) but no post-challenge re-ranking pass is wired; S4 must handle ordering when it lands.** | The spec's ordering-bias clause sits in the challenge/second-pass area (Phase 8 ownership), and building a re-rank pass now would guess at S4's contract. The revision record is the substrate Phase 8 needs either way. | Yes — Phase 8 owns the mitigation. |
+| D-7.15 | **Pool-alternative ordering: ΔC desc → ΔD desc → member id asc, display cap 5.** | Spec says "ranked by coherence/distinctiveness" without a tie rule or count; the three-key order is total (deterministic, no `Math.random`/timestamp) and 5 shows breadth without the 440 px panel scrolling past the primary action. | Yes if judges want all pool options. |
+| D-7.16 | **Mini challenge pass persisted as `stressReport` with `kind:"mini"` (ablation verdict over the run's `stressPool` + rival sweep over `stressRanked`, Survived/Revised). Phase 8 integration note: S4 must distinguish `kind==="mini"` from a full challenge report, and a post-S4 replace would overwrite an S4-authored `stressReport` — resolve in Phase 8.** | ProductSpec line 233 requires the mini pass after a replace; `stressReport` was the existing slot and marking the kind is the honest way to keep provenance without inventing a new field before S4 exists. Overwrite risk recorded now, not discovered later. | Yes — Phase 8 may move mini reports to a dedicated slot. |
+| D-7.17 | **Custom-path family size = `min(stored family.size, poolAfter.length)` (never `min(5, poolAfter)`): after pool growth the family must keep the run's measured size so the swapped composition stays comparable.** | Orchestrator §17 corrective: the spawn sized the rebuilt family at 5, producing ONE size-4 composition while the swap is size 3 — nothing size-3 was ever ranked, so every custom replace failed with "swapped composition is not ranked" (reproduced in `tmp/debug-replace.ts`). Pinning to the stored size preserves the family contract (D-7.6) across pool growth. | No (corrective restoring family continuity). |
+| D-7.18 | **Custom path re-derives triangulation route1 from the rebuilt graph (stored probes `resultCount`/`focalInTopHalf` carried forward) and updates ledger wording to say triangulation is re-derived; never passes stale route1 values through.** | The spawn copied the old graph's route1 (a pre-pool-growth value) onto entries whose edges had just been recomputed — numeric truth must come from the engine's current graph (AGENTS §13), and probes are independent of the graph so they legitimately carry forward. Ledger copy follows the actual behavior. | No (invariant). |
 
 ## Deviations from contract
 
@@ -1171,6 +1221,15 @@ response data in a public repository — only aggregate statistics appear above)
   4th time (cancelled mid-write after 5 of 7 files). Same deviation class as W-7.3 —
   adoption + review + completion under the original contract. Channel re-test planned
   for W-7.5.
+- **W-7.5 orchestrator-executed (5th consecutive spawn cancellation):** the W-7.5 spawn
+  was cancelled after writing all 17 files but before running any test or gate (the only
+  spawn to leave a *complete* file set). The orchestrator adopted it, reviewed every file
+  line-by-line, found and fixed four defects (family-size bug D-7.17, stale triangulation
+  D-7.18, missing `compositionKey` threading D-7.11, guard order D-7.12), ran the full
+  verification ladder independently, and committed `bd1cb20`. Same deviation class as
+  D-7.7/D-7.9 (AGENTS §4.1 execution-channel substitution; no spec or architecture
+  deviation). Channel failure now at 5/5 — remaining Phase 7/8 work defaults to
+  orchestrator-direct unless the user restores delegation.
 - **`git diff --check` flags trailing whitespace in `ProjectSpec/*.md` (markdown hard line breaks).**
   Committed unchanged rather than editing supplied read-only source. Our authored files
   (`.gitignore`, `.env.example`, `LICENSE`, `AGENTS.md`, both trackers) pass the check
@@ -1207,42 +1266,33 @@ response data in a public repository — only aggregate statistics appear above)
 
 ## Last Verified Commit
 
-`3591f75` — *feat: add the S3 connections graph with evidence inspection.*
-Preceded by `ff70ad5` (W-7.3 state docs), `f8717d7` (W-7.3 S2 workspace), `50b8416`
-(W-7.2 state docs), `7180387` (W-7.2 measurement chain), `99b53bd`/`3bf30f5` (W-7.1),
-`ee3bddd` (Phase 7 contract). Suite **598 pass / 6 skips** (5 gated-live +
-degradedBoot port skip with server up); gates green on current head: typecheck, lint,
-unit, build, **e2e 4/4** (fresh dist, production server restarted), `dist/web` secret
-scan 0 hits. Push target: **https://github.com/louji2308/zorq** (`main`, PUBLIC, MIT;
-push only on explicit user request).
+`bd1cb20` — *feat: implement role-preserving replacement and revisions.*
+Preceded by `cf23d4a` (W-7.4 state docs), `3591f75` (W-7.4 S3 graph), `ff70ad5` (W-7.3
+state docs), `f8717d7` (W-7.3 S2 workspace), `50b8416` (W-7.2 state docs), `7180387`
+(W-7.2 measurement chain), `99b53bd`/`3bf30f5` (W-7.1), `ee3bddd` (Phase 7 contract).
+Suite **631 pass / 5 skips** (5 gated-live; degradedBoot ran with the port free); gates
+green on current head: typecheck, lint, unit, build, **e2e 4/4** (fresh dist, production
+server restarted), `dist/web` secret scan 0 hits. Push target:
+**https://github.com/louji2308/zorq** (`main`, PUBLIC, MIT; push only on explicit user
+request).
 
 ## Next Highest-Value Action
 
-**Dispatch W-7.5** (web: Replace panel — role-preserving replacement, Plan line 729,
-commit line 729 `feat: implement role-preserving replacement and revisions.`) against
-the Phase 7 contract; re-test the spawn channel first (D-7.9), fall back to
-orchestrator-direct if it fails again. Inputs ready: `run.candidatePool` (alternatives
-with roles/exemplars/provenance), S3 node sheet already exposes the `onReplace` hook
-(not yet passed by RunRoute), S2 `rerankCards` + engine ranking formulas for ΔC/ΔD
-preview, `run.revisions` is still `z.unknown()` (replace the placeholder with a typed
-`runRevisionSchema` in `src/shared/run.ts` — the one allowed shared change for this
-worker — rows: `rev`, `replacedMember`, `newMember`, `role`, coherence/percentile before
-→ after). Scope per Final Design §7.6 Replace panel + ProductSpec line 233: right
-column 440 px, "Replace {member}" heading, "Keeps the role: …", 3–5 same-role pool
-alternatives with diverging coherence/distinctiveness bars (centre baseline, no
-decimals) + "Weakest link becomes: …", free-text "Something else" (resolve+measure ≤4
-Qloo calls — server route is honest 503 until wired, so the field must show the honest
-dependency state rather than fake results), primary "Replace with {name}", confirm →
-mini challenge pass shown as two ledger-style rows, panel closes, S5 revision row (S5
-is Phase 8 — persist the revision to `run.revisions`, render rows where the run state
-already shows them). Invariants: engine owns numeric truth (replacement re-ranks via
-the existing engine, never ad hoc), evidence-bound, ≤4 Qloo calls, no new npm deps,
-design locks. Then Phase 7 exit-gate work: clause map + fixture-browser review (the
-judge question: *"why do these components belong together?"* — answerable by clicking
-an edge since `3591f75`). Parallel user-side: **top up DeepSeek (B-02 — HTTP 402)** →
-one real browser judge pass closes Phase 6's two open boxes. Sequential in one checkout
-(D-2.1); workers never commit; orchestrator reviews (§17) and commits.
-Deadline: Oct 30 2026, internal freeze Oct 28.
+**Phase 7 exit-gate work** (contract line: *"A judge can answer 'why do these components
+belong together?' by inspecting an edge rather than trusting an unsupported narrative"*):
+build the clause map against Plan lines 662–724 + run a fixture-browser review
+(`npm run test:e2e` + manual pass through S2 → S3 → Replace on the production server)
+confirming — (1) every exit-gate clause has an observable surface or a recorded
+deviation; (2) the judge question is answerable by clicking an edge (claim → shared
+entities → triangulation → how-computed → ledger link, from `3591f75`) and by replacing
+a member (role preserved, ΔC/ΔD honest, mini stress, revision row, from `bd1cb20`);
+(3) no honest-503 or placeholder surface is reachable on the Phase 7 path. Then close
+Phase 7: archived-contract section, status line → CLOSED, progress record, coherent
+commit (precedent `cf23d4a`), reassess before Phase 8 (S4 Challenge the Plan —
+owner of D-7.14/D-7.16 follow-ups). Remaining spawn channel: 5/5 cancelled → continue
+orchestrator-direct unless the user restores it (D-7.7/D-7.9/D-7.11 lineage).
+Parallel user-side: **top up DeepSeek (B-02 — HTTP 402)** → one real browser judge pass
+closes Phase 6's two open boxes. Deadline: Oct 30 2026, internal freeze Oct 28.
 
 ## Phase 6 Exit-Gate Status (OPEN 2026-10-09 — every clause proven except the B-02 live click-through)
 
