@@ -2,7 +2,7 @@ import type { LedgerEntry } from "../agent/ledger.js";
 import type { EvidenceRecord } from "../evidence/index.js";
 import type { RunState } from "../../shared/run.js";
 import { EvidenceConflict, LedgerEventConflict, RunConflict, RunNotFound } from "./errors.js";
-import type { RunStore, StoredRun } from "./store.js";
+import type { BlueprintSnapshot, RunStore, StoredRun } from "./store.js";
 
 export interface MemoryStoreOptions {
   now?: () => Date;
@@ -23,6 +23,7 @@ export function createMemoryStore(options: MemoryStoreOptions = {}): RunStore {
   const runs = new Map<string, MemoryRun>();
   const ledger = new Map<string, Map<string, LedgerEntry>>();
   const evidence = new Map<string, Map<string, EvidenceRecord>>();
+  const snapshots = new Map<string, BlueprintSnapshot>();
 
   const sortedLedger = (runId: string): LedgerEntry[] => {
     const entries = [...(ledger.get(runId)?.values() ?? [])];
@@ -103,6 +104,26 @@ export function createMemoryStore(options: MemoryStoreOptions = {}): RunStore {
 
     async listEvidence(runId) {
       return structuredClone([...(evidence.get(runId)?.values() ?? [])]);
+    },
+
+    async saveBlueprintSnapshot(snapshot) {
+      if (!runs.has(snapshot.runId)) {
+        throw new RunNotFound(snapshot.runId);
+      }
+      snapshots.set(snapshot.runId, structuredClone(snapshot));
+    },
+
+    async findBlueprintSnapshot(runId) {
+      const snapshot = snapshots.get(runId);
+      return snapshot === undefined ? null : structuredClone(snapshot);
+    },
+
+    async findBlueprintSnapshotByShare(runId, shareToken) {
+      const snapshot = snapshots.get(runId);
+      if (snapshot === undefined || snapshot.shareToken !== shareToken) {
+        return null;
+      }
+      return structuredClone(snapshot);
     }
   };
 }

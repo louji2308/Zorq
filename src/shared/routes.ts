@@ -5,6 +5,7 @@ import {
   attackKindSchema,
   challengeReportSchema,
   createdRunSchema,
+  poolComponentRoles,
   runIdParamsSchema,
   runResponseSchema,
   runStateSchema,
@@ -110,34 +111,149 @@ export const recomputeResponseSchema = z.object({
 export type RecomputeResponse = z.infer<typeof recomputeResponseSchema>;
 
 export const blueprintQuerySchema = z.object({
-  snapshot: z.string().optional(),
-  share: z.string().optional()
+  share: z.string().trim().min(1).max(200).optional()
 });
 
 export type BlueprintQuery = z.infer<typeof blueprintQuerySchema>;
 
+export const blueprintRiskKinds = ["weakest-edge", "thin-component", "triangulation", "constraint-conflict"] as const;
+
+export type BlueprintRiskKind = (typeof blueprintRiskKinds)[number];
+
+export const blueprintConstraintKeys = ["lateNight", "quiet", "noLargeNightclub", "raw"] as const;
+
+export type BlueprintConstraintKey = (typeof blueprintConstraintKeys)[number];
+
+export const blueprintNoiseClasses = ["quiet", "moderate", "loud"] as const;
+
+export type BlueprintNoiseClass = (typeof blueprintNoiseClasses)[number];
+
+export const blueprintReceiptSchema = z.object({
+  kind: z.enum(["path", "shared-entities"]),
+  text: z.string().trim().min(1).max(300),
+  evidenceIds: z.array(z.string().min(1)).max(6)
+});
+
+export type BlueprintReceipt = z.infer<typeof blueprintReceiptSchema>;
+
+export const blueprintMemberFormatSchema = z.object({
+  typeDisplayName: z.string().trim().min(1).max(80),
+  formatName: z.string().trim().min(1).max(80),
+  footprintSqFtMin: z.number().int().min(0),
+  footprintSqFtMax: z.number().int().min(0),
+  noiseClass: z.enum(blueprintNoiseClasses),
+  open: z.string().trim().min(1).max(20),
+  close: z.string().trim().min(1).max(20),
+  downshiftedFrom: z.string().trim().min(1).max(80).nullable()
+});
+
+export type BlueprintMemberFormat = z.infer<typeof blueprintMemberFormatSchema>;
+
+export const blueprintMemberSchema = z.object({
+  memberId: z.string().trim().min(1).max(200),
+  name: z.string().trim().min(1).max(200),
+  role: z.enum(poolComponentRoles),
+  format: blueprintMemberFormatSchema.optional(),
+  receipts: z.array(blueprintReceiptSchema).max(3)
+});
+
+export type BlueprintMember = z.infer<typeof blueprintMemberSchema>;
+
+export const blueprintRoleGroupSchema = z.object({
+  role: z.enum(poolComponentRoles),
+  members: z.array(blueprintMemberSchema).min(1)
+});
+
+export type BlueprintRoleGroup = z.infer<typeof blueprintRoleGroupSchema>;
+
+export const blueprintDiffItemSchema = z.object({
+  member: z.string().trim().min(1).max(200),
+  role: z.enum(poolComponentRoles).optional(),
+  evidenceIds: z.array(z.string().min(1)).max(6)
+});
+
+export type BlueprintDiffItem = z.infer<typeof blueprintDiffItemSchema>;
+
+export const blueprintRiskSchema = z.object({
+  kind: z.enum(blueprintRiskKinds),
+  text: z.string().trim().min(1).max(300),
+  evidenceIds: z.array(z.string().min(1)).max(6)
+});
+
+export type BlueprintRisk = z.infer<typeof blueprintRiskSchema>;
+
 export const blueprintSchema = z.object({
-  title: z.string(),
-  rationale: z.string(),
-  compositionByRole: z.array(z.unknown()),
+  title: z.string().trim().min(1).max(200),
+  rationale: z.string().trim().min(1).max(1200),
+  narrativeSource: z.enum(["llm", "deterministic"]),
+  compositionByRole: z.array(blueprintRoleGroupSchema).min(1).max(6),
   fitToSite: z.object({
-    footprint: z.unknown(),
-    hours: z.unknown(),
-    downshifts: z.unknown()
+    footprint: z.object({
+      areaSqFt: z.number().finite().nullable(),
+      usableSqFt: z.number().finite().nullable(),
+      totalFootprintSqFt: z.number().finite().nullable(),
+      withinUsable: z.boolean(),
+      rule: z.string().trim().min(1).max(200)
+    }),
+    hours: z.object({
+      timeline: z
+        .array(
+          z.object({
+            memberId: z.string().trim().min(1).max(200),
+            name: z.string().trim().min(1).max(200),
+            open: z.string().trim().min(1).max(20),
+            close: z.string().trim().min(1).max(20)
+          })
+        )
+        .max(10),
+      constraintReads: z
+        .array(
+          z.object({
+            key: z.enum(blueprintConstraintKeys),
+            source: z.string().trim().min(1).max(200)
+          })
+        )
+        .max(12)
+    }),
+    downshifts: z
+      .array(
+        z.object({
+          memberId: z.string().trim().min(1).max(200),
+          name: z.string().trim().min(1).max(200),
+          sentence: z.string().trim().min(1).max(300)
+        })
+      )
+      .max(10)
   }),
   whatQlooChanged: z.object({
-    kept: z.array(z.unknown()),
-    added: z.array(z.unknown()),
-    removed: z.array(z.unknown()),
-    reformatted: z.array(z.unknown())
+    kept: z.array(blueprintDiffItemSchema).max(20),
+    added: z.array(blueprintDiffItemSchema).max(20),
+    removed: z.array(blueprintDiffItemSchema).max(20),
+    reformatted: z.array(blueprintDiffItemSchema).max(20)
   }),
-  risks: z.array(z.unknown()),
-  evidenceGrade: z.string(),
-  revisionHistory: z.array(z.unknown()),
-  methodUrl: z.string(),
-  shareUrl: z.string(),
-  generatedAt: z.string(),
-  expiresAt: z.string()
+  risks: z.array(blueprintRiskSchema).max(20),
+  evidenceGrade: z.object({
+    grade: z.enum(["A", "B", "C"]),
+    reasons: z.array(z.string().trim().min(1).max(200)).max(30),
+    rule: z.string().trim().min(1).max(300)
+  }),
+  revisionHistory: z
+    .array(
+      z.object({
+        rev: z.number().int().min(1),
+        replacedMember: z.string().trim().min(1).max(200),
+        newMember: z.string().trim().min(1).max(200),
+        role: z.enum(poolComponentRoles),
+        coherenceBefore: z.number().finite().min(0).max(1),
+        coherenceAfter: z.number().finite().min(0).max(1),
+        custom: z.boolean()
+      })
+    )
+    .max(100),
+  methodUrl: z.string().trim().min(1).max(300),
+  shareUrl: z.string().trim().min(1).max(500),
+  generatedAt: z.string().trim().min(1),
+  expiresAt: z.string().trim().min(1)
 });
 
 export type Blueprint = z.infer<typeof blueprintSchema>;

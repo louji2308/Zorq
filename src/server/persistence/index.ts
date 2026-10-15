@@ -2,7 +2,7 @@ import { createMemoryStore } from "./memoryStore.js";
 import { createTursoStore } from "./tursoStore.js";
 import type { RunStore } from "./store.js";
 
-export type { CreateRunInput, RunStore, RunStoreKind, StoredRun } from "./store.js";
+export type { BlueprintSnapshot, CreateRunInput, RunStore, RunStoreKind, StoredRun } from "./store.js";
 export {
   EvidenceConflict,
   LedgerEventConflict,

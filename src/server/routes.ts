@@ -222,7 +222,21 @@ export function registerRoutes(app: Express, dependencies: RouteDependencies): v
   app.get(
     "/api/runs/:id/blueprint",
     validate({ params: runIdParamsSchema, query: blueprintQuerySchema }),
-    unimplemented(UNIMPLEMENTED_MESSAGES.blueprint)
+    (req, res, next) => {
+      if (orchestrator === undefined || store === undefined) {
+        unimplemented(UNIMPLEMENTED_MESSAGES.blueprint)(req, res, next);
+        return;
+      }
+      const query = blueprintQuerySchema.parse(req.query);
+      void orchestrator
+        .buildBlueprint(readRunId(req), query)
+        .then((body) => {
+          res.status(200).json(body);
+        })
+        .catch((error: unknown) => {
+          next(mapRouteError(error));
+        });
+    }
   );
 
   app.get("/api/method", unimplemented(UNIMPLEMENTED_MESSAGES.method));

@@ -7,15 +7,25 @@ import { createOrchestrator } from "../../src/server/orchestrator/index.js";
 import { createMemoryStore, type RunStore } from "../../src/server/persistence/index.js";
 import { createEventHub } from "../../src/server/sse/index.js";
 import type { QlooEnvelope, QlooGateway, QlooOperation } from "../../src/server/qloo/index.js";
-import { TEST_NOW, fakeGateway, fakeLlm, okEnvelope } from "../agent/support/fakes.js";
+import type { LlmCompletionRequest } from "../../src/server/agent/llm.js";
+import {
+  TEST_NOW,
+  fakeGateway,
+  fakeLlm,
+  okEnvelope,
+  type FakeLlmResponse
+} from "../agent/support/fakes.js";
 
 export interface JudgeFixtureServer {
   baseUrl: string;
   runId: string;
   store: RunStore;
   gatewayCalls: number;
+  llmCalls: () => LlmCompletionRequest[];
   close: () => Promise<void>;
 }
+
+export type JudgeLlmResponse = FakeLlmResponse | ((request: LlmCompletionRequest) => FakeLlmResponse);
 
 export const JUDGE_BRIEF: Brief = {
   location: "Williamsburg, Brooklyn, NY",
@@ -564,7 +574,7 @@ async function listen(app: Express): Promise<{ baseUrl: string; close: () => Pro
 }
 
 export async function startJudgeFixtureServer(
-  options: { nodeEnv?: "test" | "production" } = {}
+  options: { nodeEnv?: "test" | "production"; extraLlmResponses?: JudgeLlmResponse[] } = {}
 ): Promise<JudgeFixtureServer> {
   const config = loadConfig({
     NODE_ENV: options.nodeEnv ?? "test",
@@ -574,7 +584,13 @@ export async function startJudgeFixtureServer(
   });
   const store = createMemoryStore();
   const hub = createEventHub();
-  const llm = fakeLlm([{ content: JUDGE_PRIOR }, TURN_ONE, TURN_TWO, FINAL_TURN]);
+  const llm = fakeLlm([
+    { content: JUDGE_PRIOR },
+    TURN_ONE,
+    TURN_TWO,
+    FINAL_TURN,
+    ...(options.extraLlmResponses ?? [])
+  ]);
   const scripted = judgeGateway();
   const orchestrator = createOrchestrator({
     store,
@@ -616,6 +632,7 @@ export async function startJudgeFixtureServer(
     runId,
     store,
     gatewayCalls: scripted.calls(),
+    llmCalls: () => llm.calls,
     close: running.close
   };
 }

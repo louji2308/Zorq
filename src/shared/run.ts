@@ -323,6 +323,10 @@ export const candidatePoolSchema = z.array(poolComponentSchema);
 
 export type CandidatePool = z.infer<typeof candidatePoolSchema>;
 
+export function componentDisplayName(component: Pick<PoolComponent, "id" | "exemplars">): string {
+  return component.exemplars[0]?.name ?? component.id;
+}
+
 export const attackKinds = ["ablation", "substitution", "bridge", "catchment", "rival"] as const;
 
 export type AttackKind = (typeof attackKinds)[number];
@@ -367,7 +371,8 @@ export const challengeMutationSchema = z.strictObject({
   memberOut: z.string().trim().min(1).max(200).nullable(),
   memberIn: z.string().trim().min(1).max(200).nullable(),
   coherenceBefore: z.number().finite().min(0).max(1),
-  coherenceAfter: z.number().finite().min(0).max(1)
+  coherenceAfter: z.number().finite().min(0).max(1),
+  component: poolComponentSchema.optional()
 });
 
 export type ChallengeMutation = z.infer<typeof challengeMutationSchema>;

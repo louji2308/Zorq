@@ -1,6 +1,13 @@
 import type { Brief } from "../../shared/brief.js";
 import type { RunState } from "../../shared/run.js";
-import type { ChallengeRequest, ChallengeResponse, ReplaceRequest, ReplaceResponse } from "../../shared/routes.js";
+import type {
+  BlueprintQuery,
+  BlueprintResponse,
+  ChallengeRequest,
+  ChallengeResponse,
+  ReplaceRequest,
+  ReplaceResponse
+} from "../../shared/routes.js";
 import type { LlmBudget } from "../agent/budget.js";
 import type { LlmClient } from "../agent/llm.js";
 import type { QlooGateway } from "../qloo/index.js";
@@ -31,4 +38,5 @@ export interface Orchestrator {
   retryRun(runId: string): Promise<RunState>;
   replaceComponent(runId: string, request: ReplaceRequest): Promise<ReplaceResponse>;
   challengeRun(runId: string, request: ChallengeRequest): Promise<ChallengeResponse>;
+  buildBlueprint(runId: string, query: BlueprintQuery): Promise<BlueprintResponse>;
 }

@@ -1188,13 +1188,18 @@ export async function runChallenge(input: ChallengeInput): Promise<ChallengeOutc
     if (candidate.scratch !== null) {
       scratch = candidate.scratch;
     }
+    const inserted =
+      candidate.memberIn !== null && pool.every((component) => component.id !== candidate.memberIn)
+        ? (candidate.scratch?.pool.find((component) => component.id === candidate.memberIn) ?? undefined)
+        : undefined;
     const mutation: ChallengeMutation = {
       operator: candidate.operator,
       round: mutations.length + 1,
       memberOut: candidate.memberOut,
       memberIn: candidate.memberIn,
       coherenceBefore: leader.coherence,
-      coherenceAfter: candidate.leaderAfter.coherence
+      coherenceAfter: candidate.leaderAfter.coherence,
+      ...(inserted !== undefined ? { component: inserted } : {})
     };
     mutations.push(mutation);
     leader = candidate.leaderAfter;

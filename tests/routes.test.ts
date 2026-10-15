@@ -239,40 +239,79 @@ const cases: SchemaCase[] = [
     route: "GET /api/runs/:id/blueprint",
     request: {
       schema: blueprintQuerySchema,
-      valid: { snapshot: "snap_01", share: "sh_01" },
-      invalid: { snapshot: 7 }
+      valid: { share: "sh_01" },
+      invalid: { share: 7 }
     },
     response: {
       schema: blueprintResponseSchema,
       valid: {
         blueprint: {
           title: "The Late Room",
-          rationale: "Anchored in measured fado-adjacent late culture.",
-          compositionByRole: [{ role: "Anchor", name: "The Late Room" }],
-          fitToSite: { footprint: "4500 sq ft", hours: "18:00-02:00", downshifts: [] },
+          rationale: "Anchored in measured fado-adjacent late culture. [ev_01]",
+          narrativeSource: "deterministic",
+          compositionByRole: [
+            {
+              role: "Anchor",
+              members: [
+                { memberId: "comp_late_1", name: "The Late Room", role: "Anchor", receipts: [] }
+              ]
+            }
+          ],
+          fitToSite: {
+            footprint: {
+              areaSqFt: 4500,
+              usableSqFt: 3825,
+              totalFootprintSqFt: 3600,
+              withinUsable: true,
+              rule: "total footprint ≤ 85% of available area [Zorq heuristic]"
+            },
+            hours: {
+              timeline: [{ memberId: "comp_late_1", name: "The Late Room", open: "18:00", close: "02:00" }],
+              constraintReads: [{ key: "raw", source: "capacity 80" }]
+            },
+            downshifts: []
+          },
           whatQlooChanged: { kept: [], added: [], removed: [], reformatted: [] },
-          risks: ["Catchment thins after midnight"],
-          evidenceGrade: "B",
+          risks: [
+            { kind: "weakest-edge", text: "weakest link: The Late Room + The Late Hour", evidenceIds: [] }
+          ],
+          evidenceGrade: {
+            grade: "B",
+            reasons: ["edge comp_a|comp_b state=failed"],
+            rule: "A: all leader edges confirmed. B: any contested, thin, or failed probe. C: any leader member unmeasured."
+          },
           revisionHistory: [],
           methodUrl: "/method",
-          shareUrl: "/run/run_01/blueprint",
+          shareUrl: "/run/run_01/blueprint?share=sh_01",
           generatedAt: "2026-10-07T11:00:00.000Z",
-          expiresAt: "2026-10-14T11:00:00.000Z"
+          expiresAt: "2026-11-06T11:00:00.000Z"
         }
       },
       invalid: {
         blueprint: {
           title: "The Late Room",
+          rationale: "Anchored in measured fado-adjacent late culture.",
+          narrativeSource: "deterministic",
           compositionByRole: [],
-          fitToSite: { footprint: "4500 sq ft", hours: "18:00-02:00", downshifts: [] },
+          fitToSite: {
+            footprint: {
+              areaSqFt: 4500,
+              usableSqFt: 3825,
+              totalFootprintSqFt: 3600,
+              withinUsable: true,
+              rule: "total footprint ≤ 85% of available area [Zorq heuristic]"
+            },
+            hours: { timeline: [], constraintReads: [] },
+            downshifts: []
+          },
           whatQlooChanged: { kept: [], added: [], removed: [], reformatted: [] },
-          risks: [],
+          risks: ["Catchment thins after midnight"],
           evidenceGrade: "B",
           revisionHistory: [],
           methodUrl: "/method",
-          shareUrl: "/run/run_01/blueprint",
+          shareUrl: "/run/run_01/blueprint?share=sh_01",
           generatedAt: "2026-10-07T11:00:00.000Z",
-          expiresAt: "2026-10-14T11:00:00.000Z"
+          expiresAt: "2026-11-06T11:00:00.000Z"
         }
       }
     }

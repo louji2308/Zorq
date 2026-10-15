@@ -3,8 +3,9 @@ import type { LedgerEntry } from "../agent/ledger.js";
 import type { LedgerEvent } from "../../shared/events.js";
 import type { EvidenceRecord } from "../evidence/index.js";
 import type { RunState } from "../../shared/run.js";
+import type { Blueprint } from "../../shared/routes.js";
 import { EvidenceConflict, LedgerEventConflict, RunConflict, RunNotFound } from "./errors.js";
-import type { RunStore, StoredRun } from "./store.js";
+import type { BlueprintSnapshot, RunStore, StoredRun } from "./store.js";
 
 export interface TursoStoreOptions {
   url: string;
@@ -40,7 +41,16 @@ const SCHEMA_STATEMENTS = [
     record_json TEXT NOT NULL,
     PRIMARY KEY (run_id, evidence_id)
   )`,
-  `CREATE INDEX IF NOT EXISTS idx_ledger_events_run_sequence ON ledger_events (run_id, sequence)`
+  `CREATE TABLE IF NOT EXISTS blueprint_snapshots (
+    run_id TEXT PRIMARY KEY,
+    share_token TEXT NOT NULL,
+    fingerprint TEXT NOT NULL,
+    blueprint_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_ledger_events_run_sequence ON ledger_events (run_id, sequence)`,
+  `CREATE INDEX IF NOT EXISTS idx_blueprint_snapshots_share ON blueprint_snapshots (share_token)`
 ];
 
 function isConstraintError(error: unknown): boolean {
@@ -85,6 +95,21 @@ function parseEvent(eventJson: string): LedgerEvent {
 
 function parseRecord(recordJson: string): EvidenceRecord {
   return JSON.parse(recordJson) as EvidenceRecord;
+}
+
+function parseBlueprintSnapshot(row: Record<string, unknown>): BlueprintSnapshot {
+  return {
+    runId: readText(row, "run_id"),
+    shareToken: readText(row, "share_token"),
+    fingerprint: readText(row, "fingerprint"),
+    blueprint: parseBlueprint(readText(row, "blueprint_json")),
+    createdAt: readText(row, "created_at"),
+    expiresAt: readText(row, "expires_at")
+  };
+}
+
+function parseBlueprint(blueprintJson: string): Blueprint {
+  return JSON.parse(blueprintJson) as Blueprint;
 }
 
 async function requireRun(client: Client, runId: string): Promise<void> {
@@ -235,6 +260,46 @@ export async function createTursoStore(options: TursoStoreOptions): Promise<RunS
 
     async listEvidence(runId) {
       return listEvidenceRecords(client, runId);
+    },
+
+    async saveBlueprintSnapshot(snapshot) {
+      await client.execute({
+        sql: `INSERT INTO blueprint_snapshots (run_id, share_token, fingerprint, blueprint_json, created_at, expires_at)
+              VALUES (?, ?, ?, ?, ?, ?)
+              ON CONFLICT (run_id) DO UPDATE SET
+                share_token = excluded.share_token,
+                fingerprint = excluded.fingerprint,
+                blueprint_json = excluded.blueprint_json,
+                created_at = excluded.created_at,
+                expires_at = excluded.expires_at`,
+        args: [
+          snapshot.runId,
+          snapshot.shareToken,
+          snapshot.fingerprint,
+          JSON.stringify(snapshot.blueprint),
+          snapshot.createdAt,
+          snapshot.expiresAt
+        ]
+      });
+    },
+
+    async findBlueprintSnapshot(runId) {
+      const result = await client.execute({
+        sql: "SELECT run_id, share_token, fingerprint, blueprint_json, created_at, expires_at FROM blueprint_snapshots WHERE run_id = ?",
+        args: [runId]
+      });
+      const row = result.rows[0];
+      return row === undefined ? null : parseBlueprintSnapshot(row as unknown as Record<string, unknown>);
+    },
+
+    async findBlueprintSnapshotByShare(runId, shareToken) {
+      const result = await client.execute({
+        sql: `SELECT run_id, share_token, fingerprint, blueprint_json, created_at, expires_at
+              FROM blueprint_snapshots WHERE run_id = ? AND share_token = ?`,
+        args: [runId, shareToken]
+      });
+      const row = result.rows[0];
+      return row === undefined ? null : parseBlueprintSnapshot(row as unknown as Record<string, unknown>);
     },
 
     async close() {

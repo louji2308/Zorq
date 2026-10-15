@@ -1,7 +1,10 @@
-import { validationFailed, type ZodIssueLike } from "../../shared/errors.js";
+import { ApiError, validationFailed, type ZodIssueLike } from "../../shared/errors.js";
 import type { LedgerEvent } from "../../shared/events.js";
 import type { Brief } from "../../shared/brief.js";
 import type {
+  Blueprint,
+  BlueprintQuery,
+  BlueprintResponse,
   ChallengeRequest,
   ChallengeResponse,
   ReplaceRequest,
@@ -17,6 +20,7 @@ import { generatePrior, persistPrior } from "../agent/prior.js";
 import { createInitialRun, transitionRun } from "../agent/state.js";
 import type { EvidenceRecord } from "../evidence/index.js";
 import { EvidenceConflict, RunNotFound, type StoredRun } from "../persistence/index.js";
+import { blueprintFingerprint, composeBlueprint, mintShareToken } from "./blueprint.js";
 import { OrchestratorStateError, RunBusyError } from "./errors.js";
 import { runChallenge, type ChallengeOutcome } from "./challenge.js";
 import { runMeasurement } from "./measure.js";
@@ -579,5 +583,65 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
     });
   }
 
-  return { startRun, resumeRun, stopRun, retryRun, replaceComponent, challengeRun };
+  async function buildBlueprint(runId: string, query: BlueprintQuery): Promise<BlueprintResponse> {
+    if (query.share !== undefined) {
+      const snapshot = await deps.store.findBlueprintSnapshotByShare(runId, query.share);
+      if (snapshot === null) {
+        throw new ApiError("RUN_NOT_FOUND", `run ${runId} has no Place Blueprint snapshot for that share link`);
+      }
+      if (Date.parse(snapshot.expiresAt) <= now()) {
+        throw new ApiError("SNAPSHOT_EXPIRED", "This Place Blueprint snapshot has expired; open the run to build a fresh one.");
+      }
+      return { blueprint: snapshot.blueprint };
+    }
+    return runCritical(runId, async () => {
+      const stored = await loadStored(runId);
+      const state = rehydrateRun(stored);
+      const fingerprint = blueprintFingerprint(state);
+      const existing = await deps.store.findBlueprintSnapshot(runId);
+      if (
+        existing !== null &&
+        existing.fingerprint === fingerprint &&
+        Date.parse(existing.expiresAt) > now()
+      ) {
+        return { blueprint: existing.blueprint };
+      }
+      const shareToken = existing?.shareToken ?? mintShareToken();
+      const storedEvidence = await deps.store.listEvidence(runId);
+      const ledger = new WriteThroughLedger({
+        store: deps.store,
+        runId,
+        seed: stored.ledger,
+        armed: true,
+        onAppend: (entry) => emitLedger(runId, entry)
+      });
+      let blueprint: Blueprint;
+      try {
+        blueprint = await composeBlueprint({
+          state,
+          shareToken,
+          storedEvidenceIds: new Set(storedEvidence.map((record) => record.id)),
+          llm: deps.llm,
+          budget: budgetForPass(),
+          ledger,
+          now: now()
+        });
+      } catch (error) {
+        await ledger.flush().catch(() => undefined);
+        throw error;
+      }
+      await ledger.flush();
+      await deps.store.saveBlueprintSnapshot({
+        runId,
+        shareToken,
+        fingerprint,
+        blueprint,
+        createdAt: blueprint.generatedAt,
+        expiresAt: blueprint.expiresAt
+      });
+      return { blueprint };
+    });
+  }
+
+  return { startRun, resumeRun, stopRun, retryRun, replaceComponent, challengeRun, buildBlueprint };
 }

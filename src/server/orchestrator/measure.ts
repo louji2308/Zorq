@@ -379,7 +379,7 @@ async function probeRoute2(
   return { resultCount: 0, focalInTopHalf: null };
 }
 
-function extractPriorMemberEntries(composition: unknown): Array<{ role?: string; name: string }> {
+export function extractPriorMemberEntries(composition: unknown): Array<{ role?: string; name: string }> {
   const entries: Array<{ role?: string; name: string }> = [];
   const pushEntry = (value: unknown, role?: string): void => {
     if (typeof value === "string" && value.trim() !== "") {
