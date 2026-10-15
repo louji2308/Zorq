@@ -7,29 +7,164 @@
 
 ## Current Phase
 
-**PHASE 8 — S4/S5: Challenge, Constraint Fit & Blueprint**. Status: **NOT STARTED —
-Phase 7 closed 2026-10-15** (exit-gate clause map PASSED, see `Phase 7 Exit-Gate
-Status`; close-out commits `b1f276e`, `0d9344b`, `1acb896`, docs commit follows).
-Phase 7 shipped: W-7.1 `99b53bd`, W-7.2 `7180387`, W-7.3 `f8717d7`, W-7.4 `3591f75`,
-W-7.5 `bd1cb20`, exit-gate work `b1f276e`/`0d9344b`/`1acb896` (evidence slot + names +
-typed weakest-link + weakest-line success sheet + judge pipeline/e2e).
+**PHASE 8 — S4/S5: Challenge, Constraint Fit & Blueprint**. Status: **IN PROGRESS —
+boundary reconstruction COMPLETE 2026-10-15; contract written (see `PHASE 8
+CONTRACT`); orchestrator-direct implementation starting**. Phase 7 closed 2026-10-15
+(exit-gate clause map PASSED, see `Phase 7 Exit-Gate Status`; close-out commits
+`b1f276e`, `0d9344b`, `1acb896`, `94dade1`). Phase 7 shipped: W-7.1 `99b53bd`,
+W-7.2 `7180387`, W-7.3 `f8717d7`, W-7.4 `3591f75`, W-7.5 `bd1cb20`, exit-gate work
+`b1f276e`/`0d9344b`/`1acb896`/`94dade1` (evidence slot + names + typed weakest-link +
+weakest-line success sheet + judge pipeline/e2e + docs close).
 Phase 6 remains OPEN with all build work committed (`579b23e`…`64bba88`); its exit gate
 waits only on the B-02 DeepSeek live click-through (user-side payment) — recorded under
-Deviations. Next: reconstruct Phase 8 at its boundary (re-read all 7 ProjectSpec sources
-+ AGENTS.md), write the Phase 8 contract before any delegation (spawn channel 5/5
-cancelled → orchestrator-direct unless restored).
+Deviations.
 
 ## Current Objective
 
-Enter Phase 8 (S4/S5: Challenge, Constraint Fit & Blueprint) through its boundary
-protocol: re-read all 7 ProjectSpec sources + AGENTS.md, rebuild the current-state
-model (what Phases 6–7 proved; the S4/S5 surfaces that are still placeholders —
-challenge, constraint fit, blueprint, Without-Qloo comparison), write the Phase 8
-contract before any implementation, then decompose and delegate (orchestrator-direct
-per 5/5 channel failure). Exit gate (Plan): the full judge path through Challenge →
-constraint fit → evidence-bound Place Blueprint → Without-Qloo comparison, honest
-under real services. Parallel user-side: top up DeepSeek (B-02) to close Phase 6's
+Implement Phase 8 under the contract below: deterministic constraint/format engine →
+S4 challenge engine + S5 blueprint/Without-Qloo surfaces → S4/S5 UI → full-gate
+verification of the judge path Challenge → constraint fit → Place Blueprint →
+Without-Qloo comparison, honest under real services. Orchestrator-direct (spawn
+channel 5/5 cancelled); parallel user-side: top up DeepSeek (B-02) to close Phase 6's
 last two boxes. Deadline Oct 30 2026 23:45 EDT; internal freeze Oct 28.
+
+### PHASE 8 CONTRACT (WRITTEN 2026-10-15 — before implementation; orchestrator-direct)
+
+```text
+PHASE:        8 — S4/S5: Challenge, Constraint Fit & Blueprint
+MISSION:      (Plan 734) Make the autonomous loop visibly defend and finalize a
+              plan: stress the leader, adapt it to physical constraints, and hand
+              the user an evidence-bound Place Blueprint plus an honest
+              without-Qloo comparison.
+WHY:          The protected Zorq loop is Brief → Prior → Qloo → evidence →
+              deterministic measurement → compositions → SELF-CHALLENGE →
+              constraint fit → Blueprint → Without-Qloo. Phases 5-7 shipped the
+              left half (measurement, compositions, replace, graph, evidence).
+              S4/S5 are the payoff the judge screens: challenge = the product's
+              differentiator; Blueprint = the deliverable; Without-Qloo = the
+              honesty control. Without this phase the app ends at a dashboard.
+
+CURRENT-STATE ASSUMPTIONS (verified at boundary):
+  - Pipeline proven through S3: prior lock, investigation, measurement kernel,
+    compositions + null-model percentile, triangulation, rival sweep, replace
+    (mini-stress, revisions), evidence drawer, SSE + recovery, fixture e2e.
+  - `runStateSchema.stressReport`/`constraintFit` are `z.unknown()`; blueprint
+    does NOT exist on RunState (routes.ts blueprintSchema is a separate response
+    shape with z.unknown internals).
+  - Challenge/recompute/blueprint routes are honest 503 stubs
+    (routes.ts `unimplemented`); /method is a Phase 9 stub.
+  - Mini-stress (replace.ts) already computes ablation + rival deterministically
+    over pool/graph/ranked; its kernels are reusable.
+  - SSE hub already declares `stress` and `blueprint` frame events (z.unknown).
+  - RunRoute has views investigate|compositions|connections only; no S4/S5 view.
+  - briefSchema carries areaSqFt, objective, constraints[] — the constraint
+    engine's raw inputs; no format library exists anywhere.
+  - Engine exports: buildCompositions, rankCompositionSet, rivalSweep,
+    measureComposition, buildGraph, computeIdf, distinctiveness, triangulation.
+  - Gateway: insights/tags/search/bridge probe capability exists (Phase 6 tool
+    surface); Qloo call budget enforced per-run.
+
+IN-SCOPE CAPABILITIES (ordered by dependency):
+  W-8.1 Constraint/format engine [deterministic kernel]
+       - Format library `[Zorq heuristic]`: ~25 component types × 2-3 formats
+         (footprint range sqft, hours profile, noise class, role). Pure data +
+         pure functions; every export carries the heuristic marker for /method.
+       - fitConstraints(): sum footprint ≤ 85% of areaSqFt (circulation);
+         hours/noise filters from brief constraints chips; if infeasible,
+         downshift formats (preserve role: "Cinema → micro-screening. Role
+         preserved: Anchor.") then drop least load-bearing member (weakest edge);
+         emit structured FitResult {footprintBar, hoursBars, downshifts[], drops[],
+         feasible, reasons}.
+       - Recompute path: re-fit formats only, Prior untouched (routes.ts
+         recomputeRequestSchema already typed).
+  W-8.2 S4 challenge engine [server pass]
+       - POST /api/runs/:id/challenge → orchestrator challengePass.
+       - Five attacks in spec order: ablation (reuse replace.ts kernel),
+         substitution (same-role swap probe over pool alternatives), bridge
+         (weakest-link insertion via gateway bridge search + re-measure),
+         catchment (shift-scale: heatmap/city-baseline re-read, honest
+         "not measured" if gateway refuses), rival (rank + sweep flip).
+       - Verdicts: Survived / Revised (with diff) / Replaced by {rival}.
+       - Agent role: choose attack emphasis order from diagnostics (bounded LLM
+         turn, ≤3 planner turns; if LLM unavailable, deterministic diagnostic
+         order — never fabricate an agent transcript).
+       - Mutation: Bridge/Swap/Drop/Shift-scale, max 2 rounds; stop when leader
+         survives AND no mutation raises coherence by > ε (ε=1e-6 deterministic).
+       - Failed probe → attack row "not completed" + evidence grade capped at B.
+       - Persist full stressReport {kind:"challenge", ...} WITHOUT clobbering
+         the replace mini report — D-7.16 resolution: mini reports move to
+         `stressReport.mini` slot or challenge supersedes only after confirm;
+         choose the smallest reversible schema change and record it.
+       - Evidence: every probe appends ledger event + evidence record.
+       - Qloo budget: challenge reuses per-run budget; hard-fail honest when
+         exhausted (attack marked not completed).
+  W-8.3 S5 Blueprint [server + route]
+       - buildBlueprint(state) → blueprintSchema (title, rationale [LLM-cited
+         evidence IDs only], compositionByRole, fitToSite from W-8.1,
+         whatQlooChanged {kept/added/removed/reformatted} = Prior→Final diff,
+         risks (weakest edge, thin components, contested edges, constraint
+         conflicts), evidenceGrade (A/B/C per spec §12 incl. failed-probe cap
+         from W-8.2), revisionHistory, methodUrl, shareUrl, generatedAt,
+         expiresAt).
+       - GET /api/runs/:id/blueprint (+ ?share= token for read-only snapshot).
+       - Share: opaque token → Turso-persisted snapshot, read-only, no auth.
+       - Copy as Markdown renderer (client-side, deterministic from blueprint).
+       - Print stylesheet (grayscale, landscape, endnote receipts).
+  W-8.4 Without-Qloo comparison
+       - Left column: frozen Prior + LLM-only polish (same constraints, no
+         tools) — if polish does not exist at run start, add it during prior
+         generation with budget accounting; if it cannot be generated, the
+         left column honestly shows Prior alone and says so.
+       - Right: final composition. Diff highlighted. "Here, the evidence
+         changed nothing." confident-empty case.
+  W-8.5 S4/S5 UI
+       - RunRoute gains views "challenge" (S4) + "blueprint" (S5) with tab
+         underline slide; Open blueprint CTA; verdict banner with square
+         (solid/half-hatched/crossed); five attack rows (●/◐/○); leader-as-
+         drawn column with in-place strike/slide mutations.
+       - BlueprintRoute: title block, rationale + superscripts, composition
+         rows + receipts margin, fit-to-site bars, What Qloo changed slope,
+         risks, grade + /method link, revision block, Share/Copy/Print.
+       - Without-Qloo compare modal (960px, Esc + Close).
+       - Evidence-state honesty: unknown evidence IDs never render as Qloo.
+
+REQUIRED INVARIANTS:
+  - Prior write-once; challenge/constraint/blueprint never mutate Prior.
+  - All numbers deterministic from normalized inputs; LLM never authors
+    numeric truth (verdict wording may be LLM; the verdict itself and all
+    metrics are code).
+  - UI claim → Evidence ID → ledger → Qloo path; unmeasurable = honest
+    "not measured"/"not completed".
+  - Challenge and replace coexist: a replace after challenge must not silently
+    erase the challenge verdict (D-7.16 resolved explicitly).
+  - Autonomy: ≤3 planner turns, Qloo ≤180/run target, mutation rounds ≤2.
+  - No fake data, no fabricated probes, no silent fallbacks.
+
+DEPENDENCIES:  W-8.1 → W-8.3; W-8.2 → W-8.3 (grade cap, risks, verdict feed
+               blueprint); W-8.4 needs prior + final (both exist); W-8.5 last.
+NON-GOALS:     /method full content page (Phase 9); re-inking motion (deferred
+               in Phase 7); FD-684 ledger-history replay (B-09 stays escalated);
+               auth/payments; multi-agent runtime; tuning budget constants.
+RISK HOTSPOTS: challengePass orchestration correctness; stressReport schema
+               evolution (D-7.16); share-token snapshot durability; Without-
+               Qloo polish generation cost; blueprint schema z.unknown → typed
+               without breaking SSE unknown-frame tolerance; e2e surface growth.
+ACCEPTANCE:    typecheck 0 · lint 0 · unit green · build PASS · e2e covers
+               challenge → blueprint → without-Qloo on fixture pipeline ·
+               secret scan 0 hits · browser walk on production dist with zero
+               console errors · honest refusal paths unit-tested (busy run,
+               exhausted budget, unmeasurable state).
+VERIFICATION:  focused unit per kernel → orchestrator integration tests →
+               api route tests → fixture-pipeline e2e → full ladder → browser.
+ARTIFACTS:     src/server/engine/formats.ts, fit.ts; src/server/orchestrator/
+               challenge.ts; src/server/blueprint/*; shared schemas typed;
+               web/screens/s4/*, s5/*; routes wired; tests per module.
+COMMIT SCOPE:  3-6 coherent commits (constraint kernel; challenge engine;
+               blueprint+share; without-qloo; UI; docs close).
+EXIT GATE:     full judge path honest under real services; clause map vs Plan
+               734-808 + ProductSpec S4/S5 + Final Design 7.4-7.5; every
+               worker (self) diff reviewed; no fake production behavior.
+```
 
 ### PHASE 7 CONTRACT (ARCHIVED 2026-10-15 — phase closed; exit-gate clause map in
 ### `Phase 7 Exit-Gate Status` below. Written 2026-10-11, before delegation.)
