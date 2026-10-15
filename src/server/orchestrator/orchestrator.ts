@@ -1,7 +1,12 @@
 import { validationFailed, type ZodIssueLike } from "../../shared/errors.js";
 import type { LedgerEvent } from "../../shared/events.js";
 import type { Brief } from "../../shared/brief.js";
-import type { ReplaceRequest, ReplaceResponse } from "../../shared/routes.js";
+import type {
+  ChallengeRequest,
+  ChallengeResponse,
+  ReplaceRequest,
+  ReplaceResponse
+} from "../../shared/routes.js";
 import type { Prior, RunState } from "../../shared/run.js";
 import { LOCK_LLM_BUDGET_USD } from "../config.js";
 import { LlmBudget } from "../agent/budget.js";
@@ -13,6 +18,7 @@ import { createInitialRun, transitionRun } from "../agent/state.js";
 import type { EvidenceRecord } from "../evidence/index.js";
 import { EvidenceConflict, RunNotFound, type StoredRun } from "../persistence/index.js";
 import { OrchestratorStateError, RunBusyError } from "./errors.js";
+import { runChallenge, type ChallengeOutcome } from "./challenge.js";
 import { runMeasurement } from "./measure.js";
 import { rehydrateRun } from "./rehydrate.js";
 import { applyReplacement, type ReplaceOutcome } from "./replace.js";
@@ -523,5 +529,55 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
     });
   }
 
-  return { startRun, resumeRun, stopRun, retryRun, replaceComponent };
+  async function challengeRun(runId: string, request: ChallengeRequest): Promise<ChallengeResponse> {
+    await loadStored(runId);
+    if (activePasses.has(runId)) {
+      throw new RunBusyError(runId);
+    }
+    return runCritical(runId, async () => {
+      const stored = await loadStored(runId);
+      if (activePasses.has(runId)) {
+        throw new RunBusyError(runId);
+      }
+      const state = rehydrateRun(stored);
+      const ledger = new WriteThroughLedger({
+        store: deps.store,
+        runId,
+        seed: stored.ledger,
+        armed: true,
+        onAppend: (entry) => emitLedger(runId, entry)
+      });
+      const record: ActiveRecord = { stopped: false };
+      activePasses.set(runId, { record, ledger });
+      try {
+        let outcome: ChallengeOutcome;
+        try {
+          outcome = await runChallenge({
+            state,
+            request,
+            gateway: deps.gateway,
+            ledger,
+            now,
+            llm: deps.llm,
+            budget: budgetForPass()
+          });
+        } catch (error) {
+          await ledger.flush().catch(() => undefined);
+          throw error;
+        }
+        await persistEvidence(runId, outcome.evidence);
+        await ledger.flush();
+        await deps.store.saveRunState(runId, outcome.state);
+        emitState(outcome.state);
+        return {
+          run: outcome.state,
+          report: outcome.report
+        };
+      } finally {
+        activePasses.delete(runId);
+      }
+    });
+  }
+
+  return { startRun, resumeRun, stopRun, retryRun, replaceComponent, challengeRun };
 }

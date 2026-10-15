@@ -1,7 +1,6 @@
 import { ApiError, validationFailed } from "../../shared/errors.js";
 import { runStateSchema } from "../../shared/run.js";
 import type {
-  PoolExemplar,
   RunNeighborhoodSource,
   RunNeighborhoods,
   RunRankedComposition,
@@ -35,7 +34,7 @@ import {
   type WeightedEntity
 } from "../engine/index.js";
 import { createEvidenceRecord, type EvidenceRecord } from "../evidence/index.js";
-import type { QlooEnvelope, QlooGateway, QlooInsightsResults, QlooTagResults } from "../qloo/index.js";
+import type { QlooEnvelope, QlooGateway, QlooTagResults } from "../qloo/index.js";
 import { OrchestratorStateError } from "./errors.js";
 import {
   NEIGHBORHOOD_TAKE,
@@ -44,6 +43,7 @@ import {
   localityLadder,
   observationEvent,
   projectCompositionsNode,
+  projectExemplars,
   projectRunGraph,
   projectSignals,
   resolvePriorMarker
@@ -109,7 +109,7 @@ function badRequest(path: string, message: string): ApiError {
   return validationFailed([{ path: [path], message }], message);
 }
 
-function sameMembers(left: readonly string[], right: readonly string[]): boolean {
+export function sameMembers(left: readonly string[], right: readonly string[]): boolean {
   if (left.length !== right.length) {
     return false;
   }
@@ -148,42 +148,19 @@ function customComponentId(query: string, taken: ReadonlySet<string>): string {
   return candidate;
 }
 
-function guardMutationState(state: RunState): void {
+export function guardMutationState(state: RunState): void {
   if (isResumableStatus(state.status)) {
     throw new OrchestratorStateError(
-      `run ${state.id} is ${state.status}; replace becomes available once measurement has produced compositions`,
-      [{ path: "status", message: "wait for a measured state before replacing a component" }]
+      `run ${state.id} is ${state.status}; mutation becomes available once measurement has produced compositions`,
+      [{ path: "status", message: "wait for a measured state before mutating a run" }]
     );
   }
   if (state.status === "stopped" || state.status === "failed") {
     throw new OrchestratorStateError(
-      `run ${state.id} is ${state.status}; a stopped or failed run no longer accepts replacements`,
+      `run ${state.id} is ${state.status}; a stopped or failed run no longer accepts mutations`,
       [{ path: "status", message: "stopped and failed runs refuse mutation" }]
     );
   }
-}
-
-function projectExemplars(envelope: QlooEnvelope<QlooInsightsResults>): PoolExemplar[] {
-  const entities = envelope.results.entities ?? [];
-  const exemplars: PoolExemplar[] = [];
-  const seen = new Set<string>();
-  for (const entity of entities) {
-    if (typeof entity.entityId !== "string" || entity.entityId.trim() === "") {
-      continue;
-    }
-    const id = entity.entityId.trim();
-    if (id.length > 200 || seen.has(id)) {
-      continue;
-    }
-    seen.add(id);
-    const name =
-      typeof entity.name === "string" && entity.name.trim() !== "" ? entity.name.trim().slice(0, 200) : id;
-    exemplars.push({ id, name });
-    if (exemplars.length >= 5) {
-      break;
-    }
-  }
-  return exemplars;
 }
 
 function firstTag(envelope: QlooEnvelope<QlooTagResults>): { id: string; name: string } | null {

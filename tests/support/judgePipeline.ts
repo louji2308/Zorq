@@ -421,6 +421,29 @@ function judgeGateway(): { gateway: QlooGateway; calls: () => number } {
       if (call.operation === "search") {
         return okEnvelope("search", { results: SEARCH_RESULTS, resultCount: SEARCH_RESULTS.entities.length });
       }
+      if (call.operation === "bridge") {
+        return okEnvelope("bridge", {
+          results: {
+            entities: [
+              {
+                entityId: "urn:entity:artist-sonic-youth",
+                name: "Sonic Youth",
+                type: "artist",
+                affinity: 0.9,
+                popularity: 0.7
+              },
+              {
+                entityId: "urn:entity:artist-yo-la-tengo",
+                name: "Yo La Tengo",
+                type: "artist",
+                affinity: 0.85,
+                popularity: 0.65
+              }
+            ]
+          },
+          resultCount: 2
+        });
+      }
       if (call.operation === "insights") {
         if (typeof request.filterTags === "object" && request.filterTags !== null && request.filterTags.length > 0) {
           const response = route2Response(request.filterTags[0] ?? "");

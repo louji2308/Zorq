@@ -169,22 +169,56 @@ const cases: SchemaCase[] = [
     response: {
       schema: challengeResponseSchema,
       valid: {
-        runId: "run_01",
-        status: "running",
-        stress: {
+        run,
+        report: {
+          kind: "challenge",
+          verdict: "Survived",
+          reason: "The leader held against all five attacks.",
+          attackOrder: ["ablation", "substitution", "bridge", "catchment", "rival"],
+          attackOrderSource: "diagnostic",
+          rounds: 1,
+          leaderBefore: {
+            members: ["comp_anchor_1", "comp_discovery_3", "comp_social_2"],
+            coherence: 0.72,
+            percentile: 88.2,
+            distinctivenessMean: 0.61,
+            weakestLink: { a: "comp_anchor_1", b: "comp_discovery_3", value: 0.31 }
+          },
+          leaderAfter: {
+            members: ["comp_anchor_1", "comp_discovery_3", "comp_social_2"],
+            coherence: 0.72,
+            percentile: 88.2,
+            distinctivenessMean: 0.61,
+            weakestLink: { a: "comp_anchor_1", b: "comp_discovery_3", value: 0.31 }
+          },
+          mutations: [],
           attacks: [
-            { kind: "ablation", status: "pending" },
-            { kind: "substitution", status: "pending" },
-            { kind: "bridge", status: "pending" },
-            { kind: "catchment", status: "pending" },
-            { kind: "rival", status: "pending" }
-          ]
+            { kind: "ablation", status: "measured", summary: "drop-one ablation over 3 members", detail: "no member could be removed without loss" },
+            { kind: "substitution", status: "measured", summary: "same-role substitution over 2 alternative(s)", detail: "no substitute improves the leader" },
+            { kind: "bridge", status: "measured", summary: "bridge candidate on a – b: Blue Note Corner", detail: "what both audiences love: Blue Note Corner", evidenceId: "ev_01" },
+            { kind: "catchment", status: "skipped", summary: "catchment shift skipped", detail: "no stored city-scale neighborhoods exist" },
+            { kind: "rival", status: "measured", summary: "the leader holds rank 1 of 3", detail: "no rival takes the lead across the dial sweep" }
+          ],
+          gradeCap: "A",
+          generatedAt: "2026-10-08T12:00:00.000Z"
         }
       },
       invalid: {
-        runId: "run_01",
-        status: "queued",
-        stress: { attacks: [] }
+        run,
+        report: {
+          kind: "challenge",
+          verdict: "Shattered",
+          reason: "",
+          attackOrder: ["ablation"],
+          attackOrderSource: "psychic",
+          rounds: 9,
+          leaderBefore: {},
+          leaderAfter: {},
+          mutations: [],
+          attacks: [],
+          gradeCap: "S",
+          generatedAt: "2026-10-08T12:00:00.000Z"
+        }
       }
     }
   },

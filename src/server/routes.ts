@@ -11,6 +11,7 @@ import {
   runStateSchema,
   stopRunRequestSchema,
   unpinAnchorRequestSchema,
+  type ChallengeRequest,
   type ReplaceRequest
 } from "../shared/index.js";
 import type { HealthzResult } from "./healthz.js";
@@ -196,7 +197,20 @@ export function registerRoutes(app: Express, dependencies: RouteDependencies): v
   app.post(
     "/api/runs/:id/challenge",
     validate({ params: runIdParamsSchema, body: challengeRequestSchema }),
-    unimplemented(UNIMPLEMENTED_MESSAGES.challenge)
+    (req, res, next) => {
+      if (orchestrator === undefined || store === undefined) {
+        unimplemented(UNIMPLEMENTED_MESSAGES.challenge)(req, res, next);
+        return;
+      }
+      void orchestrator
+        .challengeRun(readRunId(req), req.body as ChallengeRequest)
+        .then((body) => {
+          res.status(200).json(body);
+        })
+        .catch((error: unknown) => {
+          next(mapRouteError(error));
+        });
+    }
   );
 
   app.post(

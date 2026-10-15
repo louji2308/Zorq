@@ -1,7 +1,15 @@
 import { z } from "zod";
 import { briefSchema } from "./brief.js";
 import { eventsRequestSchema, sseFrameSchema } from "./events.js";
-import { createdRunSchema, runIdParamsSchema, runResponseSchema, runStateSchema, runWeakestLinkSchema } from "./run.js";
+import {
+  attackKindSchema,
+  challengeReportSchema,
+  createdRunSchema,
+  runIdParamsSchema,
+  runResponseSchema,
+  runStateSchema,
+  runWeakestLinkSchema
+} from "./run.js";
 
 export const healthzResponseSchema = z.object({
   status: z.literal("ok"),
@@ -63,10 +71,6 @@ export const replaceResponseSchema = z.object({
 
 export type ReplaceResponse = z.infer<typeof replaceResponseSchema>;
 
-export const attackKinds = ["ablation", "substitution", "bridge", "catchment", "rival"] as const;
-
-export const attackKindSchema = z.enum(attackKinds);
-
 export const challengeRequestSchema = z.object({
   focus: attackKindSchema.optional()
 });
@@ -74,16 +78,8 @@ export const challengeRequestSchema = z.object({
 export type ChallengeRequest = z.infer<typeof challengeRequestSchema>;
 
 export const challengeResponseSchema = z.object({
-  runId: z.string().min(1),
-  status: z.literal("running"),
-  stress: z.object({
-    attacks: z.array(
-      z.object({
-        kind: attackKindSchema,
-        status: z.string().min(1)
-      })
-    )
-  })
+  run: runStateSchema,
+  report: challengeReportSchema
 });
 
 export type ChallengeResponse = z.infer<typeof challengeResponseSchema>;

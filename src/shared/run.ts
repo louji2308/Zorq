@@ -323,6 +323,73 @@ export const candidatePoolSchema = z.array(poolComponentSchema);
 
 export type CandidatePool = z.infer<typeof candidatePoolSchema>;
 
+export const attackKinds = ["ablation", "substitution", "bridge", "catchment", "rival"] as const;
+
+export type AttackKind = (typeof attackKinds)[number];
+
+export const attackKindSchema = z.enum(attackKinds);
+
+export const challengeAttackStatuses = ["measured", "skipped", "not completed"] as const;
+
+export type ChallengeAttackStatus = (typeof challengeAttackStatuses)[number];
+
+export const challengeAttackSchema = z.strictObject({
+  kind: attackKindSchema,
+  status: z.enum(challengeAttackStatuses),
+  summary: z.string().trim().min(1).max(300),
+  detail: z.string().trim().min(1).max(500),
+  evidenceId: z.string().min(1).optional()
+});
+
+export type ChallengeAttack = z.infer<typeof challengeAttackSchema>;
+
+export const challengeVerdicts = ["Survived", "Revised", "Replaced"] as const;
+
+export type ChallengeVerdict = (typeof challengeVerdicts)[number];
+
+export const challengeLeaderSchema = z.strictObject({
+  members: z.array(z.string().trim().min(1)).min(2),
+  coherence: z.number().finite().min(0).max(1),
+  percentile: z.number().finite().min(0).max(100).nullable(),
+  distinctivenessMean: z.number().finite().min(0).max(1),
+  weakestLink: runWeakestLinkSchema
+});
+
+export type ChallengeLeader = z.infer<typeof challengeLeaderSchema>;
+
+export const challengeMutationOperators = ["bridge", "swap", "drop", "shift-scale"] as const;
+
+export type ChallengeMutationOperator = (typeof challengeMutationOperators)[number];
+
+export const challengeMutationSchema = z.strictObject({
+  operator: z.enum(challengeMutationOperators),
+  round: z.number().int().min(1).max(3),
+  memberOut: z.string().trim().min(1).max(200).nullable(),
+  memberIn: z.string().trim().min(1).max(200).nullable(),
+  coherenceBefore: z.number().finite().min(0).max(1),
+  coherenceAfter: z.number().finite().min(0).max(1)
+});
+
+export type ChallengeMutation = z.infer<typeof challengeMutationSchema>;
+
+export const challengeReportSchema = z.strictObject({
+  kind: z.literal("challenge"),
+  verdict: z.enum(challengeVerdicts),
+  verdictRival: z.array(z.string().trim().min(1)).min(2).optional(),
+  reason: z.string().trim().min(1).max(500),
+  attackOrder: z.array(attackKindSchema).min(5).max(5),
+  attackOrderSource: z.enum(["llm", "diagnostic"]),
+  rounds: z.number().int().min(1).max(3),
+  leaderBefore: challengeLeaderSchema,
+  leaderAfter: challengeLeaderSchema,
+  mutations: z.array(challengeMutationSchema).max(2),
+  attacks: z.array(challengeAttackSchema).min(5).max(5),
+  gradeCap: z.enum(["A", "B"]),
+  generatedAt: z.string().min(1)
+});
+
+export type ChallengeReport = z.infer<typeof challengeReportSchema>;
+
 export const runStateSchema = z.object({
   id: z.string().min(1),
   status: z.string().min(1),
@@ -338,6 +405,7 @@ export const runStateSchema = z.object({
   compositions: runCompositionsSchema.optional(),
   stressReport: z.unknown().optional(),
   constraintFit: z.unknown().optional(),
+  challengeReport: challengeReportSchema.optional(),
   revisions: z.array(runRevisionSchema).max(100).optional()
 });
 

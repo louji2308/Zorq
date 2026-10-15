@@ -2,6 +2,7 @@ import type { LedgerEvent } from "../../shared/events.js";
 import type { Brief } from "../../shared/brief.js";
 import type {
   CulturalDna,
+  PoolExemplar,
   Prior,
   RunCompositions,
   RunGraph,
@@ -179,6 +180,29 @@ export function projectSignals(envelope: QlooEnvelope<QlooInsightsResults>): Raw
     });
   });
   return signals;
+}
+
+export function projectExemplars(envelope: QlooEnvelope<QlooInsightsResults>): PoolExemplar[] {
+  const entities = envelope.results.entities ?? [];
+  const exemplars: PoolExemplar[] = [];
+  const seen = new Set<string>();
+  for (const entity of entities) {
+    if (typeof entity.entityId !== "string" || entity.entityId.trim() === "") {
+      continue;
+    }
+    const id = entity.entityId.trim();
+    if (id.length > 200 || seen.has(id)) {
+      continue;
+    }
+    seen.add(id);
+    const name =
+      typeof entity.name === "string" && entity.name.trim() !== "" ? entity.name.trim().slice(0, 200) : id;
+    exemplars.push({ id, name });
+    if (exemplars.length >= 5) {
+      break;
+    }
+  }
+  return exemplars;
 }
 
 async function callGateway(

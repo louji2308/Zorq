@@ -1,0 +1,890 @@
+import { runStateSchema } from "../../shared/run.js";
+import { attackKinds, attackKindSchema } from "../../shared/run.js";
+import type {
+  AttackKind,
+  ChallengeAttack,
+  ChallengeLeader,
+  ChallengeMutation,
+  ChallengeReport,
+  ChallengeVerdict,
+  RunNeighborhoods,
+  RunRankedComposition,
+  RunState
+} from "../../shared/run.js";
+import type { ChallengeRequest } from "../../shared/routes.js";
+import { z } from "zod";
+import { toError } from "../agent/errors.js";
+import type { Ledger } from "../agent/ledger.js";
+import { completeBounded, type LlmClient, type LlmCompletionRequest } from "../agent/llm.js";
+import type { LlmBudget } from "../agent/budget.js";
+import { provenanceFromEnvelope } from "../agent/tools.js";
+import {
+  buildCompositions,
+  buildGraph,
+  computeDistinctivenessMap,
+  computeIdf,
+  measureComposition,
+  percentileOf,
+  validatePool,
+  type CandidateComponent,
+  type CultureGraph,
+  type WeightedEntity
+} from "../engine/index.js";
+import { createEvidenceRecord, type EvidenceRecord } from "../evidence/index.js";
+import type { QlooEnvelope, QlooGateway, QlooInsightsResults } from "../qloo/index.js";
+import { OrchestratorStateError } from "./errors.js";
+import { computeEvent, failedCallEvent, observationEvent, projectExemplars } from "./measure.js";
+import { guardMutationState, sameMembers } from "./replace.js";
+
+const MUTATION_EPSILON = 1e-6;
+const BRIDGE_PROBE_LIMIT = 3;
+const CATCHMENT_HOLD_EPSILON = 0.005;
+const WEAK_LINK_DIAGNOSTIC = 0.35;
+
+export interface ChallengeInput {
+  state: RunState;
+  request: ChallengeRequest;
+  gateway: QlooGateway;
+  ledger: Ledger;
+  now: () => number;
+  llm?: LlmClient;
+  budget?: LlmBudget;
+}
+
+export interface ChallengeOutcome {
+  state: RunState;
+  evidence: EvidenceRecord[];
+  report: ChallengeReport;
+}
+
+interface MutationCandidate {
+  operator: "swap" | "drop";
+  memberOut: string;
+  memberIn: string | null;
+  leaderAfter: ChallengeLeader;
+  gain: number;
+}
+
+interface AttackResult {
+  attack: ChallengeAttack;
+  candidate: MutationCandidate | null;
+  note?: string;
+}
+
+interface AttackContext {
+  state: RunState;
+  compositions: NonNullable<RunState["compositions"]>;
+  pool: readonly CandidateComponent[];
+  graph: CultureGraph;
+  ranked: readonly RunRankedComposition[];
+  familyCoherences: readonly number[];
+  distinctiveness: Record<string, number | null> | undefined;
+  leader: ChallengeLeader;
+}
+
+interface BridgeProbeDeps {
+  gateway: QlooGateway;
+  ledger: Ledger;
+  now: () => number;
+  evidence: EvidenceRecord[];
+  probesUsed: { count: number };
+}
+
+function signed(value: number): string {
+  return `${value >= 0 ? "+" : ""}${value.toFixed(4)}`;
+}
+
+function percentileText(value: number | null): string {
+  return value === null ? "unavailable" : `${value.toFixed(2)}th`;
+}
+
+function leaderFromRanked(entry: RunRankedComposition): ChallengeLeader {
+  return {
+    members: [...entry.members],
+    coherence: entry.coherence,
+    percentile: entry.percentile,
+    distinctivenessMean: entry.distinctivenessMean,
+    weakestLink: { ...entry.weakestLink }
+  };
+}
+
+function subsetDistinctivenessMean(
+  members: readonly string[],
+  lookup: Readonly<Record<string, number | null>> | undefined
+): number | null {
+  if (lookup === undefined) {
+    return null;
+  }
+  let sum = 0;
+  for (const member of members) {
+    const value = lookup[member];
+    if (value === undefined || value === null) {
+      return null;
+    }
+    sum += value;
+  }
+  return sum / members.length;
+}
+
+function distinctivenessFor(state: RunState): Record<string, number | null> | undefined {
+  const neighborhoods = state.neighborhoods;
+  if (neighborhoods === undefined) {
+    return undefined;
+  }
+  const cityVectors: Record<string, WeightedEntity[]> = {};
+  for (const neighborhood of neighborhoods.city) {
+    cityVectors[neighborhood.componentId] = neighborhood.domains.artist.map((entry) => ({
+      entityId: entry.entityId,
+      weight: entry.weight
+    }));
+  }
+  return computeDistinctivenessMap(neighborhoods.components, cityVectors);
+}
+
+function sizeFamilyCoherences(
+  ctx: AttackContext,
+  size: number,
+  requiredRoles: readonly import("../engine/index.js").ComponentRole[]
+): readonly number[] {
+  if (size < 2 || ctx.pool.length < size) {
+    return [];
+  }
+  if (size === ctx.compositions.family.size && requiredRoles === ctx.compositions.family.requiredRoles) {
+    return ctx.familyCoherences;
+  }
+  try {
+    const family = buildCompositions({
+      pool: ctx.pool,
+      graph: ctx.graph,
+      size,
+      requiredRoles: [...requiredRoles],
+      distinctiveness: ctx.distinctiveness
+    });
+    return family.compositions.map((entry) => entry.coherence);
+  } catch {
+    return [];
+  }
+}
+
+function leaderFamilyCoherences(ctx: AttackContext): readonly number[] {
+  return sizeFamilyCoherences(ctx, ctx.leader.members.length, ctx.compositions.family.requiredRoles);
+}
+
+function ablationFamilyCoherences(ctx: AttackContext): readonly number[] {
+  return sizeFamilyCoherences(ctx, ctx.leader.members.length - 1, ctx.compositions.family.requiredRoles);
+}
+
+function skippedAttack(kind: AttackKind, summary: string, detail: string): AttackResult {
+  return {
+    attack: { kind, status: "skipped", summary, detail },
+    candidate: null
+  };
+}
+
+function ablationAttack(ctx: AttackContext): AttackResult {
+  const members = [...ctx.leader.members].sort();
+  if (members.length <= 2) {
+    return skippedAttack(
+      "ablation",
+      `drop-one ablation skipped at composition size ${members.length}`,
+      "drop-one needs at least three members; a pair keeps both members honestly"
+    );
+  }
+  const coherences = ablationFamilyCoherences(ctx);
+  let weakestId: string | null = null;
+  let worstGain = 0;
+  let weakestRest: string[] | null = null;
+  let weakestCoherence = 0;
+  for (const memberId of members) {
+    const rest = ctx.leader.members.filter((member) => member !== memberId);
+    try {
+      const measured = measureComposition(rest, ctx.pool, ctx.graph);
+      const gain = measured.coherence - ctx.leader.coherence;
+      if (weakestId === null || gain > worstGain) {
+        weakestId = memberId;
+        worstGain = gain;
+        weakestRest = rest;
+        weakestCoherence = measured.coherence;
+      }
+    } catch (error) {
+      const line = toError(error).message.split("\n")[0] ?? "measurement refused";
+      return skippedAttack(
+        "ablation",
+        "drop-one ablation refused by the deterministic engine",
+        line.slice(0, 500)
+      );
+    }
+  }
+  if (weakestId === null || weakestRest === null) {
+    return skippedAttack(
+      "ablation",
+      "drop-one ablation measured no subset",
+      "no member removal produced a reading; nothing is guessed"
+    );
+  }
+  const percentile = coherences.length > 0 ? percentileOf(weakestCoherence, coherences) : null;
+  const remainderText =
+    worstGain < 0
+      ? `without ${weakestId}, coherence ${signed(worstGain)} and lands at the ${percentileText(percentile)} percentile of size-${members.length - 1} compositions`
+      : `removing ${weakestId} is the least costly cut: ${signed(worstGain)}${percentile === null ? "" : ` (remainder at ${percentileText(percentile)} percentile)`}`;
+  const distinctivenessMean = subsetDistinctivenessMean(weakestRest, ctx.distinctiveness);
+  let candidate: MutationCandidate | null = null;
+  if (worstGain > MUTATION_EPSILON && distinctivenessMean !== null) {
+    candidate = {
+      operator: "drop",
+      memberOut: weakestId,
+      memberIn: null,
+      leaderAfter: {
+        members: [...weakestRest],
+        coherence: weakestCoherence,
+        percentile,
+        distinctivenessMean,
+        weakestLink: measureComposition(weakestRest, ctx.pool, ctx.graph).weakestLink
+      },
+      gain: worstGain
+    };
+  } else if (worstGain > MUTATION_EPSILON && distinctivenessMean === null) {
+    return {
+      attack: {
+        kind: "ablation",
+        status: "measured",
+        summary: `drop-one ablation over ${members.length} members`,
+        detail: `${remainderText}; mutation withheld because the subset carries no distinctiveness reading`
+      },
+      candidate: null
+    };
+  }
+  return {
+    attack: {
+      kind: "ablation",
+      status: "measured",
+      summary: `drop-one ablation over ${members.length} members`,
+      detail: remainderText
+    },
+    candidate,
+    ...(candidate === null && worstGain <= MUTATION_EPSILON
+      ? { note: "No member could be removed without cost." }
+      : {})
+  };
+}
+
+function substitutionAttack(ctx: AttackContext): AttackResult {
+  const alternatives = ctx.pool.filter((component) => !ctx.leader.members.includes(component.id));
+  if (alternatives.length === 0) {
+    return skippedAttack(
+      "substitution",
+      "same-role substitution skipped",
+      "the candidate pool carries no component outside the leader"
+    );
+  }
+  const coherences = leaderFamilyCoherences(ctx);
+  let evaluated = 0;
+  let excludedCount = 0;
+  let best: {
+    memberOut: string;
+    memberIn: string;
+    gain: number;
+    coherence: number;
+    percentile: number | null;
+    distinctivenessMean: number | null;
+    weakestLink: ChallengeLeader["weakestLink"];
+  } | null = null;
+  for (const member of [...ctx.leader.members].sort()) {
+    const component = ctx.pool.find((entry) => entry.id === member);
+    if (component === undefined) {
+      continue;
+    }
+    for (const alternative of alternatives) {
+      if (alternative.role !== component.role) {
+        continue;
+      }
+      evaluated += 1;
+      const swapped = ctx.leader.members.map((entry) => (entry === member ? alternative.id : entry));
+      const rankedHit = ctx.ranked.find((composition) => sameMembers(composition.members, swapped));
+      let coherence: number;
+      let weakestLink: ChallengeLeader["weakestLink"];
+      if (rankedHit !== undefined) {
+        coherence = rankedHit.coherence;
+        weakestLink = { ...rankedHit.weakestLink };
+      } else {
+        const excludedHit = ctx.compositions.excluded.some((entry) => sameMembers(entry.members, swapped));
+        if (excludedHit) {
+          excludedCount += 1;
+        }
+        try {
+          const measured = measureComposition(swapped, ctx.pool, ctx.graph);
+          coherence = measured.coherence;
+          weakestLink = { ...measured.weakestLink };
+        } catch {
+          continue;
+        }
+      }
+      const percentile =
+        rankedHit !== undefined ? rankedHit.percentile : coherences.length > 0 ? percentileOf(coherence, coherences) : null;
+      const distinctivenessMean =
+        rankedHit !== undefined
+          ? rankedHit.distinctivenessMean
+          : subsetDistinctivenessMean(swapped, ctx.distinctiveness);
+      const gain = coherence - ctx.leader.coherence;
+      if (best === null || gain > best.gain) {
+        best = { memberOut: member, memberIn: alternative.id, gain, coherence, percentile, distinctivenessMean, weakestLink };
+      }
+    }
+  }
+  if (best === null) {
+    return skippedAttack(
+      "substitution",
+      "same-role substitution skipped",
+      excludedCount > 0
+        ? "every same-role alternative maps to a composition excluded for missing distinctiveness; nothing is guessed"
+        : "no same-role alternative in the pool can form a measurable swap with the leader"
+    );
+  }
+  let detail: string;
+  if (best.gain > MUTATION_EPSILON) {
+    detail = `swap ${best.memberOut} → ${best.memberIn} gains ${signed(best.gain)} (percentile ${percentileText(best.percentile)})`;
+  } else if (best.gain >= -MUTATION_EPSILON) {
+    detail = `no substitute improves the leader; ${best.memberIn} for ${best.memberOut} holds without loss (${signed(best.gain)})`;
+  } else {
+    detail = `every same-role substitute loses coherence; best is ${best.memberIn} for ${best.memberOut} at ${signed(best.gain)}`;
+  }
+  if (excludedCount > 0) {
+    detail = `${detail}; ${excludedCount} alternative(s) excluded for missing distinctiveness`;
+  }
+  const candidate: MutationCandidate | null =
+    best.gain > MUTATION_EPSILON && best.distinctivenessMean !== null
+      ? {
+          operator: "swap",
+          memberOut: best.memberOut,
+          memberIn: best.memberIn,
+          leaderAfter: {
+            members: ctx.leader.members.map((entry) => (entry === best!.memberOut ? best!.memberIn : entry)),
+            coherence: best.coherence,
+            percentile: best.percentile,
+            distinctivenessMean: best.distinctivenessMean,
+            weakestLink: best.weakestLink
+          },
+          gain: best.gain
+        }
+      : null;
+  return {
+    attack: {
+      kind: "substitution",
+      status: "measured",
+      summary: `same-role substitution over ${evaluated} alternative(s)`,
+      detail
+    },
+    candidate,
+    ...(candidate === null
+      ? {
+          note:
+            best.gain >= -MUTATION_EPSILON
+              ? "One member could be substituted without loss, so nothing was changed."
+              : "Every same-role substitute loses coherence."
+        }
+      : {})
+  };
+}
+
+async function bridgeAttack(ctx: AttackContext, deps: BridgeProbeDeps): Promise<AttackResult> {
+  const pair = ctx.leader.weakestLink;
+  const sideA = ctx.pool.find((component) => component.id === pair.a);
+  const sideB = ctx.pool.find((component) => component.id === pair.b);
+  if (sideA === undefined || sideB === undefined) {
+    return skippedAttack(
+      "bridge",
+      "bridge search skipped",
+      "the weakest link references a component outside the measured candidate pool"
+    );
+  }
+  const signals = [...new Set([...sideA.exemplars, ...sideB.exemplars].map((exemplar) => exemplar.id))].slice(0, 10);
+  if (signals.length === 0) {
+    return skippedAttack(
+      "bridge",
+      "bridge search skipped",
+      "neither side of the weakest link carries exemplar places to probe with"
+    );
+  }
+  if (deps.probesUsed.count >= BRIDGE_PROBE_LIMIT) {
+    return skippedAttack(
+      "bridge",
+      "bridge search skipped",
+      `the challenge already spent its ${BRIDGE_PROBE_LIMIT} probe allowance; the recorded probe stands`
+    );
+  }
+  if (deps.gateway.stats.budgetRemaining < 1) {
+    return {
+      attack: {
+        kind: "bridge",
+        status: "not completed",
+        summary: "bridge search not completed",
+        detail: "the Qloo gateway reports no remaining call budget for the bridge probe"
+      },
+      candidate: null
+    };
+  }
+  deps.probesUsed.count += 1;
+  const excludeTags = [...new Set([...sideA.tags, ...sideB.tags])].slice(0, 10);
+  const detail = `what ${pair.a} and ${pair.b} audiences share`;
+  let envelope: QlooEnvelope<QlooInsightsResults>;
+  try {
+    envelope = (await deps.gateway.bridge({
+      targetType: "place",
+      signals,
+      ...(excludeTags.length > 0 ? { excludeTags } : {}),
+      limit: 5
+    })) as QlooEnvelope<QlooInsightsResults>;
+  } catch (error) {
+    deps.ledger.append(failedCallEvent("challenge.bridge_probe", detail, error));
+    return {
+      attack: {
+        kind: "bridge",
+        status: "not completed",
+        summary: "bridge search not completed",
+        detail: toError(error).message.split("\n")[0]?.slice(0, 500) ?? "Qloo bridge probe failed"
+      },
+      candidate: null
+    };
+  }
+  const entry = deps.ledger.append(observationEvent("challenge.bridge_probe", envelope, detail));
+  const record = createEvidenceRecord({
+    operation: envelope.operation,
+    claim: `Qloo ${envelope.operation} observation · ${detail}`,
+    provenance: provenanceFromEnvelope(envelope),
+    createdAt: new Date(deps.now()).toISOString(),
+    ledgerEventId: entry.id
+  });
+  deps.evidence.push(record);
+  const entities = projectExemplars(envelope);
+  if (entities.length === 0) {
+    return {
+      attack: {
+        kind: "bridge",
+        status: "measured",
+        summary: `bridge search on the weakest link ${pair.a} – ${pair.b}`,
+        detail: "Qloo found no connecting category both audiences share",
+        evidenceId: record.id
+      },
+      candidate: null
+    };
+  }
+  const names = entities.map((entity) => entity.name).join(", ");
+  return {
+    attack: {
+      kind: "bridge",
+      status: "measured",
+      summary: `bridge candidate on ${pair.a} – ${pair.b}: ${entities[0]!.name}`,
+      detail: `what both audiences love: ${names}`,
+      evidenceId: record.id
+    },
+    candidate: null
+  };
+}
+
+function catchmentAttack(ctx: AttackContext): AttackResult {
+  const neighborhoods: RunNeighborhoods | undefined = ctx.state.neighborhoods;
+  if (neighborhoods === undefined || neighborhoods.city.length === 0) {
+    return skippedAttack(
+      "catchment",
+      "catchment shift skipped",
+      "no stored city-scale neighborhoods exist; the catchment cannot widen without new evidence"
+    );
+  }
+  try {
+    const cityIdf = computeIdf(ctx.pool, neighborhoods.city);
+    const cityGraph = buildGraph(ctx.pool, neighborhoods.city, cityIdf);
+    const measured = measureComposition(ctx.leader.members, ctx.pool, cityGraph);
+    const delta = measured.coherence - ctx.leader.coherence;
+    return {
+      attack: {
+        kind: "catchment",
+        status: "measured",
+        summary: `city-scale coherence ${measured.coherence.toFixed(4)} vs site ${ctx.leader.coherence.toFixed(4)}`,
+        detail:
+          delta >= -CATCHMENT_HOLD_EPSILON
+            ? `the leader holds when the catchment widens to city scale (Δ ${signed(delta)}; measured from stored Qloo city neighborhoods)`
+            : `the leader depends on the site catchment: city-scale coherence moves ${signed(delta)} (measured from stored Qloo city neighborhoods)`
+      },
+      candidate: null
+    };
+  } catch (error) {
+    return skippedAttack(
+      "catchment",
+      "catchment shift refused by the deterministic engine",
+      (toError(error).message.split("\n")[0] ?? "city-scale re-measure failed").slice(0, 500)
+    );
+  }
+}
+
+function rivalAttack(ctx: AttackContext): AttackResult {
+  const index = ctx.ranked.findIndex((composition) => sameMembers(composition.members, ctx.leader.members));
+  const flips = ctx.compositions.rivalFlips;
+  const margin = ctx.ranked.length >= 2 ? ctx.ranked[0]!.rankScore - ctx.ranked[1]!.rankScore : null;
+  const summary =
+    index >= 0
+      ? `the leader holds rank ${index + 1} of ${ctx.ranked.length}`
+      : `the mutated leader is not a family entry; the family leader remains ${ctx.ranked[0]!.members.join(" + ")}`;
+  const flipText =
+    flips.length === 0
+      ? "no rival takes the lead across the dial sweep"
+      : `${flips.length} sweep flip(s); at weight ${flips[0]!.weight.toFixed(2)} leadership moves to ${(flips[0]!.to ?? []).join(" + ")}`;
+  const marginText = margin === null ? "" : `; rank-1 margin ${margin.toFixed(4)}`;
+  return {
+    attack: {
+      kind: "rival",
+      status: "measured",
+      summary,
+      detail: `${flipText}${marginText}`
+    },
+    candidate: null
+  };
+}
+
+function moveToFront(order: AttackKind[], kind: AttackKind): void {
+  const index = order.indexOf(kind);
+  if (index > 0) {
+    order.splice(index, 1);
+    order.unshift(kind);
+  }
+}
+
+function diagnosticOrder(state: RunState, leader: ChallengeLeader): AttackKind[] {
+  const order: AttackKind[] = [...attackKinds];
+  if (leader.weakestLink.value < WEAK_LINK_DIAGNOSTIC) {
+    moveToFront(order, "bridge");
+  } else if (state.compositions !== undefined && state.compositions.rivalFlips.length > 0) {
+    moveToFront(order, "rival");
+  }
+  return order;
+}
+
+function finalizeOrder(base: readonly AttackKind[], focus: AttackKind | undefined): AttackKind[] {
+  const missing = attackKinds.filter((kind) => !base.includes(kind));
+  const order: AttackKind[] = [...base, ...missing];
+  if (focus !== undefined) {
+    moveToFront(order, focus);
+  }
+  return order;
+}
+
+function parseOrder(content: string | null): AttackKind[] | null {
+  if (content === null) {
+    return null;
+  }
+  const cleaned = content
+    .trim()
+    .replace(/^```(?:json)?/i, "")
+    .replace(/```$/, "")
+    .trim();
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start < 0 || end <= start) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(cleaned.slice(start, end + 1)) as { order?: unknown };
+    const order = z.array(attackKindSchema).min(1).max(5).safeParse(parsed.order);
+    if (!order.success) {
+      return null;
+    }
+    return [...new Set(order.data)];
+  } catch {
+    return null;
+  }
+}
+
+function orderRequest(state: RunState, leader: ChallengeLeader): LlmCompletionRequest {
+  const flips = state.compositions?.rivalFlips.length ?? 0;
+  return {
+    label: "challenge.attack_order",
+    essential: false,
+    maxOutputTokens: 300,
+    messages: [
+      {
+        role: "user",
+        content: `Zorq stress test. Leader members: ${leader.members.join(", ")}. Weakest link ${leader.weakestLink.a}–${leader.weakestLink.b} = ${leader.weakestLink.value.toFixed(2)}. Distinctiveness ${leader.distinctivenessMean.toFixed(2)}. Rival sweep flips: ${flips}. Choose the attack order most likely to break this leader. Allowed kinds: ${attackKinds.join(", ")}. Reply with JSON only: {"order":["first","second","third","fourth","fifth"]}.`
+      }
+    ]
+  };
+}
+
+async function chooseAttackOrder(input: {
+  state: RunState;
+  leader: ChallengeLeader;
+  ledger: Ledger;
+  llm?: LlmClient;
+  budget?: LlmBudget;
+  focus: AttackKind | undefined;
+}): Promise<{ order: AttackKind[]; source: "llm" | "diagnostic" }> {
+  if (input.llm !== undefined && input.budget !== undefined) {
+    try {
+      const result = await completeBounded({
+        llm: input.llm,
+        budget: input.budget,
+        ledger: input.ledger,
+        request: orderRequest(input.state, input.leader)
+      });
+      const parsed = parseOrder(result.content);
+      if (parsed !== null) {
+        return { order: finalizeOrder(parsed, input.focus), source: "llm" };
+      }
+      input.ledger.append(
+        computeEvent(
+          "challenge.order_fallback",
+          "the attack-order turn returned no usable JSON order; falling back to the deterministic diagnostic order",
+          0,
+          0
+        )
+      );
+    } catch (error) {
+      input.ledger.append(
+        computeEvent(
+          "challenge.order_fallback",
+          `the attack-order turn failed (${toError(error).message.split("\n")[0]?.slice(0, 200) ?? "unknown failure"}); falling back to the deterministic diagnostic order`,
+          0,
+          0
+        )
+      );
+    }
+  }
+  return { order: finalizeOrder(diagnosticOrder(input.state, input.leader), input.focus), source: "diagnostic" };
+}
+
+function describeMutation(mutation: ChallengeMutation): string {
+  if (mutation.operator === "swap" && mutation.memberIn !== null) {
+    return `swapped ${mutation.memberOut} for ${mutation.memberIn}`;
+  }
+  if (mutation.operator === "drop") {
+    return `dropped ${mutation.memberOut}`;
+  }
+  if (mutation.operator === "bridge" && mutation.memberIn !== null) {
+    return `bridged ${mutation.memberIn} beside ${mutation.memberOut ?? "the weakest link"}`;
+  }
+  return `revised ${mutation.memberOut ?? "the leader"}`;
+}
+
+export function resolveVerdict(
+  before: ChallengeLeader,
+  after: ChallengeLeader,
+  mutations: readonly ChallengeMutation[]
+): { verdict: ChallengeVerdict; verdictRival?: string[] } {
+  if (mutations.length === 0 || sameMembers(before.members, after.members)) {
+    return { verdict: "Survived" };
+  }
+  const present = new Set(after.members);
+  const shared = before.members.filter((member) => present.has(member)).length;
+  if (shared >= after.members.length - 1) {
+    return { verdict: "Revised" };
+  }
+  return { verdict: "Replaced", verdictRival: [...after.members] };
+}
+
+function buildReason(input: {
+  verdict: ChallengeVerdict;
+  before: ChallengeLeader;
+  after: ChallengeLeader;
+  mutations: readonly ChallengeMutation[];
+  results: readonly AttackResult[];
+  pending: MutationCandidate | null;
+}): string {
+  const { verdict, before, after, mutations, results, pending } = input;
+  if (verdict === "Survived") {
+    const notes = results.map((result) => result.note).filter((note): note is string => note !== undefined);
+    return ["The leader held against all five attacks.", ...notes].join(" ").slice(0, 500);
+  }
+  const movement = `Coherence moved ${signed(after.coherence - before.coherence)} to ${after.coherence.toFixed(4)}.`;
+  const applied = `${mutations.length} mutation${mutations.length === 1 ? "" : "s"} applied: ${mutations
+    .map((mutation) => `${mutation.round}·${describeMutation(mutation)}`)
+    .join("; ")}.`;
+  const stopNote =
+    pending !== null
+      ? ` A further ${pending.operator}${pending.memberIn === null ? ` ${pending.memberOut}` : ` ${pending.memberOut} → ${pending.memberIn}`} (Δ ${signed(pending.gain)}) remained at the two-round stop.`
+      : "";
+  if (verdict === "Replaced") {
+    return `Replaced by ${after.members.join(" + ")}. ${applied} ${movement}${stopNote}`.slice(0, 500);
+  }
+  return `${applied} ${movement}${stopNote}`.slice(0, 500);
+}
+
+function pickCandidate(results: readonly AttackResult[]): MutationCandidate | null {
+  let best: MutationCandidate | null = null;
+  for (const result of results) {
+    const candidate = result.candidate;
+    if (candidate === null || candidate.gain <= MUTATION_EPSILON) {
+      continue;
+    }
+    if (best === null || candidate.gain > best.gain || (candidate.gain === best.gain && candidate.operator === "swap")) {
+      best = candidate;
+    }
+  }
+  return best;
+}
+
+function hasFailedProbe(results: readonly AttackResult[]): boolean {
+  return results.some((result) => result.attack.status === "not completed");
+}
+
+export async function runChallenge(input: ChallengeInput): Promise<ChallengeOutcome> {
+  const { state, request, gateway, ledger, now } = input;
+  guardMutationState(state);
+
+  if (state.candidatePool === undefined || state.candidatePool.length === 0) {
+    throw new OrchestratorStateError(`run ${state.id} carries no measured candidate pool to challenge within`, [
+      { path: "candidatePool", message: "challenge needs the investigated candidate pool" }
+    ]);
+  }
+  if (state.compositions === undefined) {
+    throw new OrchestratorStateError(`run ${state.id} carries no measured compositions to challenge`, [
+      { path: "compositions", message: "challenge needs a measured composition family" }
+    ]);
+  }
+  if (state.graph === undefined) {
+    throw new OrchestratorStateError(`run ${state.id} carries no measured culture graph`, [
+      { path: "graph", message: "challenge recomputes every attack against the measured graph" }
+    ]);
+  }
+  if (state.compositions.ranked.length === 0) {
+    throw new OrchestratorStateError(`run ${state.id} has no ranked composition to lead the challenge`, [
+      { path: "compositions.ranked", message: "challenge attacks the leader of a ranked family" }
+    ]);
+  }
+
+  const pool = validatePool(state.candidatePool);
+  const graph = state.graph as CultureGraph;
+  const compositions = state.compositions;
+  const ranked = compositions.ranked;
+  const evidence: EvidenceRecord[] = [];
+  const probesUsed = { count: 0 };
+
+  const leaderBefore = leaderFromRanked(ranked[0]!);
+  let leader = leaderBefore;
+
+  const orderChoice = await chooseAttackOrder({
+    state,
+    leader: leaderBefore,
+    ledger,
+    llm: input.llm,
+    budget: input.budget,
+    focus: request.focus
+  });
+  ledger.append(
+    computeEvent(
+      "challenge.order",
+      `attack order (${orderChoice.source}): ${orderChoice.order.join(" → ")}`,
+      0,
+      orderChoice.order.length
+    )
+  );
+
+  const makeContext = (current: ChallengeLeader): AttackContext => ({
+    state,
+    compositions,
+    pool,
+    graph,
+    ranked,
+    familyCoherences: compositions.family.coherenceDistribution,
+    distinctiveness: distinctivenessFor(state),
+    leader: current
+  });
+
+  const runRound = async (round: number): Promise<AttackResult[]> => {
+    const ctx = makeContext(leader);
+    const results: AttackResult[] = [];
+    for (const kind of orderChoice.order) {
+      if (kind === "bridge") {
+        results.push(
+          await bridgeAttack(ctx, { gateway, ledger, now, evidence, probesUsed })
+        );
+      } else if (kind === "ablation") {
+        results.push(ablationAttack(ctx));
+      } else if (kind === "substitution") {
+        results.push(substitutionAttack(ctx));
+      } else if (kind === "catchment") {
+        results.push(catchmentAttack(ctx));
+      } else {
+        results.push(rivalAttack(ctx));
+      }
+    }
+    const measured = results.filter((result) => result.attack.status === "measured").length;
+    const skipped = results.filter((result) => result.attack.status === "skipped").length;
+    const failed = results.filter((result) => result.attack.status === "not completed").length;
+    ledger.append(
+      computeEvent(
+        "challenge.stress",
+        `round ${round}: ${measured} measured, ${skipped} skipped, ${failed} not completed over ${results.length} attack(s) in ${orderChoice.order.join(" → ")}`,
+        0,
+        results.length
+      )
+    );
+    return results;
+  };
+
+  const applyCandidate = (candidate: MutationCandidate): void => {
+    const mutation: ChallengeMutation = {
+      operator: candidate.operator,
+      round: mutations.length + 1,
+      memberOut: candidate.memberOut,
+      memberIn: candidate.memberIn,
+      coherenceBefore: leader.coherence,
+      coherenceAfter: candidate.leaderAfter.coherence
+    };
+    mutations.push(mutation);
+    leader = candidate.leaderAfter;
+    ledger.append(
+      computeEvent(
+        "challenge.mutation",
+        `round ${mutation.round}: ${describeMutation(mutation)}; coherence ${signed(mutation.coherenceAfter - mutation.coherenceBefore)}`,
+        0,
+        mutation.round
+      )
+    );
+  };
+
+  const mutations: ChallengeMutation[] = [];
+  let results = await runRound(1);
+  let rounds = 1;
+  let gradeCapB = hasFailedProbe(results);
+  let candidate = pickCandidate(results);
+  while (candidate !== null && mutations.length < 2) {
+    applyCandidate(candidate);
+    results = await runRound(rounds + 1);
+    rounds += 1;
+    gradeCapB = gradeCapB || hasFailedProbe(results);
+    candidate = pickCandidate(results);
+  }
+  const pending = candidate !== null && candidate.gain > MUTATION_EPSILON ? candidate : null;
+
+  const { verdict, verdictRival } = resolveVerdict(leaderBefore, leader, mutations);
+  const reason = buildReason({ verdict, before: leaderBefore, after: leader, mutations, results, pending });
+  const attacksBySpecOrder = [...results]
+    .sort(
+      (left, right) =>
+        attackKinds.indexOf(left.attack.kind) - attackKinds.indexOf(right.attack.kind)
+    )
+    .map((result) => result.attack);
+
+  const report: ChallengeReport = {
+    kind: "challenge",
+    verdict,
+    ...(verdictRival !== undefined ? { verdictRival } : {}),
+    reason,
+    attackOrder: orderChoice.order,
+    attackOrderSource: orderChoice.source,
+    rounds,
+    leaderBefore,
+    leaderAfter: leader,
+    mutations,
+    attacks: attacksBySpecOrder,
+    gradeCap: gradeCapB ? "B" : "A",
+    generatedAt: new Date(now()).toISOString()
+  };
+
+  ledger.append(computeEvent("challenge.verdict", `${verdict}: ${reason}`, 0, attacksBySpecOrder.length));
+
+  const next = runStateSchema.parse({
+    ...state,
+    challengeReport: report
+  });
+
+  return { state: next, evidence, report };
+}
