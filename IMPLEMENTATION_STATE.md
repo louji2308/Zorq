@@ -7,31 +7,32 @@
 
 ## Current Phase
 
-**PHASE 7 — S2/S3: Compositions, Field, Graph & Evidence**. Status: **OPEN 2026-10-11 —
-contract written before delegation (`ee3bddd`); W-7.1 reviewed & committed (`99b53bd`);
-W-7.2 measurement chain reviewed & committed (`7180387`); W-7.3 S2 workspace reviewed &
-committed (`f8717d7`); W-7.4 S3 graph + Evidence drawer reviewed & committed
-(`3591f75`); W-7.5 Replace + revisions reviewed & committed (`bd1cb20`); next: Phase 7
-exit-gate work (clause map + fixture-browser review).**
+**PHASE 8 — S4/S5: Challenge, Constraint Fit & Blueprint**. Status: **NOT STARTED —
+Phase 7 closed 2026-10-15** (exit-gate clause map PASSED, see `Phase 7 Exit-Gate
+Status`; close-out commits `b1f276e`, `0d9344b`, `1acb896`, docs commit follows).
+Phase 7 shipped: W-7.1 `99b53bd`, W-7.2 `7180387`, W-7.3 `f8717d7`, W-7.4 `3591f75`,
+W-7.5 `bd1cb20`, exit-gate work `b1f276e`/`0d9344b`/`1acb896` (evidence slot + names +
+typed weakest-link + weakest-line success sheet + judge pipeline/e2e).
 Phase 6 remains OPEN with all build work committed (`579b23e`…`64bba88`); its exit gate
-waits only on the B-02 DeepSeek live click-through (user-side payment). User directed
-2026-10-11 to start Phase 7 while that box waits — recorded under Deviations. Boundary
-refresh completed 2026-10-11 (all 7 ProjectSpec sources + AGENTS.md + this file re-read;
-engine/orchestrator/shared/routes current-state model established — see contract).
+waits only on the B-02 DeepSeek live click-through (user-side payment) — recorded under
+Deviations. Next: reconstruct Phase 8 at its boundary (re-read all 7 ProjectSpec sources
++ AGENTS.md), write the Phase 8 contract before any delegation (spawn channel 5/5
+cancelled → orchestrator-direct unless restored).
 
 ## Current Objective
 
-Execute Phase 7 through its exit gate: "A judge can answer *why do these components
-belong together?* by inspecting an edge rather than trusting an unsupported narrative."
-(Plan line 724 / ARCHITECTURE §6 line 368.) Highest-value bottleneck: **all five
-workers are committed (`99b53bd` → `bd1cb20`) — what remains is exit-gate verification**:
-clause-map every contract clause against observable surfaces, run the fixture-browser
-review (S2 → S3 → Replace on the production build), resolve or record any gap, then
-close Phase 7 (contract archived, status line, progress record, coherent commit).
-Sequential in one checkout (D-2.1); orchestrator reviews (§17) and commits; spawn channel
-5/5 cancelled → orchestrator-direct unless restored (see Deviations).
+Enter Phase 8 (S4/S5: Challenge, Constraint Fit & Blueprint) through its boundary
+protocol: re-read all 7 ProjectSpec sources + AGENTS.md, rebuild the current-state
+model (what Phases 6–7 proved; the S4/S5 surfaces that are still placeholders —
+challenge, constraint fit, blueprint, Without-Qloo comparison), write the Phase 8
+contract before any implementation, then decompose and delegate (orchestrator-direct
+per 5/5 channel failure). Exit gate (Plan): the full judge path through Challenge →
+constraint fit → evidence-bound Place Blueprint → Without-Qloo comparison, honest
+under real services. Parallel user-side: top up DeepSeek (B-02) to close Phase 6's
+last two boxes. Deadline Oct 30 2026 23:45 EDT; internal freeze Oct 28.
 
-### PHASE 7 CONTRACT (written 2026-10-11, before delegation)
+### PHASE 7 CONTRACT (ARCHIVED 2026-10-15 — phase closed; exit-gate clause map in
+### `Phase 7 Exit-Gate Status` below. Written 2026-10-11, before delegation.)
 
 ```text
 PHASE:        7 — S2/S3: Compositions, Field, Graph & Evidence
@@ -689,9 +690,10 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 
 ## Active Work
 
-- **PHASE 7 OPEN 2026-10-11 (contract `ee3bddd`) — W-7.1 DONE (`99b53bd`); W-7.2 DONE
-  (`7180387`); W-7.3 DONE (`f8717d7`); W-7.4 DONE (`3591f75`); W-7.5 DONE, committed
-  `bd1cb20`.**
+- **PHASE 7 CLOSED 2026-10-15 — exit gate PASSED** (contract `ee3bddd`; W-7.1 DONE
+  (`99b53bd`); W-7.2 DONE (`7180387`); W-7.3 DONE (`f8717d7`); W-7.4 DONE (`3591f75`);
+  W-7.5 DONE (`bd1cb20`); exit-gate `b1f276e`/`0d9344b`/`1acb896`). See "Phase 7
+  Exit-Gate Status" below for the clause-by-clause proof map.
   Replace is live end-to-end: `POST /api/runs/:id/replace` is real (guardMutationState →
   revision cap 100 → XOR candidate/custom → role preservation → keyed/default `before`
   resolution → pool-alternative = swap within the unchanged ranked family with **zero
@@ -1148,6 +1150,27 @@ REST fallback, long-lived child-process model) recorded in `ARCHITECTURE.md` §4
 `git grep` finds no key material; no raw Qloo response is tracked (official Qloo rule: never store
 response data in a public repository — only aggregate statistics appear above).
 
+**Phase 7 exit-gate verification (2026-10-15, orchestrator-run, current tree at `1acb896`):**
+
+| Gate | Result |
+|---|---|
+| typecheck | 0 errors (dual tsconfig) |
+| lint | 0 errors (`eslint .`) |
+| unit | **642 pass / 5 gated-live skips** (62 files; +4 this session for `buildWeakestLine`) |
+| build | PASS (vite → `dist/`) |
+| e2e | **8/8** (smoke 4 + judge-flow 4; Playwright, production build, fresh server) |
+| `dist/web` secret scan | **0 hits** across 5 files (Qloo/DeepSeek/Turso values + env-name literals) |
+| fixture-browser review | S1 → S2 → S3 pair drawer → component sheet → Replace → success sheet walked live on the production build; **zero console errors/warnings**; screenshots `tmp/phase7-s2-compositions.png`, `tmp/phase7-s3-pair-drawer.png`, `tmp/phase7-s3-replace-success.png` |
+
+Browser-walk highlights: S2 Field reads "50 valid combinations … 0.04–0.10" with grade-B
+cards (percentile sentences 98/92/38/50%, weakest-link buttons); S3 pair drawer shows the
+claim ("Audiences of Devoción and Nitehawk Cinema both over-index on Paris, Texas, Bill
+Evans."), the **Qloo pill**, ranked named entities (#1 Paris, Texas, #2 Bill Evans), the
+direct-check disagreement line, how-computed, and four ledger-reference buttons; Replace
+panel renders "Keeps the role: Anchor.", ΔC/ΔD alternative rows and the custom query;
+success sheet rendered "Weakest link becomes: Clay Collective and Hallen Biergarten."
+with both mini-challenge attack rows after a real in-browser replace.
+
 ## Decisions
 
 | # | Decision | Rationale | Reversible? |
@@ -1250,6 +1273,41 @@ response data in a public repository — only aggregate statistics appear above)
   the only missing Phase 6 evidence needs a user-side payment, so idling would waste the
   working window. Phase 6 stays OPEN with its clause map intact — its two boxes tick only
   after the real DeepSeek pass.
+- **FD 684 "See the lookups → matching ledger rows" not fully implementable as written
+  (escalated, not silently resolved).** The Architecture-locked SSE contract (§5/D-5.3;
+  `tests/sse/sse.test.ts`, `tests/orchestrator/exitGate.test.ts`) delivers a fresh
+  connection as state-only — no ledger history replay except via Last-Event-ID — so a
+  browser reload leaves "See the lookups" links navigating to an empty ledger section.
+  The evidence-drawer chain itself (claim → pill → entities → route → computation →
+  links) is complete and e2e-proven within a live session. Smallest safe posture:
+  links stay real and honest; no fake rows, no SSE history invented. **User/spec-owner
+  decision pending:** FD amendment (wording), SSE state-frame history replay, or a
+  client-side ledger replay route (the "12th route" option). Recorded as known risk
+  B-09.
+- **S2 re-inking "additions draw in / removals are struck" stroke-dashoffset keyframes
+  (FD 536/709/719) deferred.** FLIP rail re-ink on dial re-rank exists with a
+  prefers-reduced-motion guard (W-7.3); the draw-in/strike motion polish was judged
+  judge-irrelevant content-wise (all readings are static text) and not built in
+  Phase 7. Reduced-motion requirement is trivially satisfied (no motion states exist).
+  Re-open if a later design pass wants the full signature motion.
+- **FD 686 per-alternative "Weakest link becomes: …" preview line deferred; the
+  Plan-719 weakest-link bullet is satisfied by the post-replace success-sheet line**
+  (`buildWeakestLine` + e2e assert, `0d9344b`). Per-alternative preview would need
+  per-candidate weakest-link computation client-side — recorded as design follow-up,
+  not a spec deviation of the Plan bullet.
+- **Provenance pill set at 16px (FD 758) against the 13px type-scale step (FD 221)**
+  — kept FD 758's explicit pill size; the tension is noted here for a future design
+  reconciliation pass. No behaviour impact.
+- **Custom-candidate replace can add ≤4 evidence records the client slot does not
+  reseed** (the terminal refetch re-syncs; a mid-flight custom replace's brand-new
+  records may lag until the next full get). Accepted: links only navigate to the
+  ledger view; no unknown ID is ever rendered as confirmed evidence.
+- **GET-only evidence projection (server contract inconsistency, deferred).** GET
+  /api/runs/:id injects the evidence projection (`routes.ts`); SSE state frames and
+  replace/stop responses carry RunState without it. The client evidence slot +
+  terminal-refetch bridge keeps the UI correct (this session), but the server-side
+  projection should be unified before Phase 8's challenge/blueprint responses add
+  more state-only surfaces. Recorded as known risk B-10.
 
 ## Known Risks / Blockers
 
@@ -1263,36 +1321,125 @@ response data in a public repository — only aggregate statistics appear above)
 | B-06 | **PARTIALLY CLEARED 2026-10-09** | **MapTiler key DELIVERED** (`VITE_MAPTILER_KEY` set in gitignored `.env`, build verified). Turso database still not provisioned. | Map/geocoding (S0/S1) unblocked — public Vite client key, safe in bundle by design. Turso still optional — in-memory adapter is default. | MapTiler: **closed**. Turso: User |
 | B-07 | Medium | Deadline Oct 30 2026 23:45 EDT; internal freeze Oct 28. **21 days from today.** | Schedule pressure; see `HACKATHON_TRACKER.md`. Phase 5 closed on time with buffer remaining. | Orchestrator |
 | B-08 | Medium | Qloo `qloo mcp` needs Node 22.19+ and a long-lived backend; serverless unsupported. | Constrains hosting to Render Free (locked). | Locked, no action |
+| B-09 | Medium | **FD 684 vs locked SSE contract (escalated 2026-10-15):** "See the lookups → matching ledger rows" cannot survive a fresh reload under state-only SSE; the drawer chain is complete within a live session. | Judge-visible gap only on reload; links stay honest. Needs spec-owner decision: FD amendment vs SSE history replay vs client replay route. | User / spec owner |
+| B-10 | Low | **GET-only evidence projection:** only `GET /api/runs/:id` injects evidence; SSE/replace/stop responses carry RunState without it. Client evidence slot + terminal refetch bridge the gap (`b1f276e`). | Server-side unification deferred; Phase 8 challenge/blueprint surfaces should not add more state-only projections. | Orchestrator (Phase 8 pre-work) |
 
 ## Last Verified Commit
 
-`bd1cb20` — *feat: implement role-preserving replacement and revisions.*
-Preceded by `cf23d4a` (W-7.4 state docs), `3591f75` (W-7.4 S3 graph), `ff70ad5` (W-7.3
-state docs), `f8717d7` (W-7.3 S2 workspace), `50b8416` (W-7.2 state docs), `7180387`
-(W-7.2 measurement chain), `99b53bd`/`3bf30f5` (W-7.1), `ee3bddd` (Phase 7 contract).
-Suite **631 pass / 5 skips** (5 gated-live; degradedBoot ran with the port free); gates
-green on current head: typecheck, lint, unit, build, **e2e 4/4** (fresh dist, production
-server restarted), `dist/web` secret scan 0 hits. Push target:
-**https://github.com/louji2308/zorq** (`main`, PUBLIC, MIT; push only on explicit user
-request).
+`1acb896` — *test: add the judge fixture pipeline and chain API coverage.*
+Preceded by `0d9344b` (weakest-link success line), `b1f276e` (evidence slot + entity
+names + typed weakest-link), `bd1cb20` (W-7.5 Replace), `cf23d4a` (W-7.5 state docs),
+`3591f75` (W-7.4 S3 graph), `f8717d7` (W-7.3 S2 workspace), `7180387` (W-7.2 measurement
+chain), `99b53bd` (W-7.1), `ee3bddd` (Phase 7 contract). Gates green on the tree at
+sign-off: typecheck, lint, **642 pass / 5 gated-live skips**, build PASS, **e2e 8/8**,
+`dist/web` secret scan **0 hits**, fixture-browser walk **zero console errors**.
+Docs commit (this file) lands the Phase 7 close-out. Push target:
+**https://github.com/louji2308/zorq** (`main`, PUBLIC, MIT; pushed this session on
+explicit user request).
 
 ## Next Highest-Value Action
 
-**Phase 7 exit-gate work** (contract line: *"A judge can answer 'why do these components
-belong together?' by inspecting an edge rather than trusting an unsupported narrative"*):
-build the clause map against Plan lines 662–724 + run a fixture-browser review
-(`npm run test:e2e` + manual pass through S2 → S3 → Replace on the production server)
-confirming — (1) every exit-gate clause has an observable surface or a recorded
-deviation; (2) the judge question is answerable by clicking an edge (claim → shared
-entities → triangulation → how-computed → ledger link, from `3591f75`) and by replacing
-a member (role preserved, ΔC/ΔD honest, mini stress, revision row, from `bd1cb20`);
-(3) no honest-503 or placeholder surface is reachable on the Phase 7 path. Then close
-Phase 7: archived-contract section, status line → CLOSED, progress record, coherent
-commit (precedent `cf23d4a`), reassess before Phase 8 (S4 Challenge the Plan —
-owner of D-7.14/D-7.16 follow-ups). Remaining spawn channel: 5/5 cancelled → continue
-orchestrator-direct unless the user restores it (D-7.7/D-7.9/D-7.11 lineage).
-Parallel user-side: **top up DeepSeek (B-02 — HTTP 402)** → one real browser judge pass
-closes Phase 6's two open boxes. Deadline: Oct 30 2026, internal freeze Oct 28.
+**Phase 8 boundary + contract** (Plan lines 734+, S4/S5: Challenge, Constraint Fit &
+Blueprint). Highest-value bottleneck: the S4/S5 judge path — challenge engine,
+constraint fit, evidence-bound Place Blueprint, Without-Qloo comparison — is still
+placeholder-only behind the real S1–S7 pipeline that Phases 6–7 built. Before any
+implementation: re-read all 7 ProjectSpec sources + AGENTS.md (boundary refresh),
+rebuild the current-state model (including the B-09/B-10 pre-work: decide the
+evidence-projection unification posture and the FD-684 ledger-reload question), write
+the Phase 8 contract, then decompose. Spawn channel 5/5 cancelled → orchestrator-direct
+(D-7.7 lineage). Parallel user-side: **top up DeepSeek (B-02)** → one real browser
+judge pass closes Phase 6's two open boxes. Deadline: Oct 30 2026, internal freeze Oct 28.
+
+## Phase 7 Exit-Gate Status (PASSED 2026-10-15 — one escalated deviation, B-09)
+
+Gate text (Plan line 724 / ARCHITECTURE §6): *"A judge can answer 'why do these
+components belong together?' by inspecting an edge rather than trusting an unsupported
+narrative."*
+
+Evidence: W-7.1 `99b53bd`, W-7.2 `7180387`, W-7.3 `f8717d7`, W-7.4 `3591f75`,
+W-7.5 `bd1cb20`, exit-gate `b1f276e` (evidence slot + names + typed weakest-link),
+`0d9344b` (weakest-link success line), `1acb896` (judge pipeline + chain + e2e).
+Gates at sign-off: typecheck 0, lint 0, **642 pass / 5 gated-live skips**, build PASS,
+**e2e 8/8**, `dist/web` secret scan **0 hits**, fixture-browser walk with **zero
+console errors** (screenshots `tmp/phase7-*.png`).
+
+**S2 (Plan 666–680):**
+- [x] **Prior + Composition A/B/C** — `CompositionsPanel` renders the Prior card
+  ("No cultural data used at lock time.") plus ranked A/B/C; e2e test 1 (dial
+  re-rank without new measurement); browser pass.
+- [x] **role structure / coherence percentile / distinctiveness / weakest link /
+  evidence grade** — `CompositionCard` role-grouped rows, percentile sentences
+  ("More coherent than 98% of 50 valid combinations…"), distinctiveness counts,
+  weakest-link break-mark buttons, grade letters + reasons; browser pass.
+- [x] **Never a magical 0–100 ecosystem score** — e2e `expectHonestRenderedText`
+  forbids `/ecosystem/i`; only percentiles, grades and raw readings render.
+- [x] **Field/percentile visualization (FD)** — 12-bin Field histogram + A/B/C
+  marks + dashed Prior mark; browser pass ("all 50 valid combinations … 0.04–0.10").
+
+**Re-inking (Plan 681–690):**
+- [x] **dashed Prior → lines re-ink** — FLIP rail re-ink on dial re-rank with a
+  `prefers-reduced-motion` guard (W-7.3); unit-proven order identity.
+- [ ] **additions draw in / removals are struck** — stroke-dashoffset keyframes
+  (FD 536/709/719) **deferred** (recorded deviation; motion polish only — all
+  readings remain static text, reduced-motion state trivially satisfied).
+
+**S3 (Plan 691–703):**
+- [x] **nodes = components, edges = shared culture** — `ConnectionsPanel` map +
+  sorted edge list; e2e 3; browser pass.
+- [x] **edge inspection: two components / shared cultural entities / measurement
+  route / triangulation status / ledger references** — pair drawer renders the
+  claim, ranked named entities (Paris, Texas #1, Bill Evans #2), how-computed
+  route, direct-check (triangulation) disagreement line, and four "See the
+  lookups" ledger-reference buttons; e2e test 2; browser pass.
+- [x] **sorted edge-list fallback when narrow** — <1200px switches to the distance
+  chart; e2e test 3.
+
+**Evidence drawer (Plan 704–713):**
+- [x] **claim → provenance badge → entities → measurement route → computation
+  summary → ledger links** — `EvidenceDrawer` + `s3Model` (Qloo pill only when
+  `evidence.claim !== null`); e2e 2; browser pass.
+- [x] **evidence survives replaces and state frames** — client evidence slot
+  mirrors `ledgerRows` (`b1f276e`); unit test + e2e 4.
+- [ ] **FD 684 "See the lookups → matching ledger rows" across a reload** —
+  **not implementable under the locked SSE contract** (fresh connect = state
+  only; `exitGate.test`); links navigate to the ledger section but a reload
+  leaves it empty. **Escalated to the user/spec owner (B-09).** No fake rows,
+  no invented history.
+
+**Replace (Plan 714–722):**
+- [x] **alternatives** — cap-5 list with measurable/blocked states; browser pass.
+- [x] **coherence effect** — ΔC diverging bars; e2e 4; browser pass.
+- [x] **distinctiveness effect** — ΔD diverging bars; e2e 4; browser pass.
+- [x] **weakest-link effect** — success-sheet line "Weakest link becomes: Clay
+  Collective and Hallen Biergarten." (`0d9344b`); unit 4/4 + e2e assert; browser
+  pass. (FD 686's *per-alternative* preview line deferred — recorded deviation;
+  the Plan bullet is the post-replace effect.)
+- [x] **optional custom candidate** — custom Qloo query input + honest
+  blocked-reason; browser pass.
+- [x] **bounded Qloo calls** — server-side pool/alternative caps +
+  `customBlockedReason`; replaceResponseSchema; judgeChain test.
+- [x] **revision history** — "Revisions on this run" list; e2e R1 row
+  ("R1: Court Tree Roasters → Devoción (Anchor) · ΔC -0.02"); browser pass.
+- [x] **role-preserving** — "Keeps the role: Anchor." + sameMembers family
+  invariance (W-7.5, reviewed); browser pass.
+
+**Exit gate (Plan 724):**
+- [x] **The judge question is answerable by inspecting an edge** — browser walk:
+  click the Devoción↔Nitehawk edge → claim, shared entities with ranked names,
+  triangulation disagreement, measurement route, ledger refs; then replace a
+  member → role kept, honest ΔC/ΔD, mini challenge, revision row.
+- [x] **No honest-503 or placeholder surface is reachable on the Phase 7 path**
+  — `tests/api/judgeChain.test.ts` drives the real orchestrator pipeline end to
+  end (fake gateway/LLM only at the transport boundary); replace route returns a
+  measured response, never the Phase-7-era 503.
+- [x] **No fabricated intelligence** — fixtures live only under `tests/`+`e2e/`
+  and are never imported by `src/**`; zero console messages in the browser walk;
+  secret scan 0 hits.
+
+**One-line verdict:** every Plan-7 clause has an observable, tested surface except
+the two recorded deferrals (re-inking motion polish; FD per-alternative weakest
+preview) and the one escalated architecture conflict (B-09, FD 684 ledger rows on
+reload). The exit-gate question is answerable by clicking an edge today.
 
 ## Phase 6 Exit-Gate Status (OPEN 2026-10-09 — every clause proven except the B-02 live click-through)
 
