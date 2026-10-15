@@ -9,7 +9,8 @@
 
 **PHASE 8 — S4/S5: Challenge, Constraint Fit & Blueprint**. Status: **IN PROGRESS —
 boundary reconstruction COMPLETE 2026-10-15; contract written (see `PHASE 8
-CONTRACT`); orchestrator-direct implementation starting**. Phase 7 closed 2026-10-15
+CONTRACT`); orchestrator-direct implementation in progress — W-8.1, W-8.2a, W-8.2b,
+W-8.3 committed**. Phase 7 closed 2026-10-15
 (exit-gate clause map PASSED, see `Phase 7 Exit-Gate Status`; close-out commits
 `b1f276e`, `0d9344b`, `1acb896`, `94dade1`). Phase 7 shipped: W-7.1 `99b53bd`,
 W-7.2 `7180387`, W-7.3 `f8717d7`, W-7.4 `3591f75`, W-7.5 `bd1cb20`, exit-gate work
@@ -826,7 +827,8 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 ## Active Work
 
 - **PHASE 8 IN PROGRESS (contract `c81bfbb`) — W-8.1 DONE (`0c8ba6f`); W-8.2a DONE
-  (`f786607`); W-8.2b DONE (`6903c25`).** Phase boundary reconstructed from all seven ProjectSpec
+  (`f786607`); W-8.2b DONE (`6903c25`); W-8.3 DONE (`ff54a0d`).** Phase boundary
+  reconstructed from all seven ProjectSpec
   sources + AGENTS.md; spawn channel 5/5 cancelled → orchestrator-direct (D-7.7
   lineage). W-8.1: `engine/formats.ts` (FORMAT_TYPES ≈25 types × 2-3 formats, every
   entry marked `[Zorq heuristic]`, longest-keyword match + role fallback) + `engine/fit.ts`
@@ -842,10 +844,24 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
   (site+city insights → `buildNeighborhoods` → temp-pool `rebuildChain` →
   `measureComposition` → gain-gated candidate carried on a `ScratchState` applied
   without touching persisted state), and Replaced proven end-to-end by the real path
-  (fixture D: two swaps → `verdictRival` = rival family, `6903c25`). Verified at
-  `6903c25`: typecheck 0, lint 0, **682 pass / 5 gated-live skips**, **build PASS**;
-  secret scan clean (no new env/surface). Next: **W-8.3** Blueprint (server + route).
-  Deadline Oct 30 2026 (internal freeze Oct 28).
+  (fixture D: two swaps → `verdictRival` = rival family, `6903c25`).
+  W-8.3: S5 Place Blueprint server path — `orchestrator/blueprint.ts` (composeBlueprint:
+  guards → leader resolution from challengeReport/ranked → evidence index filtered to
+  stored evidence records → fit-to-site from `fitConstraints` → receipts capped 3 →
+  role groups in canonical order → What Qloo changed via `extractPriorMemberEntries`
+  matching → risks (weakest edge/thin/triangulation non-confirmed/constraint conflict)
+  → evidence grade (engine vs challengeReport.gradeCap worst-of) → fit/sight diffs →
+  deterministic fallback narrative OR one `blueprint:compose` LLM turn with fence-strip
+  + citation strip-unknown-keep-known + fallback event `blueprint.compose_fallback` on
+  any failure) + share snapshots (opaque token, 30-day TTL, fingerprint cache-hit, read
+  share path `?share=`, 404 unknown / 410 expired), persistence layer (BlueprintSnapshot
+  in memory + Turso `blueprint_snapshots` table), `GET /api/runs/:id/blueprint` real
+  route wired, `challengeMutationSchema` extended with optional embedded `component`
+  (bridge-resolved members survive pool-less reads, D-8.14), and 13 new tests (9 unit
+  + 4 HTTP over the judge fixture). Verified at `ff54a0d`: typecheck 0, lint 0,
+  **695 pass / 5 gated-live skips**, **build PASS**; secret scan clean. Decisions
+  D-8.10…D-8.14 recorded. Next: **W-8.4** Without-Qloo comparison. Deadline Oct 30 2026
+  (internal freeze Oct 28).
 - **PHASE 7 CLOSED 2026-10-15 — exit gate PASSED** (contract `ee3bddd`; W-7.1 DONE
   (`99b53bd`); W-7.2 DONE (`7180387`); W-7.3 DONE (`f8717d7`); W-7.4 DONE (`3591f75`);
   W-7.5 DONE (`bd1cb20`); exit-gate `b1f276e`/`0d9344b`/`1acb896`). See "Phase 7
@@ -964,6 +980,7 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 | W-8.1 | Constraint/format engine (deterministic kernel) | NEW: `src/server/engine/{formats,fit}.ts` (413 + 343), `tests/engine/formats.test.ts` (159); EDIT: `src/server/engine/index.ts` (barrel +25) | **DONE 2026-10-15 — committed `0c8ba6f`.** typecheck 0, lint 0; 12 tests (keyword/role format resolution, 85% circulation rule, constraint-chip parsing, downshift-before-drop with Anchor preserved, honest infeasibility reasons). Every export carries the `[Zorq heuristic]` marker per contract; no orchestrator/route wiring (recompute path lands with W-8.5). |
 | W-8.2a | S4 challenge engine [server pass] | NEW: `src/server/orchestrator/challenge.ts` (887), `tests/orchestrator/challenge.test.ts` (22), `tests/api/challenge.test.ts`; EDIT: `src/shared/{run,routes}.ts` (challenge schemas + `challengeReport` on RunState; `attackKindSchema` moved to run.ts as canonical owner), `src/server/orchestrator/{types,orchestrator}.ts` (`challengeRun`), `src/server/routes.ts` (real handler), `measure.ts` (+`projectExemplars` moved from replace.ts), `replace.ts` (export `sameMembers`/`guardMutationState`, generic mutation wording), `tests/routes.test.ts` (strict `{run, report}` fixtures), `tests/support/judgePipeline.ts` (+bridge operation) | **DONE 2026-10-15 — committed `f786607`.** typecheck 0, lint 0, build PASS; **677 pass / 5 skips** (+23). Mechanism: guards (status/compositions/ranked) → bounded LLM attack-order turn (fence-stripped zod parse, dedupe) or diagnostic fallback → up to 3 stress rounds × 5 attacks in `attackOrder` (ablation re-measures rest subsets against size-n−1 coherences; substitution same-role pool alts; bridge ≤3 evidence-linked probes with budget/outage/empty honesty; catchment deterministic city re-measure; rival rank-margin + flip), best-gain swap/drop mutation (ε=1e-6, swap preferred on tie) applied ≤2 → `resolveVerdict` (no change → Survived, member shared with prior leader → Revised, else Replaced + `verdictRival`) → `gradeCap` B on any "not completed" → `runStateSchema.parse({…state, challengeReport})` persisted via write-through ledger + `saveRunState` + `emitState`. Ledger events: `challenge.order(.fallback)`, `challenge.stress`, `challenge.mutation`, `challenge.verdict`, `challenge.bridge_probe`. |
 | W-8.2b | Bridge insertion + shared rebuild owner + Replaced proof | EDIT: `src/server/orchestrator/measure.ts` (+`RebuildChainResult`/`rebuildChain`), `replace.ts` (rebuild block → `rebuildChain`, export `firstTag`, import prune), `challenge.ts` (+404: bridge measurement flow, `ScratchState`, effective-context wiring, `bridgeComponentId`/`bridgeRole`, stopNote bridge branch), `tests/orchestrator/challenge.test.ts` (+5 tests, +`emptyBridgeGateway`/`bridgeFixtureGateway`, fixture D/E, gateway hardening on B/C/persistence), `tests/api/challenge.test.ts` (pinned verdict/mutations/evidence=4), `tests/support/judgePipeline.ts` (+`urn:entity:artist-sonic-youth` site entity, "Sonic Youth" → `tag-noise-rock-1`) | **DONE 2026-10-15 — committed `6903c25`.** typecheck 0, lint 0, build PASS; **682 pass / 5 skips** (+5). Mechanism: bridge probe entities → guards (brief/neighborhoods missing → honest "measured"; budget < 3 calls → "not completed", `found` NOT set so a later round may retry) → `resolveTags` (failure → `challenge.bridge_resolve_tag` failed-call event; empty tag → honest "measured") → site insights with `localityLadder[0]` signalLocation → city insights unlocalized → `buildNeighborhoods` on both → temp pool + `rebuildChain` → `measureComposition` on `[...leader, component]` → gain > ε candidate with `ScratchState` (pool/graph/neighborhoods/distinctiveness/familyCoherences) → `applyCandidate` installs scratch so rounds 2–3 attack the bridged pool while persisted state stays untouched; `bridgeRecorded.found` limits measurement to one successful terminal probe per challenge (later rounds skip citing "recorded probe stands"; D-8.9). Replaced proven by fixture D (two swaps, `verdictRival` = rival family) through the real `runChallenge` path. Judge fixture bridge measured end-to-end (evidence = probe+tag+site+city = 4) but scored no gain → drops applied → verdict Revised, gradeCap A — bridge first in diagnostic order (weakest link 0 < 0.35). |
+| W-8.3 | S5 evidence-bound Place Blueprint (server + share route) | NEW: `src/server/orchestrator/blueprint.ts` (~740), `tests/orchestrator/blueprint.test.ts` (9), `tests/api/blueprint.test.ts` (4); EDIT: `src/shared/{routes,run}.ts` (typed blueprint contract; `challengeMutationSchema` + optional `component`; `componentDisplayName` helper), `src/server/persistence/{index,memoryStore,store,tursoStore}.ts` (BlueprintSnapshot + `blueprint_snapshots` table + share index), `src/server/orchestrator/{orchestrator,types,measure,challenge}.ts` (`buildBlueprint` w/ share fast-path + fingerprint cache; `extractPriorMemberEntries` export; `applyCandidate` embeds bridge component), `src/server/routes.ts` (GET blueprint handler), `tests/{routes,support/judgePipeline}.test.ts` (fixtures + `extraLlmResponses`) | **DONE 2026-10-15 — committed `ff54a0d`.** typecheck 0, lint 0, build PASS; **695 pass / 5 skips** (+13: 9 unit + 4 HTTP). Mechanism: guards (brief/prior/pool/compositions/leader-in-pool) → leader = `challengeReport.leaderAfter ?? ranked[0]` → evidence index = state vocabulary **∩ stored evidence records** (unknown IDs can never render) → fit from `fitConstraints` (footprint/hours/downshifts) → receipts ≤3 (path ≤300 + top-2 shared-entities by value) → role groups in `poolComponentRoles` order → What Qloo changed via prior-member name/id/exemplar matching (downshift → reformatted) → risks (weakest edge, thin component, triangulation non-confirmed, constraint conflict; ≤20) → grade = worst-of(challengeReport.gradeCap, computed engine grade) → deterministic narrative (title/rationale + first-3 citation IDs) or one `blueprint:compose` LLM turn (fence-strip → zod parse → **strip ALL bracketed tokens not in the stored-evidence vocabulary**, zero kept → honest fallback with reason) → `blueprintSchema.parse` → share snapshot (opaque 24-byte token, 30-day TTL, sha256 fingerprint over state excluding status/phase → cache-hit skips LLM; share fast-path 404 unknown / 410 expired; expired non-share path recomposes reusing the stored token). `challengeMutationSchema.component` lets a bridge member resolve by name when the bridge was never persisted to the pool (D-8.14). Decisions D-8.10…D-8.14 recorded. |
 
 **Orchestrator integration review (AGENTS §17):** both diffs inspected; W-1.1 touched only `ARCHITECTURE.md`;
 W-1.2 touched only temp-dir files (repo `git status` shows no spike artifacts); key never echoed; worker claims
@@ -984,6 +1001,51 @@ returned the pre-persist Prior object (unfrozen, separate object from the persis
 (`62f29af`).
 
 ## Verified Tests / Evidence
+
+### Phase 8 — W-8.3 S5 Place Blueprint + share snapshots (2026-10-15, commit `ff54a0d`)
+
+- **Orchestrator gate run (post-review):** typecheck 0 (both tsconfigs), lint 0
+  (`npx eslint .`), Vitest **695 pass / 5 gated-live skips** (700 total — +13 over the
+  W-8.2b tree: 9 unit + 4 HTTP), **build PASS** (vite 170 modules, dist/web
+  regenerated). e2e + fixture-browser walk deferred to the Phase 8 exit gate (no web
+  surface changed in W-8.3; the e2e contract requires challenge→blueprint→without-Qloo,
+  which needs W-8.4/W-8.5). `git diff --check` clean (LF/CRLF notices only).
+- **New coverage — `tests/orchestrator/blueprint.test.ts` (9):** happy contract (LLM
+  narrative with a known citation kept and a bogus citation stripped, role order
+  `["Anchor","Social","Night"]`, receipts carrying exact evidenceIds, fit numbers
+  8000/6800/5050 exact, What Qloo changed kept=[night,anchor] / added=[social] /
+  removed=[Vanishing Diner], risks length 1, grade A, shareUrl + 30-day TTL diff,
+  `blueprint.compose` ledger label); downshift + reformatted scenario (area 5000 →
+  total 3500, `Stage-and-bar`, night member → reformatted); gradeCap B cap from a
+  stress probe; grade C when a leader member is unmeasured + thin-component risk;
+  bridge component resolved from an embedded `challengeMutation.component` (Discovery
+  group, grade B from failed edges); LLM-throw → deterministic fallback +
+  `blueprint.compose_fallback` and NO `blueprint.compose`; ghost-citation rejection
+  (narrative cites nothing known → fallback reason "cited no known evidence id");
+  guard refusals (brief/prior/pool/compositions/missing leader member); fingerprint
+  stability (status/phase flips do not change the fingerprint, brief change does).
+- **New coverage — `tests/api/blueprint.test.ts` (4, real HTTP over the judge fixture
+  with `extraLlmResponses`):** 200 + strict `blueprintResponseSchema` parse, narrative
+  `"llm"` with a stored-record citation kept and `[ghost-id-not-real]` stripped, EVERY
+  citation (narrative + receipts + diff + risks) asserted ⊆ `store.listEvidence` ids,
+  role groups sorted in canonical pool order, `whatQlooChanged.removed` contains
+  "Devoción", evidence grade byte-equal to `ranked[0].grade`, 30-day TTL, shareUrl;
+  cache: second GET byte-identical with `blueprint.compose` count **1** and
+  `blueprint:compose` count **1** (one LLM turn); share round-trip
+  `?share=token` → same body, unknown share → **404 RUN_NOT_FOUND**, expired snapshot
+  (overwritten with `TEST_NOW`-past `expiresAt`) → **410 SNAPSHOT_EXPIRED**, then
+  non-share rebuild → 200 `"llm"` with the SAME token and `blueprint.compose` count 2;
+  unknown run → 404 RUN_NOT_FOUND.
+- **Fixture/review notes:** the judge fixture's clock is frozen at `TEST_NOW`
+  (2026-10-08) — expiry tests must set `expiresAt` relative to `TEST_NOW`, not
+  `Date.now()` (found by a failing 410 assertion, fixed). The rebuild after expiry
+  consumes a second scripted LLM response (`extraLlmResponses` length 2) or honestly
+  falls back to `"deterministic"` (first observed, then pinned to `"llm"` with the
+  second response). `routes.test.ts` valid blueprint fixture gained the required
+  member `role` field after the tightened `blueprintMemberSchema` rejected it.
+- **Schema seam:** `blueprintResponseSchema`/`blueprintQuerySchema` now typed; the
+  GET handler re-parses `req.query` (Zod middleware validates but does not replace
+  it) so `?share=7` still fails with `VALIDATION_FAILED`.
 
 ### Phase 8 — W-8.1 format/fit + W-8.2a challenge engine (2026-10-15, commits `0c8ba6f`, `f786607`)
 
@@ -1477,6 +1539,11 @@ with both mini-challenge attack rows after a real in-browser replace.
 | D-8.7 | **Challenge response shape = `{run: runStateSchema, report: challengeReportSchema}`, replacing the placeholder `{runId, status:"running", stress}`; the response `run` carries no `evidence` projection — GET /api/runs/:id remains the single projecting read (B-10 posture).** | Challenge is synchronous like replace (worst case = 3 local re-measures + ≤3 bridge probes); the "running" status was placeholder text. Evidence rows live in the store and are projected only by GET, so the mutation endpoints share one honest contract instead of each re-implementing projection. | Yes — revisit with B-10 unification. |
 | D-8.8 | **Bridge component role = first role in canonical `poolComponentRoles` order that is neither "Anchor" nor already held by a leader member; fallback "Community".** | The bridging component represents the shared interest between the weakest-link pair, so it must not silently re-label an existing leader role (which would corrupt role-preservation checks and substitution's same-role lookup); the deterministic first-free-role rule keeps the operator reproducible from identical inputs with zero LLM involvement. | Yes — revisit only if a higher-order source assigns bridge semantics to a specific role. |
 | D-8.9 | **Exactly one successful bridge measurement per challenge run: `bridgeRecorded.found` flips true only on a terminal "measured" bridge outcome (entities found and the flow reached a no-insertion conclusion or a completed measurement); later rounds skip with "the recorded bridge probe stands". Budget-refusal and failed-call outcomes do NOT flip it, so an honest retry remains possible on a later round.** | Re-measuring the same pair would re-spend Qloo budget re-learning identical inputs (bridge needs 3 calls: tag + site + city) for no new information, and the spec bounds challenge Qloo spend; keeping the flag false on failures preserves honesty — the loop may retry what it never actually learned, bounded by the ≤3-round loop anyway. | Yes — tune only from measured budget evidence (AGENTS §13). |
+| D-8.10 | **Blueprint share = a `BlueprintSnapshot` row on the RunStore port (memory + Turso `blueprint_snapshots` table with `runs.run_id` FK + unique `share_token` index), keyed by `run_id`, carrying the whole `blueprintSchema` value + `shareToken` + `createdAt`/`expiresAt` (30-day TTL from `BLUEPRINT_TTL_MS`). The share token is `randomBytes(18).base64url` minted once per run and reused across recompositions; a sha256 fingerprint over the state inputs (brief/prior/evidence/siteRead/pool/neighborhoods/graph/compositions/challengeReport/revisions — status/phase excluded) lets an unchanged run serve the cached snapshot without an LLM turn.** | Architecture §16 makes `/run/:id/blueprint` a read-only shareable snapshot; the fingerprint keeps repeat reads byte-stable and cheap while ensuring any real state change invalidates the cache (never serves stale truth). Status/phase excluded so a state-machine transition cannot orphan a valid blueprint. Token reuse keeps a share link alive across honest recompositions. | Yes — TTL/token format revisitable; the invalidation rule (fingerprint) is not. |
+| D-8.11 | **Blueprint narrative = exactly one LLM turn (`blueprint:compose`, bounded) with code-fence stripping → JSON parse → title/rationale extraction → citation validation that STRIPS every bracketed token not in the stored-evidence vocabulary (keep-known-only), plus a deterministic fallback path. ANY failure (LLM throw, malformed JSON, zero kept citations, no allowed ids) → deterministic narrative (title from objective+location, rationale from measured leader numbers) + ledger `blueprint.compose_fallback` carrying an honest reason; never a retry, never fabricated citations.** | ProductSpec S5 allows an LLM rationale but AGENTS §13 forbids unknown evidence IDs rendering as confirmed; strip-unknown-keep-known yields an honest prose that cites only real records while still surfacing the model's reasoning. Single attempt (no retry) keeps the $2/run budget safe and avoids retry loops over a poisoned prompt; the labeled fallback event makes any substitution judge-visible, mirroring the D-8.6 challenge-order pattern. | Yes — improve parsing only; never remove the fallback or its label. |
+| D-8.12 | **`componentDisplayName(component) = exemplars[0]?.name ?? id` lives in `src/shared/run.ts` as the canonical owner (server blueprint + future web renderer share it); composition-by-role groups iterate `poolComponentRoles` canonical order; receipts = ≤1 `path` receipt (deterministic node/path sentence, ≤300) + ≤2 `shared-entities` receipts (top-2 partner edges by value among leader members, entity names ≤2); shared-entities edge lists are site-first then city.** | One display-name rule must not fork between server and client (existing-file-first); canonical role ordering makes the blueprint's row order deterministic and matches the S2 card convention; receipts are the "why this member" margin evidence and the caps keep the print/Markdown renderer within the layout budget; site-first ordering matches the DNA strip's local-over-city reading. | Yes if a later design pass widens receipt counts. |
+| D-8.13 | **What Qloo changed = `extractPriorMemberEntries` matching prior composition members to the current leader by normalized name, then id, then exemplar name (first match wins, each current member consumed once); a member whose fit downshifted a format appears under `reformatted` with the shift sentence; a prior member matched by name but absent from the leader → `removed`; unmatched leader members → `added`.** | The spec's four arrays are a Prior→Final identity diff, but prior markers and pool members use different key spaces (loose role-grouped record vs measured pool) — the three-key cascade is the smallest deterministic matching that never fabricates a link; downshifted members genuinely changed format (not membership), so `reformatted` is the honest bucket rather than removed+added churn. | Yes — revisit only if Prior and pool adopt a shared stable member id. |
+| D-8.14 | **A challenge bridge mutation persists its inserted `PoolComponent` inside `ChallengeMutation.component` (optional field on `challengeMutationSchema`); `applyCandidate` embeds the component only when `memberIn` is NOT already in the stored pool (bridge-only — swaps/drops resolve normally). The pool/graph are deliberately NOT mutated by challenge; a later replace re-derives from the real pool.** | The bridge component is measured on a `ScratchState` that must never leak into persisted pool/graph (W-8.2b invariant), yet the blueprint must resolve a bridge member's role/format/receipts by name after the run — embedding the component on the mutation is the smallest additive schema change that carries the identity without reopening the pool question. Replacing a bridge member later (it is not in the pool) is a **known limitation deferred** to the replace/blueprint integration pass. | Yes — if bridge members must become first-class pool entries, move them into the pool at mutation time and re-run the fingerprint. |
 
 ## Deviations from contract
 
@@ -1571,25 +1638,26 @@ with both mini-challenge attack rows after a real in-browser replace.
 
 ## Last Verified Commit
 
-`6903c25` — *feat: add bridge-insertion mutation and the shared rebuild chain.*
-Preceded by `f3f90a4` (docs: W-8.1 + W-8.2a), `f786607` (W-8.2a challenge engine),
+`ff54a0d` — *feat: compose the evidence-bound Place Blueprint with share snapshots.*
+Preceded by `b938cbe` (docs: W-8.2b), `6903c25` (W-8.2b bridge insertion + rebuild
+chain), `f3f90a4` (docs: W-8.1 + W-8.2a), `f786607` (W-8.2a challenge engine),
 `0c8ba6f` (W-8.1 format library + constraint-fit engine), `c81bfbb` (Phase 8 contract).
-Gates green on the tree at sign-off: typecheck 0, lint 0, **682 pass / 5 gated-live
+Gates green on the tree at sign-off: typecheck 0, lint 0, **695 pass / 5 gated-live
 skips**, **build PASS**; secret scan of the diff clean. e2e + fixture-browser walk
 deferred to the Phase 8 exit gate (no web surface in this increment; full-chain e2e
-contract needs W-8.3/W-8.4). Docs commit (this file) records W-8.2b + D-8.8/D-8.9.
+contract needs W-8.4/W-8.5). Docs commit (this file) records W-8.3 + D-8.10…D-8.14.
 Push target: **https://github.com/louji2308/zorq** (`main`, PUBLIC, MIT; push on
 explicit user request).
 
 ## Next Highest-Value Action
 
-**W-8.3 — S5 Evidence-bound Place Blueprint (server + route).** Consume the complete
-W-8.2 feed (grade cap, risks, verdict, mutation history, bridge/evidence chain) plus
-W-8.1's constraint/format results to produce the final Place Blueprint artifact over
-`POST /api/runs/:id/blueprint` per the Implementation Plan §W-8.3; pin it with typed
-schemas, honest evidence-state rendering, and end-to-end tests. Then W-8.4 Without-Qloo
-comparison → W-8.5 S4/S5 UI → Phase 8 exit gate (typecheck/lint/unit/build/e2e/secret
-scan/browser walk). Parallel user-side: **top up DeepSeek (B-02)** → one real browser
+**W-8.4 — Without-Qloo comparison.** Left column: frozen Prior + LLM-only polish
+(same constraints, no tools) — if polish does not exist at run start, add it during
+prior generation with budget accounting; if it cannot be generated, the left column
+honestly shows Prior alone and says so. Right: final composition. Diff highlighted.
+"Here, the evidence changed nothing." confident-empty case. Then W-8.5 S4/S5 UI →
+Phase 8 exit gate (typecheck/lint/unit/build/e2e/secret scan/browser walk + clause map
+vs Plan 734–808). Parallel user-side: **top up DeepSeek (B-02)** → one real browser
 judge pass. Deadline: Oct 30 2026, internal freeze Oct 28.
 
 ## Phase 7 Exit-Gate Status (PASSED 2026-10-15 — one escalated deviation, B-09)
