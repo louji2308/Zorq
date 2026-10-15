@@ -652,6 +652,51 @@ export function projectCompositionsNode(input: CompositionsProjection): RunCompo
   return compositionsNode;
 }
 
+export interface RebuildChainResult {
+  idf: IdfLookup;
+  graph: CultureGraph;
+  runGraph: RunGraph;
+  distinctiveness: Record<string, number | null>;
+  requiredRoles: ComponentRole[];
+  family: CompositionFamily | null;
+  familyError: string | null;
+  ranking: RankingResult | null;
+}
+
+export function rebuildChain(input: {
+  pool: CandidateComponent[];
+  siteNeighborhoods: readonly TasteNeighborhood[];
+  cityNeighborhoods: readonly TasteNeighborhood[];
+  familySize: number;
+}): RebuildChainResult {
+  const { pool, siteNeighborhoods, cityNeighborhoods, familySize } = input;
+  const idf = computeIdf(pool, siteNeighborhoods);
+  const graph = buildGraph(pool, siteNeighborhoods, idf);
+  const runGraph = projectRunGraph(graph, siteNeighborhoods, idf);
+  const cityVectors: Record<string, WeightedEntity[]> = {};
+  for (const neighborhood of cityNeighborhoods) {
+    cityVectors[neighborhood.componentId] = neighborhood.domains.artist.map((entry) => ({
+      entityId: entry.entityId,
+      weight: entry.weight
+    }));
+  }
+  const distinctiveness = computeDistinctivenessMap(siteNeighborhoods, cityVectors);
+  const requiredRoles: ComponentRole[] = pool.some((component) => component.role === "Anchor") ? ["Anchor"] : [];
+  const size = Math.min(familySize, pool.length);
+  let family: CompositionFamily | null = null;
+  let ranking: RankingResult | null = null;
+  let familyError: string | null = null;
+  if (pool.length >= 2) {
+    try {
+      family = buildCompositions({ pool, graph, size, requiredRoles, distinctiveness });
+      ranking = { ...rankCompositionSet(family.compositions), sweep: rivalSweep(family.compositions) };
+    } catch (error) {
+      familyError = toError(error).message.split("\n")[0] ?? "engine refused the composition family";
+    }
+  }
+  return { idf, graph, runGraph, distinctiveness, requiredRoles, family, familyError, ranking };
+}
+
 export async function runMeasurement(input: MeasurementInput): Promise<MeasurementResult> {
   const { state } = input;
   if (state.candidatePool === undefined || state.candidatePool.length === 0 || state.brief === undefined) {

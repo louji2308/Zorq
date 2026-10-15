@@ -76,6 +76,57 @@ function disjointNeighborhoods(ids: readonly string[]): RunNeighborhoods {
   };
 }
 
+function emptyBridgeGateway(): QlooGateway {
+  return fakeGateway({
+    onCall: (call) =>
+      call.operation === "bridge"
+        ? okEnvelope("bridge", { results: { entities: [] }, resultCount: 0 })
+        : okEnvelope(call.operation)
+  }).gateway;
+}
+
+function bridgeFixtureGateway(): QlooGateway {
+  return fakeGateway({
+    onCall: (call) => {
+      if (call.operation === "bridge") {
+        return okEnvelope("bridge", {
+          results: {
+            entities: [
+              {
+                entityId: "urn:entity:bridge-listening-bar",
+                name: "Listening Bar",
+                type: "place",
+                affinity: 0.9,
+                popularity: 0.7
+              },
+              {
+                entityId: "urn:entity:bridge-static-age",
+                name: "Static Age",
+                type: "place",
+                affinity: 0.8,
+                popularity: 0.6
+              }
+            ]
+          },
+          resultCount: 2
+        });
+      }
+      if (call.operation === "insights") {
+        const request = (call.request ?? {}) as { signalLocation?: string };
+        const site = typeof request.signalLocation === "string" && request.signalLocation !== "";
+        const entity = site
+          ? { entityId: "urn:entity:artist-site-shared", name: "Shared Site Artist", affinity: 0.9 }
+          : { entityId: "urn:entity:artist-city-z", name: "Bridge City Artist", affinity: 0.8 };
+        return okEnvelope("insights", {
+          results: { entities: [{ ...entity, type: "artist" }] },
+          resultCount: 1
+        });
+      }
+      return okEnvelope(call.operation);
+    }
+  }).gateway;
+}
+
 const FIVE_POOL = [
   makeComponent({ id: "anchor", role: "Anchor", tags: ["coffee"] }),
   makeComponent({ id: "cinema", role: "Discovery", tags: ["cinema"] }),
@@ -253,6 +304,128 @@ function fixtureC(): RunState {
   });
 }
 
+function fixtureD(): RunState {
+  return runStateSchema.parse({
+    id: "run-challenge-replaced",
+    status: "complete",
+    phase: "measurement",
+    brief: TEST_BRIEF,
+    prior: TEST_PRIOR,
+    candidatePool: [
+      makeComponent({ id: "social-a", role: "Social", tags: ["social"] }),
+      makeComponent({ id: "disc-a", role: "Discovery", tags: ["discovery"] }),
+      makeComponent({ id: "night", role: "Night", tags: ["night"] }),
+      makeComponent({ id: "social-b", role: "Social", tags: ["social"] }),
+      makeComponent({ id: "disc-b", role: "Discovery", tags: ["discovery"] })
+    ],
+    graph: {
+      nodes: ["disc-a", "disc-b", "night", "social-a", "social-b"],
+      edges: edgesOf([
+        ["social-a", "disc-a", 0.5],
+        ["social-a", "night", 0.5],
+        ["disc-a", "night", 0.5],
+        ["social-b", "disc-a", 0.8],
+        ["social-b", "night", 0.8],
+        ["social-b", "disc-b", 0.9],
+        ["disc-b", "night", 0.9],
+        ["social-a", "social-b", 0.5],
+        ["disc-a", "disc-b", 0.5],
+        ["social-a", "disc-b", 0.5]
+      ])
+    },
+    neighborhoods: disjointNeighborhoods(["social-a", "disc-a", "night", "social-b", "disc-b"]),
+    compositions: {
+      ranked: [
+        rankedEntry(["social-a", "disc-a", "night"], 0.5, 1, 50, 0.5, {
+          a: "social-a",
+          b: "disc-a",
+          value: 0.5
+        })
+      ],
+      excluded: [],
+      triangulation: [],
+      rivalFlips: [],
+      family: {
+        poolSize: 5,
+        size: 3,
+        requiredRoles: [],
+        totalCandidates: 10,
+        totalValid: 10,
+        coherenceDistribution: [0.5]
+      },
+      prior: { state: "not measured", reason: "fixture prior has no measured counterpart" }
+    }
+  });
+}
+
+function fixtureE(): RunState {
+  const site = (id: string, entities: readonly string[]): RunNeighborhoods["components"][number] => ({
+    componentId: id,
+    domains: {
+      artist: entities.map((entityId, index) => ({ entityId, rank: index + 1, weight: 1, affinityUsed: true })),
+      movie: [],
+      brand: []
+    },
+    state: "measured"
+  });
+  const neighborhoods: RunNeighborhoods = {
+    components: [
+      site("anchor", ["urn:entity:artist-site-shared", "urn:entity:artist-site-anchor"]),
+      site("cinema", ["urn:entity:artist-site-shared"]),
+      site("cafe", ["urn:entity:artist-site-shared"]),
+      site("books", ["urn:entity:artist-site-books"]),
+      site("music", ["urn:entity:artist-site-music"])
+    ],
+    city: disjointNeighborhoods(["anchor", "cinema", "cafe", "books", "music"]).city,
+    sources: []
+  };
+  return runStateSchema.parse({
+    id: "run-challenge-bridge-insert",
+    status: "complete",
+    phase: "measurement",
+    brief: TEST_BRIEF,
+    prior: TEST_PRIOR,
+    candidatePool: FIVE_POOL,
+    graph: {
+      nodes: ["anchor", "books", "cafe", "cinema", "music"],
+      edges: edgesOf([
+        ["anchor", "books", 0.4],
+        ["anchor", "cafe", 0.4],
+        ["anchor", "cinema", 0.4],
+        ["anchor", "music", 0.4],
+        ["books", "cafe", 0.4],
+        ["books", "cinema", 0.4],
+        ["books", "music", 0.4],
+        ["cafe", "cinema", 0.4],
+        ["cafe", "music", 0.4],
+        ["cinema", "music", 0.4]
+      ])
+    },
+    neighborhoods,
+    compositions: {
+      ranked: [
+        rankedEntry(["anchor", "cinema", "cafe"], 0.4, 1, 66, 0.45, {
+          a: "anchor",
+          b: "cafe",
+          value: 0.3
+        })
+      ],
+      excluded: [],
+      triangulation: [],
+      rivalFlips: [],
+      family: {
+        poolSize: 5,
+        size: 3,
+        requiredRoles: ["Anchor"],
+        totalCandidates: 10,
+        totalValid: 6,
+        coherenceDistribution: [0.4, 0.4, 0.4, 0.4, 0.4, 0.4]
+      },
+      prior: { state: "not measured", reason: "fixture prior has no measured counterpart" }
+    }
+  });
+}
+
 interface ChallengeRunOptions {
   request?: ChallengeRequest;
   gateway?: QlooGateway;
@@ -380,6 +553,8 @@ describe("runChallenge verdict and mutation loop", () => {
     const bridge = attackOf(report, "bridge");
     expect(bridge.status).toBe("measured");
     expect(bridge.evidenceId).toBeDefined();
+    expect(bridge.detail).toContain("no measured taste neighborhoods");
+    expect(bridge.detail).toContain("Blue Note Corner");
     expect(outcome.evidence).toHaveLength(1);
     expect(outcome.evidence[0]!.id).toBe(bridge.evidenceId);
 
@@ -401,7 +576,7 @@ describe("runChallenge verdict and mutation loop", () => {
   });
 
   it("applies swap then drop across three stress rounds, stops at the two-mutation bound, and reports Revised", async () => {
-    const { outcome, ledger } = await challengeOn(fixtureB());
+    const { outcome, ledger } = await challengeOn(fixtureB(), { gateway: emptyBridgeGateway() });
     const report = outcome.report;
 
     expect(report.verdict).toBe("Revised");
@@ -470,7 +645,7 @@ describe("runChallenge verdict and mutation loop", () => {
   });
 
   it("applies a single drop mutation when unique roles block substitution, then stops with rounds two", async () => {
-    const { outcome, ledger } = await challengeOn(fixtureC());
+    const { outcome, ledger } = await challengeOn(fixtureC(), { gateway: emptyBridgeGateway() });
     const report = outcome.report;
 
     expect(report.verdict).toBe("Revised");
@@ -558,6 +733,148 @@ describe("runChallenge bridge probe honesty", () => {
     expect(bridge.status).toBe("not completed");
     expect(bridge.detail).toContain("no remaining call budget");
     expect(outcome.report.gradeCap).toBe("B");
+  });
+});
+
+describe("runChallenge bridge insertion and outright replacement", () => {
+  it("replaces the leader outright when two swaps turn over most of its members", async () => {
+    const { outcome, ledger } = await challengeOn(fixtureD(), { gateway: emptyBridgeGateway() });
+    const report = outcome.report;
+
+    expect(report.attackOrderSource).toBe("diagnostic");
+    expect(report.attackOrder).toEqual(["ablation", "substitution", "bridge", "catchment", "rival"]);
+    expect(report.verdict).toBe("Replaced");
+    expect(report.verdictRival).toEqual(["social-b", "disc-b", "night"]);
+    expect(report.rounds).toBe(3);
+    expect(report.mutations).toHaveLength(2);
+    expect(report.gradeCap).toBe("A");
+
+    expect(report.mutations[0]).toMatchObject({
+      operator: "swap",
+      round: 1,
+      memberOut: "social-a",
+      memberIn: "social-b"
+    });
+    expect(report.mutations[1]).toMatchObject({
+      operator: "swap",
+      round: 2,
+      memberOut: "disc-a",
+      memberIn: "disc-b"
+    });
+
+    expect(report.leaderBefore.members).toEqual(["social-a", "disc-a", "night"]);
+    expect(report.leaderAfter.members).toEqual(["social-b", "disc-b", "night"]);
+    expect(report.leaderAfter.coherence).toBeCloseTo(0.8666666666666667, 10);
+
+    expect(report.reason).toContain("Replaced by social-b + disc-b + night.");
+    expect(report.reason).toContain(
+      "2 mutations applied: 1·swapped social-a for social-b; 2·swapped disc-a for disc-b."
+    );
+
+    expect(attackOf(report, "rival").summary).toContain("not a family entry");
+    expect(attackOf(report, "bridge").status).toBe("measured");
+    expect(outcome.evidence).toHaveLength(3);
+    expect(labelsOf(ledger).filter((label) => label === "challenge.mutation")).toHaveLength(2);
+    expect(labelsOf(ledger)).toContain("challenge.verdict");
+  });
+
+  it("inserts a measured bridge component, applies it as a mutation, and keeps measured artifacts untouched", async () => {
+    const state = fixtureE();
+    const { outcome, ledger } = await challengeOn(fixtureE(), { gateway: bridgeFixtureGateway() });
+    const report = outcome.report;
+
+    expect(report.attackOrderSource).toBe("diagnostic");
+    expect(report.attackOrder).toEqual(["bridge", "ablation", "substitution", "catchment", "rival"]);
+    expect(report.verdict).toBe("Revised");
+    expect(report.gradeCap).toBe("A");
+    expect(report.rounds).toBe(3);
+    expect(report.mutations).toHaveLength(2);
+
+    const [bridgeMutation, dropMutation] = report.mutations;
+    const bridgeMemberIn = bridgeMutation!.memberIn ?? "";
+    expect(bridgeMutation).toMatchObject({ operator: "bridge", round: 1, memberOut: null });
+    expect(bridgeMemberIn).toMatch(/^comp-bridge-/);
+    expect(dropMutation).toMatchObject({ operator: "drop", round: 2, memberOut: "anchor", memberIn: null });
+
+    expect(report.leaderBefore.members).toEqual(["anchor", "cinema", "cafe"]);
+    expect(report.leaderAfter.members).toEqual(["cinema", "cafe", bridgeMemberIn]);
+    expect(report.leaderAfter.coherence).toBeCloseTo(1, 10);
+    expect(report.leaderAfter.weakestLink).toEqual({ a: "cafe", b: "cinema", value: 1 });
+    expect(report.reason).toContain("1·bridged comp-bridge-");
+    expect(report.reason).toContain("2·dropped anchor");
+
+    expect(outcome.evidence).toHaveLength(4);
+    expect(attackOf(report, "bridge").status).toBe("skipped");
+    expect(attackOf(report, "bridge").detail).toContain("recorded bridge probe");
+
+    const ledgerLabels = labelsOf(ledger);
+    expect(ledgerLabels).toContain("challenge.bridge_probe");
+    expect(ledgerLabels).toContain("challenge.bridge_resolve_tag");
+    expect(ledgerLabels).toContain("challenge.bridge_site_fetch");
+    expect(ledgerLabels).toContain("challenge.bridge_city_fetch");
+    expect(ledgerLabels).toContain("challenge.bridge_measure");
+    expect(ledgerLabels.filter((label) => label === "challenge.mutation")).toHaveLength(2);
+
+    expect(outcome.state.candidatePool).toEqual(state.candidatePool);
+    expect((outcome.state.candidatePool ?? []).some((component) => component.id.startsWith("comp-bridge-"))).toBe(
+      false
+    );
+    expect(outcome.state.compositions).toEqual(state.compositions);
+    expect(outcome.state.graph).toEqual(state.graph);
+    expect(outcome.state.neighborhoods).toEqual(state.neighborhoods);
+  });
+
+  it("refuses to start bridge measurement it cannot finish and grades the challenge at B", async () => {
+    const lean = fakeGateway();
+    const gateway: QlooGateway = {
+      ...lean.gateway,
+      get stats() {
+        return { budgetUsed: 179, budgetRemaining: 1, cacheSize: 0, cacheHits: 0 };
+      }
+    };
+    const { outcome } = await challengeOn(fixtureB(), { gateway });
+    const report = outcome.report;
+
+    expect(report.gradeCap).toBe("B");
+    const bridge = attackOf(report, "bridge");
+    expect(bridge.status).toBe("not completed");
+    expect(bridge.detail).toContain("measuring a connecting component needs 3 Qloo calls");
+    expect(bridge.evidenceId).toBeDefined();
+    expect(lean.calls).toHaveLength(3);
+  });
+
+  it("records an honest measured bridge when category resolution returns no tag", async () => {
+    const fake = fakeGateway({
+      onCall: (call) =>
+        call.operation === "resolveTags"
+          ? okEnvelope("resolveTags", { results: { tags: [] }, resultCount: 0 })
+          : okEnvelope(call.operation)
+    });
+    const { outcome, ledger } = await challengeOn(fixtureB(), { gateway: fake.gateway });
+
+    expect(outcome.report.gradeCap).toBe("A");
+    const bridge = attackOf(outcome.report, "bridge");
+    expect(bridge.status).toBe("skipped");
+    expect(bridge.detail).toContain("recorded bridge probe");
+    expect(outcome.evidence).toHaveLength(2);
+    expect(labelsOf(ledger)).toContain("challenge.bridge_resolve_tag");
+    expect(labelsOf(ledger)).toContain("challenge.bridge_probe");
+    expect(labelsOf(ledger)).not.toContain("challenge.bridge_site_fetch");
+  });
+
+  it("grades the challenge at B when the bridge site audience fetch fails, recording the failed call", async () => {
+    const fake = fakeGateway({
+      onCall: (call) => (call.operation === "insights" ? Promise.reject(outageError()) : okEnvelope(call.operation))
+    });
+    const { outcome, ledger } = await challengeOn(fixtureB(), { gateway: fake.gateway });
+    const report = outcome.report;
+
+    expect(report.gradeCap).toBe("B");
+    const bridge = attackOf(report, "bridge");
+    expect(bridge.status).toBe("not completed");
+    expect(bridge.detail).toContain("Qloo is unreachable");
+    expect(labelsOf(ledger)).toContain("challenge.bridge_site_fetch");
+    expect(outcome.evidence).toHaveLength(6);
   });
 });
 
@@ -694,7 +1011,7 @@ describe("orchestrator.challengeRun", () => {
     ]);
     const orchestrator = createOrchestrator({
       store,
-      gateway: fakeGateway().gateway,
+      gateway: emptyBridgeGateway(),
       llm: scripted.client,
       now: () => TEST_NOW
     });

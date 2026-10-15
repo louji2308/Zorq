@@ -13,25 +13,15 @@ import { toError } from "../agent/errors.js";
 import type { Ledger } from "../agent/ledger.js";
 import { provenanceFromEnvelope } from "../agent/tools.js";
 import {
-  buildCompositions,
-  buildGraph,
   buildNeighborhoods,
   classifyTriangulation,
-  computeDistinctivenessMap,
-  computeIdf,
   measureComposition,
-  rankCompositionSet,
-  rivalSweep,
   route1FromGraph,
   validatePool,
   type CandidateComponent,
-  type ComponentRole,
-  type CompositionFamily,
   type CultureGraph,
   type NeighborhoodSignalInput,
-  type RankingResult,
-  type TasteNeighborhood,
-  type WeightedEntity
+  type TasteNeighborhood
 } from "../engine/index.js";
 import { createEvidenceRecord, type EvidenceRecord } from "../evidence/index.js";
 import type { QlooEnvelope, QlooGateway, QlooTagResults } from "../qloo/index.js";
@@ -44,8 +34,8 @@ import {
   observationEvent,
   projectCompositionsNode,
   projectExemplars,
-  projectRunGraph,
   projectSignals,
+  rebuildChain,
   resolvePriorMarker
 } from "./measure.js";
 import { isResumableStatus } from "./status.js";
@@ -163,7 +153,7 @@ export function guardMutationState(state: RunState): void {
   }
 }
 
-function firstTag(envelope: QlooEnvelope<QlooTagResults>): { id: string; name: string } | null {
+export function firstTag(envelope: QlooEnvelope<QlooTagResults>): { id: string; name: string } | null {
   const tag = envelope.results.tags[0];
   if (tag === undefined || tag.id.trim() === "") {
     return null;
@@ -489,30 +479,12 @@ export async function applyReplacement(input: ReplaceInput): Promise<ReplaceOutc
     };
 
     const poolAfter: CandidateComponent[] = [...pool, component];
-    const idf = computeIdf(poolAfter, siteNeighborhoods);
-    const graphAfter = buildGraph(poolAfter, siteNeighborhoods, idf);
-    const runGraph = projectRunGraph(graphAfter, siteNeighborhoods, idf);
-    const cityVectors: Record<string, WeightedEntity[]> = {};
-    for (const neighborhood of cityNeighborhoods) {
-      cityVectors[neighborhood.componentId] = neighborhood.domains.artist.map((entry) => ({
-        entityId: entry.entityId,
-        weight: entry.weight
-      }));
-    }
-    const distinctiveness = computeDistinctivenessMap(siteNeighborhoods, cityVectors);
-    const requiredRoles: ComponentRole[] = poolAfter.some((entry) => entry.role === "Anchor") ? ["Anchor"] : [];
-    const size = Math.min(state.compositions.family.size, poolAfter.length);
-    let family: CompositionFamily | null = null;
-    let ranking: RankingResult | null = null;
-    let familyError: string | null = null;
-    if (poolAfter.length >= 2) {
-      try {
-        family = buildCompositions({ pool: poolAfter, graph: graphAfter, size, requiredRoles, distinctiveness });
-        ranking = { ...rankCompositionSet(family.compositions), sweep: rivalSweep(family.compositions) };
-      } catch (error) {
-        familyError = toError(error).message.split("\n")[0] ?? "engine refused the composition family";
-      }
-    }
+    const { graph: graphAfter, runGraph, family, familyError, ranking } = rebuildChain({
+      pool: poolAfter,
+      siteNeighborhoods,
+      cityNeighborhoods,
+      familySize: state.compositions.family.size
+    });
     const prior = resolvePriorMarker(state.prior, poolAfter, graphAfter, family);
     const triangulationAfter = state.compositions.triangulation.map((entry) =>
       classifyTriangulation({

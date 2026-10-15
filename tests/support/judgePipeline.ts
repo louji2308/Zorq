@@ -229,8 +229,15 @@ const SITE_ARTIST: Record<string, Signal[]> = {
   "urn:entity:place-rooftop": [
     { id: "urn:entity:artist-mac-demarco", name: "Mac DeMarco", affinity: 0.85 },
     { id: "urn:entity:artist-kraftwerk", name: "Kraftwerk", affinity: 0.8 },
-    { id: "urn:entity:artist-pharoah-sanders", name: "Pharoah Sanders", affinity: 0.7 },
+    { id: "urn:entity:artist-pharoah-sanders", name: "Pharoah Sanders", affinity: 0.6 },
     { id: "urn:entity:artist-khruangbin", name: "Khruangbin", affinity: 0.5 }
+  ],
+  "urn:entity:artist-sonic-youth": [
+    { id: "urn:entity:artist-kim-gordon", name: "Kim Gordon", affinity: 0.9 },
+    { id: "urn:entity:artist-alice-coltrane", name: "Alice Coltrane", affinity: 0.8 },
+    { id: "urn:entity:artist-tortoise", name: "Tortoise", affinity: 0.75 },
+    { id: "urn:entity:artist-animal-collective", name: "Animal Collective", affinity: 0.6 },
+    { id: "urn:entity:artist-sonic-youth", name: "Sonic Youth", affinity: 0.55 }
   ]
 };
 
@@ -405,7 +412,16 @@ function route2Response(tagId: string): { results: { entities: unknown[] }; resu
 function judgeGateway(): { gateway: QlooGateway; calls: () => number } {
   const siteSignals = siteTable();
   const citySignals = cityTable();
-  const tagsByQuery = new Map(PLACES.map((place) => [place.tag, { id: place.tagId, name: place.tag, type: "Interest", popularity: 0.7 }]));
+  const tagEntry = (id: string, name: string): { id: string; name: string; type: string; popularity: number } => ({
+    id,
+    name,
+    type: "Interest",
+    popularity: 0.7
+  });
+  const tagsByQuery = new Map<string, ReturnType<typeof tagEntry>>([
+    ...PLACES.map((place): [string, ReturnType<typeof tagEntry>] => [place.tag, tagEntry(place.tagId, place.tag)]),
+    ["Sonic Youth", tagEntry("tag-noise-rock-1", "noise rock")]
+  ]);
 
   const scripted = fakeGateway({
     onCall: (call): QlooEnvelope<unknown> => {

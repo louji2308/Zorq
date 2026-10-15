@@ -1,5 +1,5 @@
 import { runStateSchema } from "../../shared/run.js";
-import { attackKinds, attackKindSchema } from "../../shared/run.js";
+import { attackKinds, attackKindSchema, poolComponentRoles } from "../../shared/run.js";
 import type {
   AttackKind,
   ChallengeAttack,
@@ -7,6 +7,7 @@ import type {
   ChallengeMutation,
   ChallengeReport,
   ChallengeVerdict,
+  PoolComponentRole,
   RunNeighborhoods,
   RunRankedComposition,
   RunState
@@ -21,6 +22,7 @@ import { provenanceFromEnvelope } from "../agent/tools.js";
 import {
   buildCompositions,
   buildGraph,
+  buildNeighborhoods,
   computeDistinctivenessMap,
   computeIdf,
   measureComposition,
@@ -28,16 +30,28 @@ import {
   validatePool,
   type CandidateComponent,
   type CultureGraph,
+  type NeighborhoodSignalInput,
+  type TasteNeighborhood,
   type WeightedEntity
 } from "../engine/index.js";
 import { createEvidenceRecord, type EvidenceRecord } from "../evidence/index.js";
-import type { QlooEnvelope, QlooGateway, QlooInsightsResults } from "../qloo/index.js";
+import type { QlooEnvelope, QlooGateway, QlooInsightsResults, QlooTagResults } from "../qloo/index.js";
 import { OrchestratorStateError } from "./errors.js";
-import { computeEvent, failedCallEvent, observationEvent, projectExemplars } from "./measure.js";
-import { guardMutationState, sameMembers } from "./replace.js";
+import {
+  NEIGHBORHOOD_TAKE,
+  computeEvent,
+  failedCallEvent,
+  localityLadder,
+  observationEvent,
+  projectExemplars,
+  projectSignals,
+  rebuildChain
+} from "./measure.js";
+import { firstTag, guardMutationState, sameMembers } from "./replace.js";
 
 const MUTATION_EPSILON = 1e-6;
 const BRIDGE_PROBE_LIMIT = 3;
+const BRIDGE_MEASURE_CALLS = 3;
 const CATCHMENT_HOLD_EPSILON = 0.005;
 const WEAK_LINK_DIAGNOSTIC = 0.35;
 
@@ -57,12 +71,21 @@ export interface ChallengeOutcome {
   report: ChallengeReport;
 }
 
+interface ScratchState {
+  pool: CandidateComponent[];
+  graph: CultureGraph;
+  neighborhoods: RunNeighborhoods;
+  distinctiveness: Record<string, number | null>;
+  familyCoherences: readonly number[];
+}
+
 interface MutationCandidate {
-  operator: "swap" | "drop";
-  memberOut: string;
+  operator: "swap" | "drop" | "bridge";
+  memberOut: string | null;
   memberIn: string | null;
   leaderAfter: ChallengeLeader;
   gain: number;
+  scratch: ScratchState | null;
 }
 
 interface AttackResult {
@@ -79,6 +102,7 @@ interface AttackContext {
   ranked: readonly RunRankedComposition[];
   familyCoherences: readonly number[];
   distinctiveness: Record<string, number | null> | undefined;
+  neighborhoods: RunNeighborhoods | undefined;
   leader: ChallengeLeader;
 }
 
@@ -88,6 +112,7 @@ interface BridgeProbeDeps {
   now: () => number;
   evidence: EvidenceRecord[];
   probesUsed: { count: number };
+  bridgeRecorded: { found: boolean };
 }
 
 function signed(value: number): string {
@@ -241,7 +266,8 @@ function ablationAttack(ctx: AttackContext): AttackResult {
         distinctivenessMean,
         weakestLink: measureComposition(weakestRest, ctx.pool, ctx.graph).weakestLink
       },
-      gain: worstGain
+      gain: worstGain,
+      scratch: null
     };
   } else if (worstGain > MUTATION_EPSILON && distinctivenessMean === null) {
     return {
@@ -364,7 +390,8 @@ function substitutionAttack(ctx: AttackContext): AttackResult {
             distinctivenessMean: best.distinctivenessMean,
             weakestLink: best.weakestLink
           },
-          gain: best.gain
+          gain: best.gain,
+          scratch: null
         }
       : null;
   return {
@@ -387,6 +414,13 @@ function substitutionAttack(ctx: AttackContext): AttackResult {
 }
 
 async function bridgeAttack(ctx: AttackContext, deps: BridgeProbeDeps): Promise<AttackResult> {
+  if (deps.bridgeRecorded.found) {
+    return skippedAttack(
+      "bridge",
+      "bridge search skipped",
+      "the recorded bridge probe stands; one connecting category is measured per challenge"
+    );
+  }
   const pair = ctx.leader.weakestLink;
   const sideA = ctx.pool.find((component) => component.id === pair.a);
   const sideB = ctx.pool.find((component) => component.id === pair.b);
@@ -469,20 +503,344 @@ async function bridgeAttack(ctx: AttackContext, deps: BridgeProbeDeps): Promise<
     };
   }
   const names = entities.map((entity) => entity.name).join(", ");
+  const summary = `bridge candidate on ${pair.a} – ${pair.b}: ${entities[0]!.name}`;
+  const brief = ctx.state.brief;
+  const baseNeighborhoods = ctx.neighborhoods;
+  if (brief === undefined || baseNeighborhoods === undefined) {
+    deps.bridgeRecorded.found = true;
+    return {
+      attack: {
+        kind: "bridge",
+        status: "measured",
+        summary,
+        detail: `what both audiences love: ${names}; the run carries ${
+          brief === undefined ? "no brief locality" : "no measured taste neighborhoods"
+        } to measure a connecting component, so no insertion was simulated`.slice(0, 500),
+        evidenceId: record.id
+      },
+      candidate: null
+    };
+  }
+  const remaining = deps.gateway.stats.budgetRemaining;
+  if (remaining < BRIDGE_MEASURE_CALLS) {
+    return {
+      attack: {
+        kind: "bridge",
+        status: "not completed",
+        summary: "bridge measurement not completed",
+        detail: `measuring a connecting component needs ${BRIDGE_MEASURE_CALLS} Qloo calls and ${remaining} remain; ${names} was recorded but no insertion was simulated`.slice(0, 500),
+        evidenceId: record.id
+      },
+      candidate: null
+    };
+  }
+
+  const query = entities[0]!.name;
+  const pushObservation = <T>(label: string, envelope: QlooEnvelope<T>, observation: string): string => {
+    const entry = deps.ledger.append(observationEvent(label, envelope, observation));
+    const created = createEvidenceRecord({
+      operation: envelope.operation,
+      claim: `Qloo ${envelope.operation} observation · ${observation}`,
+      provenance: provenanceFromEnvelope(envelope),
+      createdAt: new Date(deps.now()).toISOString(),
+      ledgerEventId: entry.id
+    });
+    deps.evidence.push(created);
+    return created.id;
+  };
+
+  let tagEnvelope: QlooEnvelope<QlooTagResults>;
+  try {
+    tagEnvelope = await deps.gateway.resolveTags({ query, take: 5 });
+  } catch (error) {
+    deps.ledger.append(failedCallEvent("challenge.bridge_resolve_tag", `bridge category for "${query}"`, error));
+    return {
+      attack: {
+        kind: "bridge",
+        status: "not completed",
+        summary: "bridge measurement not completed",
+        detail: (toError(error).message.split("\n")[0] ?? "Qloo category resolution failed").slice(0, 500),
+        evidenceId: record.id
+      },
+      candidate: null
+    };
+  }
+  pushObservation("challenge.bridge_resolve_tag", tagEnvelope, `bridge category for "${query}"`);
+  const tag = firstTag(tagEnvelope);
+  if (tag === null) {
+    deps.bridgeRecorded.found = true;
+    return {
+      attack: {
+        kind: "bridge",
+        status: "measured",
+        summary,
+        detail: `what both audiences love: ${names}; Qloo resolved no category for ${query}, so no connecting component was built`.slice(0, 500),
+        evidenceId: record.id
+      },
+      candidate: null
+    };
+  }
+  const tagName = tag.name === "" ? query : tag.name;
+  const exemplarIds = entities.map((entity) => entity.id);
+  const siteLocation = localityLadder(brief.location)[0];
+
+  let siteEnvelope: QlooEnvelope<QlooInsightsResults>;
+  try {
+    siteEnvelope = await deps.gateway.insights({
+      filterType: "artist",
+      signalEntities: exemplarIds,
+      signalLocation: siteLocation,
+      take: NEIGHBORHOOD_TAKE
+    });
+  } catch (error) {
+    deps.ledger.append(failedCallEvent("challenge.bridge_site_fetch", `bridge site audience for "${query}"`, error));
+    return {
+      attack: {
+        kind: "bridge",
+        status: "not completed",
+        summary: "bridge measurement not completed",
+        detail: (toError(error).message.split("\n")[0] ?? "Qloo site audience fetch failed").slice(0, 500),
+        evidenceId: record.id
+      },
+      candidate: null
+    };
+  }
+  const siteEvidenceId = pushObservation(
+    "challenge.bridge_site_fetch",
+    siteEnvelope,
+    `bridge component · artist site · signal "${siteLocation}"`
+  );
+  const siteSignals = projectSignals(siteEnvelope);
+  if (siteSignals.length === 0) {
+    deps.bridgeRecorded.found = true;
+    return {
+      attack: {
+        kind: "bridge",
+        status: "measured",
+        summary,
+        detail: `what both audiences love: ${names}; the site audience returned no signals for the connecting category, so no insertion was simulated`.slice(0, 500),
+        evidenceId: record.id
+      },
+      candidate: null
+    };
+  }
+
+  let cityEnvelope: QlooEnvelope<QlooInsightsResults>;
+  try {
+    cityEnvelope = await deps.gateway.insights({
+      filterType: "artist",
+      signalEntities: exemplarIds,
+      take: NEIGHBORHOOD_TAKE
+    });
+  } catch (error) {
+    deps.ledger.append(failedCallEvent("challenge.bridge_city_fetch", `bridge city baseline for "${query}"`, error));
+    return {
+      attack: {
+        kind: "bridge",
+        status: "not completed",
+        summary: "bridge measurement not completed",
+        detail: (toError(error).message.split("\n")[0] ?? "Qloo city baseline fetch failed").slice(0, 500),
+        evidenceId: record.id
+      },
+      candidate: null
+    };
+  }
+  const cityEvidenceId = pushObservation(
+    "challenge.bridge_city_fetch",
+    cityEnvelope,
+    "bridge component · artist city baseline"
+  );
+  const citySignals = projectSignals(cityEnvelope);
+  if (citySignals.length === 0) {
+    deps.bridgeRecorded.found = true;
+    return {
+      attack: {
+        kind: "bridge",
+        status: "measured",
+        summary,
+        detail: `what both audiences love: ${names}; the city baseline returned no signals for the connecting category, so no insertion was simulated`.slice(0, 500),
+        evidenceId: record.id
+      },
+      candidate: null
+    };
+  }
+
+  const componentId = bridgeComponentId(entities[0]!.id, ctx.pool);
+  const role = bridgeRole(ctx);
+  const component: CandidateComponent = {
+    id: componentId,
+    role,
+    tags: [tagName.slice(0, 300)],
+    exemplars: entities,
+    provenancePath: {
+      anchorPlace: brief.location.slice(0, 300),
+      qlooSignal: `bridge: ${pair.a} + ${pair.b} audiences`.slice(0, 300),
+      resolvedCategory: tag.id.slice(0, 300),
+      exemplarSet: names.slice(0, 300),
+      tasteNeighborhood: `artist audience for "${tagName}" near ${brief.location}`.slice(0, 300)
+    },
+    evidenceState: "measured"
+  };
+
+  const siteInputs: NeighborhoodSignalInput[] = [{ componentId, domain: "artist", signals: siteSignals }];
+  const cityInputs: NeighborhoodSignalInput[] = [{ componentId, domain: "artist", signals: citySignals }];
+  const newSite = buildNeighborhoods([component], siteInputs)[0];
+  const newCity = buildNeighborhoods([component], cityInputs)[0];
+  const siteNeighborhoods: TasteNeighborhood[] = [...baseNeighborhoods.components, newSite];
+  const cityNeighborhoods: TasteNeighborhood[] = [...baseNeighborhoods.city, newCity];
+  const neighborhoodsAfter: RunNeighborhoods = {
+    components: siteNeighborhoods,
+    city: cityNeighborhoods,
+    sources: [
+      ...baseNeighborhoods.sources,
+      { componentId, domain: "artist", scope: "site", evidenceId: siteEvidenceId },
+      { componentId, domain: "artist", scope: "city", evidenceId: cityEvidenceId }
+    ]
+  };
+
+  const tempPool: CandidateComponent[] = [...ctx.pool, component];
+  const chain = rebuildChain({
+    pool: tempPool,
+    siteNeighborhoods,
+    cityNeighborhoods,
+    familySize: ctx.compositions.family.size
+  });
+  const bridged = [...ctx.leader.members, componentId];
+  let measured: ReturnType<typeof measureComposition>;
+  try {
+    measured = measureComposition(bridged, tempPool, chain.graph);
+  } catch (error) {
+    deps.bridgeRecorded.found = true;
+    return {
+      attack: {
+        kind: "bridge",
+        status: "measured",
+        summary,
+        detail: `what both audiences love: ${names}; the engine refused the bridged composition: ${(toError(error).message.split("\n")[0] ?? "measurement refused").slice(0, 300)}`.slice(0, 500),
+        evidenceId: record.id
+      },
+      candidate: null
+    };
+  }
+  const gain = measured.coherence - ctx.leader.coherence;
+
+  let sizeCoherences: number[] = [];
+  try {
+    const bridgedFamily = buildCompositions({
+      pool: tempPool,
+      graph: chain.graph,
+      size: bridged.length,
+      requiredRoles: chain.requiredRoles,
+      distinctiveness: chain.distinctiveness
+    });
+    sizeCoherences = bridgedFamily.compositions.map((entry) => entry.coherence);
+  } catch {
+    sizeCoherences = [];
+  }
+  const percentile = sizeCoherences.length > 0 ? percentileOf(measured.coherence, sizeCoherences) : null;
+  const distinctivenessMean = subsetDistinctivenessMean(bridged, chain.distinctiveness);
+  let scratchCoherences: readonly number[] = [];
+  if (ctx.compositions.family.size >= 2 && tempPool.length >= ctx.compositions.family.size) {
+    try {
+      const scratchFamily = buildCompositions({
+        pool: tempPool,
+        graph: chain.graph,
+        size: ctx.compositions.family.size,
+        requiredRoles: chain.requiredRoles,
+        distinctiveness: chain.distinctiveness
+      });
+      scratchCoherences = scratchFamily.compositions.map((entry) => entry.coherence);
+    } catch {
+      scratchCoherences = [];
+    }
+  }
+
+  deps.bridgeRecorded.found = true;
+  deps.ledger.append(
+    computeEvent(
+      "challenge.bridge_measure",
+      `bridge component ${componentId} measured over ${bridged.length} member(s): coherence ${measured.coherence.toFixed(4)} (Δ ${signed(gain)}) against the leader, distinctiveness ${
+        distinctivenessMean === null ? "unavailable" : distinctivenessMean.toFixed(4)
+      }`,
+      0,
+      sizeCoherences.length
+    )
+  );
+
+  const candidate: MutationCandidate | null =
+    gain > MUTATION_EPSILON && distinctivenessMean !== null
+      ? {
+          operator: "bridge",
+          memberOut: null,
+          memberIn: componentId,
+          leaderAfter: {
+            members: bridged,
+            coherence: measured.coherence,
+            percentile,
+            distinctivenessMean,
+            weakestLink: { ...measured.weakestLink }
+          },
+          gain,
+          scratch: {
+            pool: tempPool,
+            graph: chain.graph,
+            neighborhoods: neighborhoodsAfter,
+            distinctiveness: chain.distinctiveness,
+            familyCoherences: scratchCoherences
+          }
+        }
+      : null;
+
+  let bridgeDetail: string;
+  if (candidate !== null) {
+    bridgeDetail = `what both audiences love: ${names}; inserting ${componentId} as ${role} moves coherence ${signed(gain)} (percentile ${percentileText(percentile)})`;
+  } else if (distinctivenessMean === null && gain > MUTATION_EPSILON) {
+    bridgeDetail = `what both audiences love: ${names}; mutation withheld because the bridged composition carries no distinctiveness reading`;
+  } else {
+    bridgeDetail = `what both audiences love: ${names}; inserting ${componentId} would move coherence ${signed(gain)}, which does not repair the weak link`;
+  }
   return {
     attack: {
       kind: "bridge",
       status: "measured",
-      summary: `bridge candidate on ${pair.a} – ${pair.b}: ${entities[0]!.name}`,
-      detail: `what both audiences love: ${names}`,
+      summary,
+      detail: bridgeDetail.slice(0, 500),
       evidenceId: record.id
     },
-    candidate: null
+    candidate
   };
 }
 
+function bridgeComponentId(seed: string, taken: readonly CandidateComponent[]): string {
+  const slug = seed
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+  const base = `comp-bridge-${slug === "" ? "connector" : slug}`;
+  const takenIds = new Set(taken.map((component) => component.id));
+  let candidate = base;
+  let suffix = 2;
+  while (takenIds.has(candidate)) {
+    candidate = `${base}-${suffix}`;
+    suffix += 1;
+  }
+  return candidate;
+}
+
+function bridgeRole(ctx: AttackContext): PoolComponentRole {
+  const leaderRoles = new Set<string>();
+  for (const memberId of ctx.leader.members) {
+    const component = ctx.pool.find((entry) => entry.id === memberId);
+    if (component !== undefined) {
+      leaderRoles.add(component.role);
+    }
+  }
+  return poolComponentRoles.find((role) => role !== "Anchor" && !leaderRoles.has(role)) ?? "Community";
+}
+
 function catchmentAttack(ctx: AttackContext): AttackResult {
-  const neighborhoods: RunNeighborhoods | undefined = ctx.state.neighborhoods;
+  const neighborhoods: RunNeighborhoods | undefined = ctx.neighborhoods;
   if (neighborhoods === undefined || neighborhoods.city.length === 0) {
     return skippedAttack(
       "catchment",
@@ -698,7 +1056,11 @@ function buildReason(input: {
     .join("; ")}.`;
   const stopNote =
     pending !== null
-      ? ` A further ${pending.operator}${pending.memberIn === null ? ` ${pending.memberOut}` : ` ${pending.memberOut} → ${pending.memberIn}`} (Δ ${signed(pending.gain)}) remained at the two-round stop.`
+      ? pending.operator === "bridge" && pending.memberIn !== null
+        ? ` A further bridge ${pending.memberIn} (Δ ${signed(pending.gain)}) remained at the two-round stop.`
+        : ` A further ${pending.operator}${
+            pending.memberIn === null ? ` ${pending.memberOut}` : ` ${pending.memberOut} → ${pending.memberIn}`
+          } (Δ ${signed(pending.gain)}) remained at the two-round stop.`
       : "";
   if (verdict === "Replaced") {
     return `Replaced by ${after.members.join(" + ")}. ${applied} ${movement}${stopNote}`.slice(0, 500);
@@ -755,6 +1117,8 @@ export async function runChallenge(input: ChallengeInput): Promise<ChallengeOutc
   const ranked = compositions.ranked;
   const evidence: EvidenceRecord[] = [];
   const probesUsed = { count: 0 };
+  const bridgeRecorded = { found: false };
+  let scratch: ScratchState | null = null;
 
   const leaderBefore = leaderFromRanked(ranked[0]!);
   let leader = leaderBefore;
@@ -779,11 +1143,12 @@ export async function runChallenge(input: ChallengeInput): Promise<ChallengeOutc
   const makeContext = (current: ChallengeLeader): AttackContext => ({
     state,
     compositions,
-    pool,
-    graph,
+    pool: scratch?.pool ?? pool,
+    graph: scratch?.graph ?? graph,
     ranked,
-    familyCoherences: compositions.family.coherenceDistribution,
-    distinctiveness: distinctivenessFor(state),
+    familyCoherences: scratch?.familyCoherences ?? compositions.family.coherenceDistribution,
+    distinctiveness: scratch?.distinctiveness ?? distinctivenessFor(state),
+    neighborhoods: scratch?.neighborhoods ?? state.neighborhoods,
     leader: current
   });
 
@@ -793,7 +1158,7 @@ export async function runChallenge(input: ChallengeInput): Promise<ChallengeOutc
     for (const kind of orderChoice.order) {
       if (kind === "bridge") {
         results.push(
-          await bridgeAttack(ctx, { gateway, ledger, now, evidence, probesUsed })
+          await bridgeAttack(ctx, { gateway, ledger, now, evidence, probesUsed, bridgeRecorded })
         );
       } else if (kind === "ablation") {
         results.push(ablationAttack(ctx));
@@ -820,6 +1185,9 @@ export async function runChallenge(input: ChallengeInput): Promise<ChallengeOutc
   };
 
   const applyCandidate = (candidate: MutationCandidate): void => {
+    if (candidate.scratch !== null) {
+      scratch = candidate.scratch;
+    }
     const mutation: ChallengeMutation = {
       operator: candidate.operator,
       round: mutations.length + 1,

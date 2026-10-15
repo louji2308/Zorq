@@ -35,7 +35,31 @@ describe("S4 challenge over real HTTP (scripted LLM + fake gateway)", () => {
       }
       const { run: challenged, report } = parsed.data;
 
-      expect(["Survived", "Revised", "Replaced"]).toContain(report.verdict);
+      expect(report.verdict).toBe("Revised");
+      expect(report.rounds).toBe(3);
+      expect(report.mutations).toHaveLength(2);
+      expect(report.mutations[0]).toMatchObject({
+        operator: "drop",
+        round: 1,
+        memberOut: "comp-court-tree",
+        memberIn: null
+      });
+      expect(report.mutations[0]!.coherenceAfter).toBeCloseTo(0.10453303064548077, 10);
+      expect(report.mutations[1]).toMatchObject({
+        operator: "drop",
+        round: 2,
+        memberOut: "comp-clay",
+        memberIn: null
+      });
+      expect(report.mutations[1]!.coherenceAfter).toBeCloseTo(0.14652787121143274, 10);
+      expect(report.reason).toContain("2 mutations applied: 1·dropped comp-court-tree; 2·dropped comp-clay.");
+      expect(report.reason).toContain("A further drop comp-blue-note (Δ +0.0860) remained at the two-round stop.");
+      expect(report.leaderAfter.members).toEqual(["comp-blue-note", "comp-rooftop", "comp-sunset-vinyl"]);
+      expect(report.leaderAfter.coherence).toBeCloseTo(0.14652787121143274, 10);
+      const bridge = report.attacks.find((attack) => attack.kind === "bridge");
+      expect(bridge?.status).toBe("skipped");
+      expect(bridge?.detail).toContain("recorded bridge probe");
+
       expect(report.attacks.map((attack) => attack.kind)).toEqual([
         "ablation",
         "substitution",
@@ -63,14 +87,16 @@ describe("S4 challenge over real HTTP (scripted LLM + fake gateway)", () => {
 
       const evidenceAfter = (await fixture.store.listEvidence(fixture.runId)).length;
       const probes = evidenceAfter - evidenceBefore;
-      expect(probes).toBeGreaterThanOrEqual(1);
-      expect(probes).toBeLessThanOrEqual(3);
+      expect(probes).toBe(4);
 
       const labels = (await fixture.store.listLedgerEvents(fixture.runId)).map((entry) => entry.event.label);
       expect(labels).toContain("challenge.order");
       expect(labels).toContain("challenge.order_fallback");
       expect(labels).toContain("challenge.stress");
       expect(labels).toContain("challenge.verdict");
+      expect(labels).toContain("challenge.bridge_probe");
+      expect(labels).toContain("challenge.bridge_measure");
+      expect(labels).toContain("challenge.mutation");
 
       const reread = await fetch(`${fixture.baseUrl}/api/runs/${fixture.runId}`);
       const rereadBody = (await reread.json()) as { run: { challengeReport?: unknown } };
