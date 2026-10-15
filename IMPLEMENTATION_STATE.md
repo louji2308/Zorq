@@ -10,7 +10,7 @@
 **PHASE 8 — S4/S5: Challenge, Constraint Fit & Blueprint**. Status: **IN PROGRESS —
 boundary reconstruction COMPLETE 2026-10-15; contract written (see `PHASE 8
 CONTRACT`); orchestrator-direct implementation in progress — W-8.1, W-8.2a, W-8.2b,
-W-8.3 committed**. Phase 7 closed 2026-10-15
+W-8.3, W-8.4 committed**. Phase 7 closed 2026-10-15
 (exit-gate clause map PASSED, see `Phase 7 Exit-Gate Status`; close-out commits
 `b1f276e`, `0d9344b`, `1acb896`, `94dade1`). Phase 7 shipped: W-7.1 `99b53bd`,
 W-7.2 `7180387`, W-7.3 `f8717d7`, W-7.4 `3591f75`, W-7.5 `bd1cb20`, exit-gate work
@@ -827,7 +827,8 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 ## Active Work
 
 - **PHASE 8 IN PROGRESS (contract `c81bfbb`) — W-8.1 DONE (`0c8ba6f`); W-8.2a DONE
-  (`f786607`); W-8.2b DONE (`6903c25`); W-8.3 DONE (`ff54a0d`).** Phase boundary
+  (`f786607`); W-8.2b DONE (`6903c25`); W-8.3 DONE (`ff54a0d`); W-8.4 DONE
+  (`99510fc`).** Phase boundary
   reconstructed from all seven ProjectSpec
   sources + AGENTS.md; spawn channel 5/5 cancelled → orchestrator-direct (D-7.7
   lineage). W-8.1: `engine/formats.ts` (FORMAT_TYPES ≈25 types × 2-3 formats, every
@@ -860,8 +861,17 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
   (bridge-resolved members survive pool-less reads, D-8.14), and 13 new tests (9 unit
   + 4 HTTP over the judge fixture). Verified at `ff54a0d`: typecheck 0, lint 0,
   **695 pass / 5 gated-live skips**, **build PASS**; secret scan clean. Decisions
-  D-8.10…D-8.14 recorded. Next: **W-8.4** Without-Qloo comparison. Deadline Oct 30 2026
-  (internal freeze Oct 28).
+  D-8.10…D-8.14 recorded.
+  W-8.4: Without-Qloo polish — the Prior's own completion now also demands a
+  standalone `polish` paragraph (same single bounded call, budget-accounted),
+  extracted best-effort into the additive `priorSchema.polish` field on the frozen
+  Prior (valid → carried; present-but-invalid → Compute ledger
+  `prior.polish_unavailable` + honest absence; absent → absence with no event,
+  D-8.15); judge fixture `JUDGE_PRIOR` carries a polish paragraph; POST → GET
+  round-trip proven over real HTTP. Verified at `99510fc`: typecheck 0, lint 0,
+  **702 pass / 5 gated-live skips**, **build PASS**. Decision D-8.15 recorded.
+  Next: **W-8.5** S4/S5 UI (challenge panel + Blueprint screen + Without-Qloo
+  modal). Deadline Oct 30 2026 (internal freeze Oct 28).
 - **PHASE 7 CLOSED 2026-10-15 — exit gate PASSED** (contract `ee3bddd`; W-7.1 DONE
   (`99b53bd`); W-7.2 DONE (`7180387`); W-7.3 DONE (`f8717d7`); W-7.4 DONE (`3591f75`);
   W-7.5 DONE (`bd1cb20`); exit-gate `b1f276e`/`0d9344b`/`1acb896`). See "Phase 7
@@ -981,6 +991,7 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 | W-8.2a | S4 challenge engine [server pass] | NEW: `src/server/orchestrator/challenge.ts` (887), `tests/orchestrator/challenge.test.ts` (22), `tests/api/challenge.test.ts`; EDIT: `src/shared/{run,routes}.ts` (challenge schemas + `challengeReport` on RunState; `attackKindSchema` moved to run.ts as canonical owner), `src/server/orchestrator/{types,orchestrator}.ts` (`challengeRun`), `src/server/routes.ts` (real handler), `measure.ts` (+`projectExemplars` moved from replace.ts), `replace.ts` (export `sameMembers`/`guardMutationState`, generic mutation wording), `tests/routes.test.ts` (strict `{run, report}` fixtures), `tests/support/judgePipeline.ts` (+bridge operation) | **DONE 2026-10-15 — committed `f786607`.** typecheck 0, lint 0, build PASS; **677 pass / 5 skips** (+23). Mechanism: guards (status/compositions/ranked) → bounded LLM attack-order turn (fence-stripped zod parse, dedupe) or diagnostic fallback → up to 3 stress rounds × 5 attacks in `attackOrder` (ablation re-measures rest subsets against size-n−1 coherences; substitution same-role pool alts; bridge ≤3 evidence-linked probes with budget/outage/empty honesty; catchment deterministic city re-measure; rival rank-margin + flip), best-gain swap/drop mutation (ε=1e-6, swap preferred on tie) applied ≤2 → `resolveVerdict` (no change → Survived, member shared with prior leader → Revised, else Replaced + `verdictRival`) → `gradeCap` B on any "not completed" → `runStateSchema.parse({…state, challengeReport})` persisted via write-through ledger + `saveRunState` + `emitState`. Ledger events: `challenge.order(.fallback)`, `challenge.stress`, `challenge.mutation`, `challenge.verdict`, `challenge.bridge_probe`. |
 | W-8.2b | Bridge insertion + shared rebuild owner + Replaced proof | EDIT: `src/server/orchestrator/measure.ts` (+`RebuildChainResult`/`rebuildChain`), `replace.ts` (rebuild block → `rebuildChain`, export `firstTag`, import prune), `challenge.ts` (+404: bridge measurement flow, `ScratchState`, effective-context wiring, `bridgeComponentId`/`bridgeRole`, stopNote bridge branch), `tests/orchestrator/challenge.test.ts` (+5 tests, +`emptyBridgeGateway`/`bridgeFixtureGateway`, fixture D/E, gateway hardening on B/C/persistence), `tests/api/challenge.test.ts` (pinned verdict/mutations/evidence=4), `tests/support/judgePipeline.ts` (+`urn:entity:artist-sonic-youth` site entity, "Sonic Youth" → `tag-noise-rock-1`) | **DONE 2026-10-15 — committed `6903c25`.** typecheck 0, lint 0, build PASS; **682 pass / 5 skips** (+5). Mechanism: bridge probe entities → guards (brief/neighborhoods missing → honest "measured"; budget < 3 calls → "not completed", `found` NOT set so a later round may retry) → `resolveTags` (failure → `challenge.bridge_resolve_tag` failed-call event; empty tag → honest "measured") → site insights with `localityLadder[0]` signalLocation → city insights unlocalized → `buildNeighborhoods` on both → temp pool + `rebuildChain` → `measureComposition` on `[...leader, component]` → gain > ε candidate with `ScratchState` (pool/graph/neighborhoods/distinctiveness/familyCoherences) → `applyCandidate` installs scratch so rounds 2–3 attack the bridged pool while persisted state stays untouched; `bridgeRecorded.found` limits measurement to one successful terminal probe per challenge (later rounds skip citing "recorded probe stands"; D-8.9). Replaced proven by fixture D (two swaps, `verdictRival` = rival family) through the real `runChallenge` path. Judge fixture bridge measured end-to-end (evidence = probe+tag+site+city = 4) but scored no gain → drops applied → verdict Revised, gradeCap A — bridge first in diagnostic order (weakest link 0 < 0.35). |
 | W-8.3 | S5 evidence-bound Place Blueprint (server + share route) | NEW: `src/server/orchestrator/blueprint.ts` (~740), `tests/orchestrator/blueprint.test.ts` (9), `tests/api/blueprint.test.ts` (4); EDIT: `src/shared/{routes,run}.ts` (typed blueprint contract; `challengeMutationSchema` + optional `component`; `componentDisplayName` helper), `src/server/persistence/{index,memoryStore,store,tursoStore}.ts` (BlueprintSnapshot + `blueprint_snapshots` table + share index), `src/server/orchestrator/{orchestrator,types,measure,challenge}.ts` (`buildBlueprint` w/ share fast-path + fingerprint cache; `extractPriorMemberEntries` export; `applyCandidate` embeds bridge component), `src/server/routes.ts` (GET blueprint handler), `tests/{routes,support/judgePipeline}.test.ts` (fixtures + `extraLlmResponses`) | **DONE 2026-10-15 — committed `ff54a0d`.** typecheck 0, lint 0, build PASS; **695 pass / 5 skips** (+13: 9 unit + 4 HTTP). Mechanism: guards (brief/prior/pool/compositions/leader-in-pool) → leader = `challengeReport.leaderAfter ?? ranked[0]` → evidence index = state vocabulary **∩ stored evidence records** (unknown IDs can never render) → fit from `fitConstraints` (footprint/hours/downshifts) → receipts ≤3 (path ≤300 + top-2 shared-entities by value) → role groups in `poolComponentRoles` order → What Qloo changed via prior-member name/id/exemplar matching (downshift → reformatted) → risks (weakest edge, thin component, triangulation non-confirmed, constraint conflict; ≤20) → grade = worst-of(challengeReport.gradeCap, computed engine grade) → deterministic narrative (title/rationale + first-3 citation IDs) or one `blueprint:compose` LLM turn (fence-strip → zod parse → **strip ALL bracketed tokens not in the stored-evidence vocabulary**, zero kept → honest fallback with reason) → `blueprintSchema.parse` → share snapshot (opaque 24-byte token, 30-day TTL, sha256 fingerprint over state excluding status/phase → cache-hit skips LLM; share fast-path 404 unknown / 410 expired; expired non-share path recomposes reusing the stored token). `challengeMutationSchema.component` lets a bridge member resolve by name when the bridge was never persisted to the pool (D-8.14). Decisions D-8.10…D-8.14 recorded. |
+| W-8.4 | Without-Qloo polish on the frozen Prior | EDIT: `src/shared/run.ts` (`priorPolishTextSchema` + additive optional `priorSchema.polish`), `src/server/agent/prior.ts` (prompt demands the `polish` paragraph; `priorDraftSchema.polish` `z.unknown().optional()`; `normalizePolish` best-effort extraction → Compute `prior.polish_unavailable` on present-but-invalid), `tests/support/judgePipeline.ts` (`JUDGE_PRIOR` gains a polish paragraph), `tests/{agent/prior,api/runs}.test.ts` (+7 tests) | **DONE 2026-10-15 — committed `99510fc`.** typecheck 0, lint 0, build PASS; **702 pass / 5 gated-live skips** (+7: 5 unit + 2 HTTP). Polish rides the Prior's own single completion and lives INSIDE the frozen Prior (D-8.15): zero `generatePrior` signature ripple, deep-freeze covers it, no fixture call-queue displacement, no new route (11-route surface locked). Honest degradation chain: valid → `prior.polish` carried (POST 201 + GET round-trip proven); present-but-invalid → dropped + fixed-summary `prior.polish_unavailable` ledger event, Prior unaffected; absent → field absent with NO event (old fixtures' ledger counts unchanged) so W-8.5's modal can honestly say "Prior alone". |
 
 **Orchestrator integration review (AGENTS §17):** both diffs inspected; W-1.1 touched only `ARCHITECTURE.md`;
 W-1.2 touched only temp-dir files (repo `git status` shows no spike artifacts); key never echoed; worker claims
@@ -1001,6 +1012,36 @@ returned the pre-persist Prior object (unfrozen, separate object from the persis
 (`62f29af`).
 
 ## Verified Tests / Evidence
+
+### Phase 8 — W-8.4 Without-Qloo polish on the frozen Prior (2026-10-15, commit `99510fc`)
+
+- **Orchestrator gate run:** typecheck 0 (both tsconfigs), lint 0 (`npx eslint .`),
+  Vitest **702 pass / 5 gated-live skips** (707 total — +7 over the W-8.3 tree: 5 unit
+  + 2 HTTP), **build PASS** (vite 170 modules, dist/web regenerated). e2e +
+  fixture-browser walk deferred to the Phase 8 exit gate (full-chain e2e contract
+  needs W-8.5). `git diff --check` clean (LF/CRLF notices only); diff secret scan
+  clean (5 files, no key material).
+- **New coverage — `tests/agent/prior.test.ts` (+5):** system prompt demands the
+  `"polish"` field with no-evidence framing (`contains('"polish"')` +
+  `contains("no cultural evidence")`); valid polish extracted into the frozen Prior in
+  the SAME single call (`llm.calls` 1, ledger = 1 LLM event, `priorSchema.parse`
+  idempotent); present-but-invalid polish (1300 chars) → `prior.polish` undefined +
+  Compute ledger `prior.polish_unavailable` whose summary promises "the frozen Prior
+  alone", Prior itself unaffected; non-string polish object → same honest drop;
+  model omits polish → `Object.hasOwn(prior, "polish")` false with ZERO extra ledger
+  events (pre-W-8.4 fixture ledger counts provably unchanged).
+- **New coverage — `tests/api/runs.test.ts` (+2):** POST /api/runs with a polished
+  prior fixture → 201 carrying `run.prior.polish` byte-exact + `qlooUsed:false`, then
+  `GET /api/runs/:id` round-trips the same polish (declared `priorSchema` field
+  survives persist/load/reparse); default stack (no polish in the fixture) → 201 with
+  `polish` honestly undefined.
+- **Design note (D-8.15):** polish rides the Prior's own completion and is stored
+  inside `priorSchema` — `generatePrior` still returns `Prior` (zero call-site
+  ripple across orchestrator/agent/live tests), the Prior deep-freeze covers it,
+  no dedicated route (ARCHITECTURE §3 locks the 11-route surface; the compare modal
+  is a client projection over `run.prior` + blueprint in W-8.5), and
+  `priorDraftSchema.polish` is `z.unknown().optional()` so a malformed polish can
+  never fail the Prior.
 
 ### Phase 8 — W-8.3 S5 Place Blueprint + share snapshots (2026-10-15, commit `ff54a0d`)
 
@@ -1544,6 +1585,7 @@ with both mini-challenge attack rows after a real in-browser replace.
 | D-8.12 | **`componentDisplayName(component) = exemplars[0]?.name ?? id` lives in `src/shared/run.ts` as the canonical owner (server blueprint + future web renderer share it); composition-by-role groups iterate `poolComponentRoles` canonical order; receipts = ≤1 `path` receipt (deterministic node/path sentence, ≤300) + ≤2 `shared-entities` receipts (top-2 partner edges by value among leader members, entity names ≤2); shared-entities edge lists are site-first then city.** | One display-name rule must not fork between server and client (existing-file-first); canonical role ordering makes the blueprint's row order deterministic and matches the S2 card convention; receipts are the "why this member" margin evidence and the caps keep the print/Markdown renderer within the layout budget; site-first ordering matches the DNA strip's local-over-city reading. | Yes if a later design pass widens receipt counts. |
 | D-8.13 | **What Qloo changed = `extractPriorMemberEntries` matching prior composition members to the current leader by normalized name, then id, then exemplar name (first match wins, each current member consumed once); a member whose fit downshifted a format appears under `reformatted` with the shift sentence; a prior member matched by name but absent from the leader → `removed`; unmatched leader members → `added`.** | The spec's four arrays are a Prior→Final identity diff, but prior markers and pool members use different key spaces (loose role-grouped record vs measured pool) — the three-key cascade is the smallest deterministic matching that never fabricates a link; downshifted members genuinely changed format (not membership), so `reformatted` is the honest bucket rather than removed+added churn. | Yes — revisit only if Prior and pool adopt a shared stable member id. |
 | D-8.14 | **A challenge bridge mutation persists its inserted `PoolComponent` inside `ChallengeMutation.component` (optional field on `challengeMutationSchema`); `applyCandidate` embeds the component only when `memberIn` is NOT already in the stored pool (bridge-only — swaps/drops resolve normally). The pool/graph are deliberately NOT mutated by challenge; a later replace re-derives from the real pool.** | The bridge component is measured on a `ScratchState` that must never leak into persisted pool/graph (W-8.2b invariant), yet the blueprint must resolve a bridge member's role/format/receipts by name after the run — embedding the component on the mutation is the smallest additive schema change that carries the identity without reopening the pool question. Replacing a bridge member later (it is not in the pool) is a **known limitation deferred** to the replace/blueprint integration pass. | Yes — if bridge members must become first-class pool entries, move them into the pool at mutation time and re-run the fingerprint. |
+| D-8.15 | **Without-Qloo polish rides the Prior's own single completion and lives INSIDE the frozen Prior as an additive optional `priorSchema.polish` (`priorPolishTextSchema` = trimmed 1–1200 chars). The prior prompt now also demands a standalone `polish` paragraph (no numbers, no invented entities, no evidence claims); `priorDraftSchema.polish` is `z.unknown().optional()` so a bad polish can never fail the Prior. Extraction: valid → carried; present-but-invalid → dropped with a fixed-summary Compute ledger `prior.polish_unavailable` (never raw model text); absent → field absent with NO ledger event. No dedicated without-Qloo route (11-route API surface locked) — the compare modal is a client projection over `run.prior` + blueprint (`compositionByRole`, `whatQlooChanged`), with confident-empty = kept covers all prior members AND added/removed/reformatted empty; modal rendering lands W-8.5.** | The Phase 8 contract places polish "during prior generation with budget accounting" — riding the existing completion satisfies that literally at zero extra budget/queue pressure and zero fixture-call-queue displacement (≈15 positional `fakeLlm` fixtures would cascade if a second call were inserted). Storing polish on `priorSchema` means it flows through every existing persist/SSE/read path untouched and is covered by the Prior's write-once deep-freeze, while the unknown-typed draft extraction preserves the invariant that the Prior itself never fails for a cosmetic field. Absence-without-event keeps pre-W-8.4 ledger counts unchanged — the honest signal is the field's absence ("the left column honestly shows Prior alone and says so"); a 12th route would violate ARCHITECTURE §3. | Yes — revisit only if a higher-order source demands a separate polish generation call or a dedicated endpoint. |
 
 ## Deviations from contract
 
@@ -1638,27 +1680,32 @@ with both mini-challenge attack rows after a real in-browser replace.
 
 ## Last Verified Commit
 
-`ff54a0d` — *feat: compose the evidence-bound Place Blueprint with share snapshots.*
-Preceded by `b938cbe` (docs: W-8.2b), `6903c25` (W-8.2b bridge insertion + rebuild
-chain), `f3f90a4` (docs: W-8.1 + W-8.2a), `f786607` (W-8.2a challenge engine),
-`0c8ba6f` (W-8.1 format library + constraint-fit engine), `c81bfbb` (Phase 8 contract).
-Gates green on the tree at sign-off: typecheck 0, lint 0, **695 pass / 5 gated-live
-skips**, **build PASS**; secret scan of the diff clean. e2e + fixture-browser walk
-deferred to the Phase 8 exit gate (no web surface in this increment; full-chain e2e
-contract needs W-8.4/W-8.5). Docs commit (this file) records W-8.3 + D-8.10…D-8.14.
+`99510fc` — *feat: add the honest Without-Qloo polish to the frozen Prior.*
+Preceded by `02093c5` (docs: W-8.3 + D-8.10…D-8.14), `ff54a0d` (W-8.3 Place
+Blueprint + share snapshots), `b938cbe` (docs: W-8.2b), `6903c25` (W-8.2b bridge
+insertion + rebuild chain), `f3f90a4` (docs: W-8.1 + W-8.2a), `f786607` (W-8.2a
+challenge engine), `0c8ba6f` (W-8.1 format library + constraint-fit engine),
+`c81bfbb` (Phase 8 contract).
+Gates green on the tree at sign-off: typecheck 0, lint 0, **702 pass / 5 gated-live
+skips**, **build PASS**; `git diff --check` clean (LF/CRLF notices only), diff secret
+scan clean. e2e + fixture-browser walk deferred to the Phase 8 exit gate (full-chain
+e2e contract needs W-8.5). Docs commit (this file) records W-8.4 + D-8.15.
 Push target: **https://github.com/louji2308/zorq** (`main`, PUBLIC, MIT; push on
 explicit user request).
 
 ## Next Highest-Value Action
 
-**W-8.4 — Without-Qloo comparison.** Left column: frozen Prior + LLM-only polish
-(same constraints, no tools) — if polish does not exist at run start, add it during
-prior generation with budget accounting; if it cannot be generated, the left column
-honestly shows Prior alone and says so. Right: final composition. Diff highlighted.
-"Here, the evidence changed nothing." confident-empty case. Then W-8.5 S4/S5 UI →
-Phase 8 exit gate (typecheck/lint/unit/build/e2e/secret scan/browser walk + clause map
-vs Plan 734–808). Parallel user-side: **top up DeepSeek (B-02)** → one real browser
-judge pass. Deadline: Oct 30 2026, internal freeze Oct 28.
+**W-8.5 — S4/S5 UI.** RunRoute gains the S4 challenge view (verdict banner,
+five attack rows, leader-as-drawn column with in-place mutations) and the S5
+Blueprint route (evidence-bound: role groups, receipts, What Qloo changed, risks,
+grade, Share/Copy/Print) plus the Without-Qloo compare modal: left = frozen Prior +
+`prior.polish` (honest "Prior alone" line when the field is absent), right =
+blueprint `compositionByRole`, diff highlighted from `whatQlooChanged`, and the
+confident-empty case (kept covers all prior members ∧ added/removed/reformatted
+empty) → "Here, the evidence changed nothing." Then Phase 8 exit gate
+(typecheck/lint/unit/build/e2e/secret scan/browser walk + clause map vs Plan
+734–808). Parallel user-side: **top up DeepSeek (B-02)** → one real browser judge
+pass. Deadline: Oct 30 2026, internal freeze Oct 28.
 
 ## Phase 7 Exit-Gate Status (PASSED 2026-10-15 — one escalated deviation, B-09)
 
