@@ -215,4 +215,34 @@ describe("buildNeighborhoods", () => {
     expect(artist[0]).toEqual({ entityId: "dup", rank: 1, weight: 0.9 / 1.4, affinityUsed: true });
     expect(artist[1]).toEqual({ entityId: "other", rank: 2, weight: 0.5 / 1.4, affinityUsed: true });
   });
+
+  it("carries the entity name through to entries, trimmed, and rejects non-string names", () => {
+    const pool = makePool(["c1"]);
+    const neighborhoods = buildNeighborhoods(pool, [
+      {
+        componentId: "c1",
+        domain: "artist",
+        signals: [
+          { entityId: "e1", rank: 1, affinity: 0.7, name: "  Alice Coltrane  " },
+          { entityId: "e2", rank: 2, affinity: 0.3, name: "   " },
+          { entityId: "e3", rank: 3, affinity: 0.2 }
+        ]
+      }
+    ]);
+    const artist = neighborhoods[0].domains.artist;
+    expect(artist.find((entry) => entry.entityId === "e1")?.name).toBe("Alice Coltrane");
+    expect(artist.find((entry) => entry.entityId === "e2")?.name).toBeUndefined();
+    expect(artist.find((entry) => entry.entityId === "e3")?.name).toBeUndefined();
+    expectEngineError(
+      () =>
+        buildNeighborhoods(pool, [
+          {
+            componentId: "c1",
+            domain: "artist",
+            signals: [{ entityId: "e4", rank: 1, name: 42 as unknown as string }]
+          }
+        ]),
+      "INVALID_NEIGHBORHOOD_SIGNAL"
+    );
+  });
 });

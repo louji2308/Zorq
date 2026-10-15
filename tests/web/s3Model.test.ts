@@ -22,9 +22,18 @@ function shared(
   aWeight: number,
   bWeight: number,
   idf: number,
-  dotContribution: number
+  dotContribution: number,
+  name?: string
 ) {
-  return { entityId, domain, aWeight, bWeight, idf, dotContribution };
+  return {
+    entityId,
+    domain,
+    aWeight,
+    bWeight,
+    idf,
+    dotContribution,
+    ...(name !== undefined ? { name } : {})
+  };
 }
 
 function poolComponent(
@@ -527,12 +536,45 @@ describe("buildPairEvidence", () => {
         `${prettifyMemberId("cinema")} and ${prettifyMemberId("cinema")} Two both over-index on ` +
         `${prettifyMemberId("coffee")}, urn:entity:artist-b, urn:entity:movie-c.`
     );
+    expect(evidence.provenance).toBe("Qloo");
     expect(evidence.tiles).toHaveLength(3);
     expect(evidence.tiles[0]?.entityId).toBe("urn:entity:place-coffee");
     expect(evidence.tiles[0]?.name).toBe(prettifyMemberId("coffee"));
     expect(evidence.tiles[0]?.fraction).toBe(1);
+    expect(evidence.tiles[0]?.rank).toBe(1);
     expect(evidence.tiles[1]?.fraction).toBeCloseTo(0.3 / 0.5);
+    expect(evidence.tiles[1]?.rank).toBe(2);
+    expect(evidence.tiles[2]?.rank).toBe(3);
     expect(evidence.howComputed).toBe(HOW_COMPUTED);
+  });
+
+  it("prefers a persisted entity name over the exemplar and URN fallbacks", () => {
+    const run = fixtureState();
+    const edges = edgeIndexFor(run);
+    const base = edges.get(pairKey("coffee", "cinema"));
+    if (base === undefined) {
+      throw new Error("fixture edge coffee+cinema is missing");
+    }
+    const named: RunGraphEdge = {
+      ...base,
+      sharedEntities: [
+        shared("urn:entity:place-coffee", "artist", 0.9, 0.4, 2.5, 0.5, "Counter Coffee"),
+        shared("urn:entity:artist-b", "artist", 0.7, 0.6, 1.8, 0.3, "Björk"),
+        shared("urn:entity:movie-c", "movie", 0.5, 0.5, 1.2, 0.1)
+      ]
+    };
+    const evidence = buildPairEvidence(run, "coffee", "cinema", named, undefined);
+    expect(evidence.claim).toBe(
+      `Audiences of ${prettifyMemberId("coffee")} and ${prettifyMemberId("coffee")} Two and ` +
+        `${prettifyMemberId("cinema")} and ${prettifyMemberId("cinema")} Two both over-index on ` +
+        `Counter Coffee, Björk, urn:entity:movie-c.`
+    );
+    expect(evidence.tiles[0]?.name).toBe("Counter Coffee");
+    expect(evidence.tiles[0]?.rank).toBe(1);
+    expect(evidence.tiles[1]?.name).toBe("Björk");
+    expect(evidence.tiles[1]?.rank).toBe(2);
+    expect(evidence.tiles[2]?.name).toBe("urn:entity:movie-c");
+    expect(evidence.tiles[2]?.rank).toBe(3);
   });
 
   it("describes triangulation agreement, disagreement, thin, failed, and missing states", () => {
@@ -574,6 +616,7 @@ describe("buildPairEvidence", () => {
     expect(evidence.unmeasured).toBe(true);
     expect(evidence.emptyReason).toBe(UNMEASURED_COPY);
     expect(evidence.claim).toBeNull();
+    expect(evidence.provenance).toBeNull();
     expect(evidence.tiles).toHaveLength(0);
   });
 

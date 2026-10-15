@@ -154,7 +154,7 @@ const cases: SchemaCase[] = [
       valid: {
         run,
         delta: { coherence: 0.12, distinctiveness: -0.04 },
-        weakestLink: { componentId: "comp_discovery_3", score: 0.31 }
+        weakestLink: { a: "comp_anchor_1", b: "comp_discovery_3", value: 0.31 }
       },
       invalid: { run, delta: { coherence: 0.12 }, weakestLink: {} }
     }

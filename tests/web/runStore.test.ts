@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { ApiErrorBody } from "../../src/shared/errors.js";
 import type { LedgerEvent } from "../../src/shared/events.js";
-import type { RunState } from "../../src/shared/run.js";
+import type { RunEvidenceNode, RunState } from "../../src/shared/run.js";
 import { useRunStore } from "../../src/web/store/runStore.js";
 
 const TEST_RUN_STATE: RunState = {
@@ -38,6 +38,7 @@ describe("run store", () => {
     expect(state.run).toBeNull();
     expect(state.connection).toBe("closed");
     expect(state.ledgerRows).toEqual([]);
+    expect(state.evidence).toEqual([]);
     expect(state.apiError).toBeNull();
   });
 
@@ -58,6 +59,29 @@ describe("run store", () => {
 
     expect(useRunStore.getState().run).toEqual(SECOND_RUN_STATE);
     expect(useRunStore.getState().ledgerRows.map((row) => row.sequence)).toEqual([1]);
+  });
+
+  it("applyEvidence holds the server's evidence projection across state reconciles", () => {
+    const nodes: RunEvidenceNode[] = [
+      { id: "ev-1", kind: "insights", summary: "Qloo insights observation - shared affinities" }
+    ];
+    useRunStore.getState().applyState(TEST_RUN_STATE);
+    useRunStore.getState().applyEvidence(nodes);
+    expect(useRunStore.getState().evidence).toEqual(nodes);
+
+    // An SSE state frame carries RunState without the evidence projection;
+    // the wholesale replace may swap `run` but must not destroy the slot.
+    useRunStore.getState().applyState(SECOND_RUN_STATE);
+    expect(useRunStore.getState().run).toEqual(SECOND_RUN_STATE);
+    expect(useRunStore.getState().run?.evidence).toBeUndefined();
+    expect(useRunStore.getState().evidence).toEqual(nodes);
+
+    const refreshed: RunEvidenceNode[] = [
+      { id: "ev-1", kind: "insights", summary: "Qloo insights observation - shared affinities" },
+      { id: "ev-2", kind: "search", summary: "Qloo search observation - candidate places" }
+    ];
+    useRunStore.getState().applyEvidence(refreshed);
+    expect(useRunStore.getState().evidence).toEqual(refreshed);
   });
 
   it("applyLedger appends the server-sent event with its sequence and fabricates nothing", () => {
@@ -124,6 +148,7 @@ describe("run store", () => {
   it("reset restores the initial projection", () => {
     useRunStore.getState().applyState(TEST_RUN_STATE);
     useRunStore.getState().applyLedger(ledgerEvent("one"), 1);
+    useRunStore.getState().applyEvidence([{ id: "ev-1", kind: "insights", summary: "observed" }]);
     useRunStore.getState().setConnection("open");
 
     useRunStore.getState().reset();
@@ -132,6 +157,7 @@ describe("run store", () => {
     expect(state.run).toBeNull();
     expect(state.connection).toBe("closed");
     expect(state.ledgerRows).toEqual([]);
+    expect(state.evidence).toEqual([]);
     expect(state.apiError).toBeNull();
   });
 });

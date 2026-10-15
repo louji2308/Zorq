@@ -115,6 +115,7 @@ export interface RawNeighborhoodSignal {
   entityId: string;
   rank: number;
   affinity?: number;
+  name?: string;
 }
 
 export interface NeighborhoodSignalInput {
@@ -127,7 +128,8 @@ export const neighborhoodEntrySchema = z.strictObject({
   entityId: z.string().trim().min(1).max(200),
   rank: z.number().int().min(1),
   weight: z.number().finite().positive(),
-  affinityUsed: z.boolean()
+  affinityUsed: z.boolean(),
+  name: z.string().trim().min(1).max(200).optional()
 });
 
 export type NeighborhoodEntry = z.infer<typeof neighborhoodEntrySchema>;

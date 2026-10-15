@@ -170,10 +170,12 @@ export function projectSignals(envelope: QlooEnvelope<QlooInsightsResults>): Raw
     }
     seen.add(id);
     const affinity = entity.affinity;
+    const name = typeof entity.name === "string" ? entity.name.trim().slice(0, 200) : "";
     signals.push({
       entityId: id,
       rank: index + 1,
-      ...(typeof affinity === "number" && Number.isFinite(affinity) && affinity > 0 ? { affinity } : {})
+      ...(typeof affinity === "number" && Number.isFinite(affinity) && affinity > 0 ? { affinity } : {}),
+      ...(name !== "" ? { name } : {})
     });
   });
   return signals;

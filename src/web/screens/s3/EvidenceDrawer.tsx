@@ -72,6 +72,9 @@ export function EvidenceDrawer({
       ) : (
         <>
           {evidence.claim !== null && <p className="s3-claim">{evidence.claim}</p>}
+          {evidence.provenance !== null && (
+            <span className="s3-provenance">{evidence.provenance}</span>
+          )}
           <p className="s3-drawer-heading">Shared by both audiences</p>
           {evidence.tiles.length === 0 ? (
             <p className="s3-drawer-note">No shared entities were measured for this pair.</p>
@@ -81,7 +84,10 @@ export function EvidenceDrawer({
                 {visible.map((tile) => (
                   <li key={tile.entityId} className="s3-tile">
                     <span className="s3-tile-name">{tile.name}</span>
-                    <span className="s3-tile-domain">{tile.domain}</span>
+                    <span className="s3-tile-meta">
+                      <span className="s3-tile-domain">{tile.domain}</span>
+                      <span className="s3-tile-rank">#{tile.rank}</span>
+                    </span>
                     <span
                       className="s3-tile-bar"
                       style={{ width: `${Math.max(4, Math.round(tile.fraction * 100))}%` }}

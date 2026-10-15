@@ -10,6 +10,7 @@ export interface EdgeSharedEntity {
   bWeight: number;
   idf: number;
   dotContribution: number;
+  name?: string;
 }
 
 export function sharedEntitiesForEdge(
@@ -20,20 +21,22 @@ export function sharedEntitiesForEdge(
 ): EdgeSharedEntity[] {
   const contributions: EdgeSharedEntity[] = [];
   for (const domain of neighborhoodDomains) {
-    const aWeights = new Map(a.domains[domain].map((entry) => [entry.entityId, entry.weight]));
+    const aEntries = new Map(a.domains[domain].map((entry) => [entry.entityId, entry]));
     for (const entry of b.domains[domain]) {
-      const aWeight = aWeights.get(entry.entityId);
-      if (aWeight === undefined) {
+      const aEntry = aEntries.get(entry.entityId);
+      if (aEntry === undefined) {
         continue;
       }
       const idfValue = idf[entry.entityId] ?? 0;
+      const name = aEntry.name ?? entry.name;
       contributions.push({
         entityId: entry.entityId,
         domain,
-        aWeight,
+        aWeight: aEntry.weight,
         bWeight: entry.weight,
         idf: idfValue,
-        dotContribution: aWeight * idfValue * entry.weight * idfValue
+        dotContribution: aEntry.weight * idfValue * entry.weight * idfValue,
+        ...(name !== undefined ? { name } : {})
       });
     }
   }

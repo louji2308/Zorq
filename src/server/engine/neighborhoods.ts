@@ -56,7 +56,20 @@ function parseSignal(raw: unknown, componentId: string, domain: NeighborhoodDoma
       `signal for component "${componentId}" domain "${domain}" has non-numeric affinity`
     );
   }
-  return { entityId: parsed.data.entityId, rank: parsed.data.rank, affinity };
+  const rawName = record.name;
+  if (rawName !== undefined && typeof rawName !== "string") {
+    throw new EngineError(
+      "INVALID_NEIGHBORHOOD_SIGNAL",
+      `signal for component "${componentId}" domain "${domain}" has non-string name`
+    );
+  }
+  const name = typeof rawName === "string" ? rawName.trim().slice(0, 200) : "";
+  return {
+    entityId: parsed.data.entityId,
+    rank: parsed.data.rank,
+    affinity,
+    ...(name !== "" ? { name } : {})
+  };
 }
 
 function buildDomainEntries(
@@ -67,7 +80,13 @@ function buildDomainEntries(
   const weighted = rawSignals.map((raw) => {
     const signal = parseSignal(raw, componentId, domain);
     const { weight, affinityUsed } = signalWeight(signal.affinity, signal.rank);
-    return { entityId: signal.entityId, rank: signal.rank, weight, affinityUsed };
+    return {
+      entityId: signal.entityId,
+      rank: signal.rank,
+      weight,
+      affinityUsed,
+      ...(signal.name !== undefined ? { name: signal.name } : {})
+    };
   });
   weighted.sort((left, right) => {
     if (left.weight !== right.weight) {

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { briefSchema } from "./brief.js";
 import { eventsRequestSchema, sseFrameSchema } from "./events.js";
-import { createdRunSchema, runIdParamsSchema, runResponseSchema, runStateSchema } from "./run.js";
+import { createdRunSchema, runIdParamsSchema, runResponseSchema, runStateSchema, runWeakestLinkSchema } from "./run.js";
 
 export const healthzResponseSchema = z.object({
   status: z.literal("ok"),
@@ -58,7 +58,7 @@ export const replaceResponseSchema = z.object({
     coherence: z.number(),
     distinctiveness: z.number()
   }),
-  weakestLink: z.record(z.string(), z.unknown())
+  weakestLink: runWeakestLinkSchema
 });
 
 export type ReplaceResponse = z.infer<typeof replaceResponseSchema>;

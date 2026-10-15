@@ -414,6 +414,19 @@
   color: var(--zq-ink);
 }
 
+/* Provenance pill (Final Design 5.4): Qloo = solid ink, white text, round;
+ * inverted text stays >=16px / 600 (Final Design 13, halation rule). */
+.s3-provenance {
+  align-self: flex-start;
+  padding: 2px var(--zq-space-16);
+  font-family: var(--zq-font-ui);
+  font-size: var(--zq-text-body);
+  font-weight: var(--zq-weight-strong);
+  color: var(--zq-paper);
+  background: var(--zq-ink);
+  border-radius: var(--zq-radius-pill);
+}
+
 .s3-tiles {
   list-style: none;
   margin: 0;
@@ -436,11 +449,23 @@
   font-weight: var(--zq-weight-strong);
 }
 
+.s3-tile-meta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--zq-space-8);
+}
+
 .s3-tile-domain {
   font-size: var(--zq-text-micro);
   color: var(--zq-ink-600);
   text-transform: uppercase;
   letter-spacing: 0.06em;
+}
+
+.s3-tile-rank {
+  font-size: var(--zq-text-micro);
+  font-weight: var(--zq-weight-strong);
+  color: var(--zq-ink-600);
 }
 
 .s3-tile-bar {

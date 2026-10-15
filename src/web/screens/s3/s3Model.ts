@@ -127,6 +127,7 @@ export interface S3EvidenceTile {
   readonly entityId: string;
   readonly name: string;
   readonly domain: string;
+  readonly rank: number;
   readonly contribution: number;
   readonly fraction: number;
 }
@@ -149,6 +150,7 @@ export interface S3PairEvidence {
   readonly aName: string;
   readonly bName: string;
   readonly claim: string | null;
+  readonly provenance: "Qloo" | null;
   readonly tiles: readonly S3EvidenceTile[];
   readonly triangulation: S3TriangulationReading;
   readonly howComputed: string;
@@ -795,6 +797,9 @@ function buildChartCells(
 }
 
 export function resolveEntityName(entity: RunSharedEntity, pool: CandidatePool): string {
+  if (entity.name !== undefined && entity.name.trim() !== "") {
+    return entity.name;
+  }
   for (const component of pool) {
     for (const exemplar of component.exemplars) {
       if (exemplar.id === entity.entityId) {
@@ -845,10 +850,11 @@ function buildClaim(
 function buildTiles(shared: readonly RunSharedEntity[], pool: CandidatePool): S3EvidenceTile[] {
   const sorted = [...shared].sort((left, right) => right.dotContribution - left.dotContribution);
   const max = sorted[0]?.dotContribution ?? 0;
-  return sorted.map((entity) => ({
+  return sorted.map((entity, index) => ({
     entityId: entity.entityId,
     name: resolveEntityName(entity, pool),
     domain: entity.domain,
+    rank: index + 1,
     contribution: entity.dotContribution,
     fraction: max > 0 ? entity.dotContribution / max : 0
   }));
@@ -975,12 +981,14 @@ export function buildPairEvidence(
     edge.state === "unmeasured" ||
     shared.length === 0;
   const terms = new Set<string>([...collectTerms(compA), ...collectTerms(compB)]);
+  const claim = unmeasured ? null : buildClaim(a, b, shared, pool);
   return {
     a,
     b,
     aName,
     bName,
-    claim: unmeasured ? null : buildClaim(a, b, shared, pool),
+    claim,
+    provenance: claim !== null ? "Qloo" : null,
     tiles: unmeasured ? [] : buildTiles(shared, pool),
     triangulation: buildTriangulationReading(tri),
     howComputed: HOW_COMPUTED,

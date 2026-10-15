@@ -103,4 +103,52 @@ describe("sharedEntitiesForEdge", () => {
     expect(shared[0]?.idf).toBe(0);
     expect(shared[0]?.dotContribution).toBe(0);
   });
+
+  it("carries the entity name from the neighborhoods, preferring the a-side entry", () => {
+    const named = (entityId: string, weight: number, name?: string) => ({
+      entityId,
+      rank: 1,
+      weight,
+      affinityUsed: true,
+      ...(name !== undefined ? { name } : {})
+    });
+    const a: TasteNeighborhood = {
+      componentId: "a",
+      domains: {
+        artist: [named("urn:entity:artist-a", 0.9, "Kim Gordon"), named("urn:entity:artist-b", 0.5)],
+        movie: [],
+        brand: []
+      },
+      state: "measured"
+    };
+    const b: TasteNeighborhood = {
+      componentId: "b",
+      domains: {
+        artist: [named("urn:entity:artist-a", 0.4, "Gordon, Kim"), named("urn:entity:artist-b", 0.5, "Tortoise")],
+        movie: [],
+        brand: []
+      },
+      state: "measured"
+    };
+    const shared = sharedEntitiesForEdge(a, b, IDF);
+    expect(shared).toHaveLength(2);
+    expect(shared[0]?.entityId).toBe("urn:entity:artist-a");
+    expect(shared[0]?.name).toBe("Kim Gordon");
+    expect(shared[1]?.entityId).toBe("urn:entity:artist-b");
+    expect(shared[1]?.name).toBe("Tortoise");
+
+    const unnamed: TasteNeighborhood = {
+      componentId: "b2",
+      domains: {
+        artist: [named("urn:entity:artist-a", 0.4)],
+        movie: [],
+        brand: []
+      },
+      state: "measured"
+    };
+    const fallback = sharedEntitiesForEdge(a, unnamed, IDF);
+    expect(fallback[0]?.name).toBe("Kim Gordon");
+    const noNames = sharedEntitiesForEdge(unnamed, unnamed, IDF);
+    expect(noNames[0]?.name).toBeUndefined();
+  });
 });

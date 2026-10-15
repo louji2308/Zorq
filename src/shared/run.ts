@@ -109,7 +109,8 @@ export const runNeighborhoodEntrySchema = z.strictObject({
   entityId: z.string().trim().min(1).max(200),
   rank: z.number().int().min(1),
   weight: z.number().finite().positive(),
-  affinityUsed: z.boolean()
+  affinityUsed: z.boolean(),
+  name: z.string().trim().min(1).max(200).optional()
 });
 
 export type RunNeighborhoodEntry = z.infer<typeof runNeighborhoodEntrySchema>;
@@ -157,7 +158,8 @@ export const runSharedEntitySchema = z.strictObject({
   aWeight: z.number().finite().min(0).max(1),
   bWeight: z.number().finite().min(0).max(1),
   idf: z.number().finite().min(0),
-  dotContribution: z.number().finite().min(0)
+  dotContribution: z.number().finite().min(0),
+  name: z.string().trim().min(1).max(200).optional()
 });
 
 export type RunSharedEntity = z.infer<typeof runSharedEntitySchema>;

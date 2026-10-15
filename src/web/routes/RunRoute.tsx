@@ -65,10 +65,12 @@ export function RunRoute() {
 
   const run = useRunStore((state) => state.run);
   const ledgerRows = useRunStore((state) => state.ledgerRows);
+  const evidence = useRunStore((state) => state.evidence);
   const connection = useRunStore((state) => state.connection);
   const apiError = useRunStore((state) => state.apiError);
 
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
   const [stopping, setStopping] = useState(false);
   const [stopError, setStopError] = useState<string | null>(null);
   const [priorCollapsed, setPriorCollapsed] = useState(false);
@@ -91,6 +93,7 @@ export function RunRoute() {
     const store = useRunStore.getState();
     store.reset();
     setLoadError(null);
+    setRefreshError(null);
     setStopError(null);
     setView("investigate");
     setS3Key(null);
@@ -104,12 +107,34 @@ export function RunRoute() {
           return;
         }
         useRunStore.getState().applyState(fetched);
+        useRunStore.getState().applyEvidence(fetched.evidence ?? []);
         stream = createRunEventStream({
           runId,
           onState: (next) => useRunStore.getState().applyState(next),
           onLedger: (event, sequence) => useRunStore.getState().applyLedger(event, sequence),
           onErrorFrame: (error) => useRunStore.getState().setError(error),
-          onConnection: (status) => useRunStore.getState().setConnection(status)
+          onConnection: (status) => useRunStore.getState().setConnection(status),
+          onTerminal: () => {
+            if (cancelled) {
+              return;
+            }
+            void (async () => {
+              try {
+                const latest = await getRun(runId);
+                if (cancelled) {
+                  return;
+                }
+                useRunStore.getState().applyState(latest);
+                useRunStore.getState().applyEvidence(latest.evidence ?? []);
+              } catch (error) {
+                if (cancelled) {
+                  return;
+                }
+                const code = error instanceof ApiClientError ? error.code : "NETWORK_ERROR";
+                setRefreshError(describeLoadFailure(code));
+              }
+            })();
+          }
         });
       } catch (error) {
         if (cancelled) {
@@ -134,7 +159,11 @@ export function RunRoute() {
   const heat = useMemo(() => heatFromRun(run), [run]);
   const dnaGroups = useMemo(() => parseCulturalDna(run?.culturalDna), [run]);
   const s2Model = useMemo(() => buildS2Model(run), [run]);
-  const s3Model = useMemo(() => buildS3Model(run, s3Key), [run, s3Key]);
+  const graphRun = useMemo(
+    () => (run === null ? null : { ...run, evidence: run.evidence ?? evidence }),
+    [run, evidence]
+  );
+  const s3Model = useMemo(() => buildS3Model(graphRun, s3Key), [graphRun, s3Key]);
 
   const statusCopy =
     run === null ? (loadError !== null ? "Unavailable" : "Opening…") : describeRunStatus(run.status);
@@ -171,9 +200,9 @@ export function RunRoute() {
   return (
     <div className="s1">
       <div className="s1-top">
-        {(apiError !== null || streamNotice !== null || stopError !== null) && (
+        {(apiError !== null || streamNotice !== null || stopError !== null || refreshError !== null) && (
           <div className="s1-banner" role="alert">
-            {apiError?.error.message ?? streamNotice ?? stopError}
+            {apiError?.error.message ?? streamNotice ?? stopError ?? refreshError}
           </div>
         )}
         <header className="s1-topbar">
@@ -219,7 +248,7 @@ export function RunRoute() {
 
           {showS3 && s3Model !== null ? (
             <ConnectionsPanel
-              run={run}
+              run={graphRun}
               model={s3Model}
               initialPairKey={s3Pair === null ? null : pairKey(s3Pair.a, s3Pair.b)}
               onBack={() => setView("compositions")}
