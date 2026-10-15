@@ -6,6 +6,7 @@ import { useRunStore } from "../../store/runStore.js";
 import { formatCoherence } from "../s2/s2Model.js";
 import {
   buildReplaceModel,
+  buildWeakestLine,
   readReplaceSuccess,
   signedDelta,
   type ReplaceAlternative,
@@ -157,13 +158,13 @@ export function ReplacePanel({ run, memberId, compositionKey, onClose }: Replace
         try {
           const response = await replaceComponent(run.id, request);
           useRunStore.getState().applyState(response.run);
-          setSuccess(
-            readReplaceSuccess(response.run) ?? {
-              verdict: "Recorded",
-              reason: "The replacement was measured and saved to this run.",
-              rows: []
-            }
-          );
+          const report = readReplaceSuccess(response.run);
+          setSuccess({
+            verdict: report?.verdict ?? "Recorded",
+            reason: report?.reason ?? "The replacement was measured and saved to this run.",
+            rows: report?.rows ?? [],
+            weakestLine: buildWeakestLine(run, response.weakestLink)
+          });
         } catch (error) {
           setFailure(
             error instanceof ApiClientError
@@ -206,6 +207,9 @@ export function ReplacePanel({ run, memberId, compositionKey, onClose }: Replace
           <div className="s3-replace-body" aria-live="polite">
             <p className="s3-replace-verdict">{success.verdict}</p>
             <p className="s3-replace-note">{success.reason}</p>
+            {success.weakestLine !== null && success.weakestLine !== undefined && (
+              <p className="s3-replace-note">{success.weakestLine}</p>
+            )}
             {success.rows.length > 0 && (
               <ul className="s3-replace-attacks">
                 {success.rows.map((row) => (

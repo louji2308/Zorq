@@ -5,6 +5,7 @@ import { TEST_BRIEF, TEST_PRIOR } from "../agent/support/fakes.js";
 import {
   REPLACE_ALTERNATIVE_CAP,
   buildReplaceModel,
+  buildWeakestLine,
   findBefore,
   readReplaceSuccess,
   sameMembers,
@@ -328,5 +329,27 @@ describe("readReplaceSuccess", () => {
     expect(readReplaceSuccess(fixtureState())).toBeNull();
     expect(readReplaceSuccess(fixtureState({ stressReport: { kind: "full" } }))).toBeNull();
     expect(readReplaceSuccess(fixtureState({ stressReport: "garbage" }))).toBeNull();
+  });
+});
+
+describe("buildWeakestLine", () => {
+  it("resolves pool exemplar names into the FD success-sheet line", () => {
+    const line = buildWeakestLine(fixtureState(), { a: "anchor", b: "community", value: 0.4 });
+    expect(line).toBe("Weakest link becomes: Devoción and McNally Jackson.");
+  });
+
+  it("falls back to prettified member ids when the pair is outside the pool", () => {
+    const line = buildWeakestLine(fixtureState(), { a: "ghost-x", b: "anchor", value: 0.2 });
+    expect(line).toBe("Weakest link becomes: Ghost x and Devoción.");
+  });
+
+  it("returns null when the response carried no weakest link", () => {
+    expect(buildWeakestLine(fixtureState(), null)).toBeNull();
+    expect(buildWeakestLine(fixtureState(), undefined)).toBeNull();
+  });
+
+  it("tolerates a null run by prettifying every id", () => {
+    const line = buildWeakestLine(null, { a: "ghost-x", b: "anchor", value: 0.1 });
+    expect(line).toBe("Weakest link becomes: Ghost x and Anchor.");
   });
 });

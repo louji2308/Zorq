@@ -3,7 +3,8 @@ import type {
   PoolComponentRole,
   RunRankedComposition,
   RunRevision,
-  RunState
+  RunState,
+  RunWeakestLink
 } from "../../../shared/run.js";
 import { prettifyMemberId } from "../s2/s2Model.js";
 
@@ -42,6 +43,7 @@ export interface ReplaceSuccess {
   readonly verdict: string;
   readonly reason: string;
   readonly rows: readonly ReplaceStressRow[];
+  readonly weakestLine?: string | null;
 }
 
 export interface ReplaceModel {
@@ -181,6 +183,21 @@ function buildRevisionRows(run: RunState): ReplaceRevisionRow[] {
     deltaCoherence: revision.coherenceAfter - revision.coherenceBefore,
     custom: revision.custom
   }));
+}
+
+export function buildWeakestLine(
+  run: RunState | null,
+  link: RunWeakestLink | null | undefined
+): string | null {
+  if (link === null || link === undefined) {
+    return null;
+  }
+  const pool = run?.candidatePool ?? [];
+  const nameOf = (id: string): string => {
+    const component = pool.find((entry) => entry.id === id);
+    return component === undefined ? prettifyMemberId(id) : componentName(component);
+  };
+  return `Weakest link becomes: ${nameOf(link.a)} and ${nameOf(link.b)}.`;
 }
 
 export function buildReplaceModel(
