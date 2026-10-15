@@ -1,11 +1,14 @@
 import { z } from "zod";
 import { briefSchema } from "./brief.js";
 
+export const priorPolishTextSchema = z.string().trim().min(1).max(1200);
+
 export const priorSchema = z.object({
   composition: z.unknown(),
   generatedAt: z.string(),
   model: z.string(),
-  qlooUsed: z.literal(false)
+  qlooUsed: z.literal(false),
+  polish: priorPolishTextSchema.optional()
 });
 
 export type Prior = z.infer<typeof priorSchema>;

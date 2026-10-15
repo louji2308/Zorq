@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { briefSchema, type Brief } from "../../shared/brief.js";
-import { priorSchema, type Prior, type RunState } from "../../shared/run.js";
+import { priorPolishTextSchema, priorSchema, type Prior, type RunState } from "../../shared/run.js";
 import type { LlmBudget } from "./budget.js";
 import { PriorConflictError, PriorGenerationError } from "./errors.js";
 import { completeBounded, DEEPSEEK_MODEL, formatZodIssues, type LlmClient, type LlmMessage } from "./llm.js";
@@ -14,17 +14,21 @@ export const PRIOR_SYSTEM_PROMPT = [
   "an evidence-free initial guess at the site's cultural composition, committed before any",
   "external cultural data is consulted. You have no measurements yet, so never present numbers",
   "as findings and never invent entities, statistics, or provenance.",
-  'Respond with exactly one JSON object and no other text: {"composition": {...}, "rationale": "..."}.',
+  'Respond with exactly one JSON object and no other text: {"composition": {...}, "rationale": "...", "polish": "..."}.',
   '"composition" must be a non-empty JSON object describing your proposed composition: a thesis',
   "plus members grouped by roles such as Anchor, Social, Discovery, Experience, Night, Community,",
-  "each with a short rationale grounded only in the brief."
+  "each with a short rationale grounded only in the brief.",
+  '"polish" must be one paragraph (max 1200 characters) presenting the same recommendation as a',
+  "standalone statement for a reader who has no cultural evidence: what Zorq would advise for this",
+  "site given the brief. No numbers, no invented entities, no evidence claims."
 ].join(" ");
 
 const priorDraftSchema = z.object({
   composition: z
     .record(z.string(), z.unknown())
     .refine((value) => Object.keys(value).length > 0, { message: "composition must be a non-empty object" }),
-  rationale: z.string().optional()
+  rationale: z.string().optional(),
+  polish: z.unknown().optional()
 });
 
 export interface GeneratePriorOptions {
@@ -58,6 +62,26 @@ function parsePriorDraft(content: string | null): z.infer<typeof priorDraftSchem
   return priorDraftSchema.parse(raw);
 }
 
+function normalizePolish(value: unknown, ledger: Ledger): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  const parsed = priorPolishTextSchema.safeParse(value);
+  if (parsed.success) {
+    return parsed.data;
+  }
+  ledger.append({
+    kind: "Compute",
+    label: "prior.polish_unavailable",
+    summary:
+      "the LLM-only polish failed validation; the Without-Qloo column will show the frozen Prior alone",
+    duration: 0,
+    cacheState: "n/a",
+    resultCount: 0
+  });
+  return undefined;
+}
+
 export async function generatePrior(options: GeneratePriorOptions): Promise<Prior> {
   const brief = briefSchema.parse(options.brief);
   const now = options.now ?? Date.now;
@@ -79,11 +103,13 @@ export async function generatePrior(options: GeneratePriorOptions): Promise<Prio
     });
     try {
       const draft = parsePriorDraft(result.content);
+      const polish = normalizePolish(draft.polish, options.ledger);
       const prior = priorSchema.parse({
         composition: draft.composition,
         generatedAt: new Date(now()).toISOString(),
         model: DEEPSEEK_MODEL,
-        qlooUsed: false
+        qlooUsed: false,
+        ...(polish !== undefined ? { polish } : {})
       });
       return prior;
     } catch (error) {

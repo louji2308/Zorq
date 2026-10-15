@@ -52,6 +52,89 @@ describe("generatePrior", () => {
     expect(ledger.list()[0]?.event.cacheState).toBe("n/a");
   });
 
+  it("asks for the Without-Qloo polish in the frozen prior contract", async () => {
+    const { llm, budget, ledger } = context([{ content: VALID_DRAFT }]);
+
+    await generatePrior({ brief: TEST_BRIEF, llm: llm.client, budget, ledger, now: () => TEST_NOW });
+
+    const system = llm.calls[0]?.messages[0];
+    expect(system?.role).toBe("system");
+    expect(typeof system?.content).toBe("string");
+    expect(system?.content).toContain('"polish"');
+    expect(system?.content).toContain("no cultural evidence");
+  });
+
+  it("extracts a valid LLM-only polish into the frozen Prior in the same single call", async () => {
+    const polish =
+      "Given only this brief, Zorq would open with a coffee anchor and carry the evening with live music — stated before any cultural evidence.";
+    const { llm, budget, ledger } = context([
+      {
+        content: JSON.stringify({
+          composition: { thesis: "daytime cultural corner", members: [{ role: "Anchor", name: "coffee roastery" }] },
+          rationale: "grounded in the brief only",
+          polish
+        })
+      }
+    ]);
+
+    const prior = await generatePrior({ brief: TEST_BRIEF, llm: llm.client, budget, ledger, now: () => TEST_NOW });
+
+    expect(prior.polish).toBe(polish);
+    expect(prior.qlooUsed).toBe(false);
+    expect(priorSchema.parse(prior)).toEqual(prior);
+    expect(llm.calls).toHaveLength(1);
+    expect(ledger.list()).toHaveLength(1);
+    expect(ledger.list()[0]?.event.kind).toBe("LLM");
+  });
+
+  it("drops a present-but-invalid polish honestly and records why without failing the Prior", async () => {
+    const { llm, budget, ledger } = context([
+      {
+        content: JSON.stringify({
+          composition: { thesis: "daytime cultural corner", members: [{ role: "Anchor", name: "coffee roastery" }] },
+          polish: "x".repeat(1300)
+        })
+      }
+    ]);
+
+    const prior = await generatePrior({ brief: TEST_BRIEF, llm: llm.client, budget, ledger, now: () => TEST_NOW });
+
+    expect(prior.polish).toBeUndefined();
+    expect(prior.qlooUsed).toBe(false);
+    expect(priorSchema.parse(prior)).toEqual(prior);
+    expect(ledger.list()).toHaveLength(2);
+    expect(ledger.list()[0]?.event.kind).toBe("LLM");
+    expect(ledger.list()[1]?.event.kind).toBe("Compute");
+    expect(ledger.list()[1]?.event.label).toBe("prior.polish_unavailable");
+    expect(ledger.list()[1]?.event.summary).toContain("frozen Prior alone");
+  });
+
+  it("drops a non-string polish honestly while keeping the composition", async () => {
+    const { llm, budget, ledger } = context([
+      {
+        content: JSON.stringify({
+          composition: { thesis: "daytime cultural corner" },
+          polish: { nested: true }
+        })
+      }
+    ]);
+
+    const prior = await generatePrior({ brief: TEST_BRIEF, llm: llm.client, budget, ledger, now: () => TEST_NOW });
+
+    expect(prior.polish).toBeUndefined();
+    expect(ledger.list().some((entry) => entry.event.label === "prior.polish_unavailable")).toBe(true);
+  });
+
+  it("omits polish entirely when the model offers none, with no extra ledger event", async () => {
+    const { llm, budget, ledger } = context([{ content: VALID_DRAFT }]);
+
+    const prior = await generatePrior({ brief: TEST_BRIEF, llm: llm.client, budget, ledger, now: () => TEST_NOW });
+
+    expect(prior.polish).toBeUndefined();
+    expect(Object.hasOwn(prior, "polish")).toBe(false);
+    expect(ledger.list()).toHaveLength(1);
+  });
+
   it("enforces qlooUsed=false, model and clock even when the model echoes other values", async () => {
     const { llm, budget, ledger } = context([
       {

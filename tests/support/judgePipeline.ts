@@ -160,7 +160,9 @@ const JUDGE_PRIOR = JSON.stringify({
       { role: "Night", name: "Hallen Biergarten" }
     ]
   },
-  rationale: "derived from the brief only, before any Qloo evidence"
+  rationale: "derived from the brief only, before any Qloo evidence",
+  polish:
+    "Given only this brief, Zorq would open with a coffee anchor, a discovery draw like micro-cinema, and live music to carry the evening — a defensible first proposal made before any cultural evidence is consulted."
 });
 
 const SEARCH_RESULTS = {

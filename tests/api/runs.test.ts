@@ -32,10 +32,10 @@ afterEach(async () => {
   }
 });
 
-async function createStack(): Promise<TestStack> {
+async function createStack(options: { priorContent?: string } = {}): Promise<TestStack> {
   const store = createMemoryStore();
   const hub = createEventHub();
-  const llm = fakeLlm([{ content: PRIOR_RESPONSE }, TURN_ONE, FINAL_TURN]);
+  const llm = fakeLlm([{ content: options.priorContent ?? PRIOR_RESPONSE }, TURN_ONE, FINAL_TURN]);
   const gateway = fakeGateway();
   const orchestrator = createOrchestrator({
     store,
@@ -102,6 +102,54 @@ describe("POST /api/runs", () => {
     const body = (await response.json()) as { error: { code: string; requestId: string } };
     expect(body.error.code).toBe("VALIDATION_FAILED");
     expect(body.error.requestId).toMatch(/.+/);
+  });
+
+  it("carries the LLM-only Without-Qloo polish on the frozen Prior through POST and GET", async () => {
+    const polish =
+      "Given only this brief, Zorq would lead with a coffee anchor and live music in the evening — stated before any cultural evidence.";
+    const { baseUrl } = await createStack({
+      priorContent: JSON.stringify({
+        composition: { thesis: "daytime cultural corner", members: [{ role: "Anchor", name: "coffee roastery" }] },
+        rationale: "from the brief only",
+        polish
+      })
+    });
+
+    const created = await postBrief(baseUrl);
+
+    expect(created.status).toBe(201);
+    const createdParsed = postRunsResponseSchema.safeParse(await created.json());
+    expect(createdParsed.success).toBe(true);
+    if (!createdParsed.success) {
+      return;
+    }
+    expect(createdParsed.data.run.prior?.polish).toBe(polish);
+    expect(createdParsed.data.run.prior?.qlooUsed).toBe(false);
+
+    const runId = createdParsed.data.run.id;
+    const fetched = await fetch(`${baseUrl}/api/runs/${runId}`);
+    expect(fetched.status).toBe(200);
+    const fetchedParsed = runResponseSchema.safeParse(await fetched.json());
+    expect(fetchedParsed.success).toBe(true);
+    if (!fetchedParsed.success) {
+      return;
+    }
+    expect(fetchedParsed.data.run.prior?.polish).toBe(polish);
+  });
+
+  it("starts honestly without polish when the model response carries none", async () => {
+    const { baseUrl } = await createStack();
+
+    const created = await postBrief(baseUrl);
+
+    expect(created.status).toBe(201);
+    const parsed = postRunsResponseSchema.safeParse(await created.json());
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) {
+      return;
+    }
+    expect(parsed.data.run.prior?.polish).toBeUndefined();
+    expect(parsed.data.run.prior?.qlooUsed).toBe(false);
   });
 });
 
