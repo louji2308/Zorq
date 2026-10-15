@@ -825,6 +825,22 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 
 ## Active Work
 
+- **PHASE 8 IN PROGRESS (contract `c81bfbb`) — W-8.1 DONE (`0c8ba6f`); W-8.2a DONE
+  (`f786607`); W-8.2b NEXT.** Phase boundary reconstructed from all seven ProjectSpec
+  sources + AGENTS.md; spawn channel 5/5 cancelled → orchestrator-direct (D-7.7
+  lineage). W-8.1: `engine/formats.ts` (FORMAT_TYPES ≈25 types × 2-3 formats, every
+  entry marked `[Zorq heuristic]`, longest-keyword match + role fallback) + `engine/fit.ts`
+  (`fitConstraints`: 85% circulation rule, late-night/quiet/nightclub chips, format
+  downshift preserving the Anchor role before weakest-edge member drop, honest
+  infeasibility with structured `FitResult`) + 12 unit tests. W-8.2a: full S4 server
+  pass — `challenge.ts` (five attacks, LLM order with diagnostic fallback, ≤2 mutations
+  across ≤3 stress rounds, code-authored verdicts), typed `challengeReport` on RunState
+  (D-8.1), `POST /api/runs/:id/challenge` real end-to-end (see Worker Status and
+  decisions D-8.1…D-8.7). Verified at `f786607`: typecheck 0, lint 0, **677 pass /
+  5 gated-live skips**, **build PASS**; secret scan clean (no new env/surface). Next:
+  **W-8.2b** — extract replace.ts's rebuild block into a shared canonical owner, wire
+  the bridge-insertion mutation so Replaced is reachable in production, then W-8.3
+  Blueprint. Deadline Oct 30 2026 (internal freeze Oct 28).
 - **PHASE 7 CLOSED 2026-10-15 — exit gate PASSED** (contract `ee3bddd`; W-7.1 DONE
   (`99b53bd`); W-7.2 DONE (`7180387`); W-7.3 DONE (`f8717d7`); W-7.4 DONE (`3591f75`);
   W-7.5 DONE (`bd1cb20`); exit-gate `b1f276e`/`0d9344b`/`1acb896`). See "Phase 7
@@ -940,6 +956,8 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 | W-7.3 | S2 Compositions workspace (Field histogram, Prior/A/B/C cards, dial re-rank, re-ink motion) | EDIT: `src/web/routes/RunRoute.tsx` (+36/−20 — S1↔S2 view switch, enabled dock button); NEW: `src/web/screens/s2/` (`s2Model.ts`, `CompositionsPanel.tsx`, `CompositionCard.tsx`, `Field.tsx`, `Dial.tsx`, `Marks.tsx`, `s2.css`), `tests/web/s2Model.test.ts` (29); InvestigateMap + runStore **untouched** (map persists because it stays mounted outside the view conditional) | **DONE 2026-10-12 — orchestrator-executed after 3 cancelled worker spawns (D-7.7), reviewed §17-style line-by-line, committed `f8717d7`** (contract `ee3bddd`). Mechanism: `buildS2Model(run)` (pure, 520 lines) projects persisted `run.compositions`/`neighborhoods`/`candidatePool` into the panel — Field = 12-bin histogram of `coherenceDistribution` + A/B/C marks for the top-3 + dashed prior mark; cards = Prior + finalists with role-grouped member rows (canonical pool-role order), over-index squares (site>city artist weight-sum, both neighborhoods "measured", else hollow/"not measured" — D-7.8), three locked readings in fixed order (percentile sentence from stored values with null honesty, "{k} of {n} over-index locally", weakest-link sentence with break mark), grade letters + up to 6 gradeReasons; dial (0..1 step 0.01) re-ranks `rankedAll` via population z + engine-matching tie-break (score desc → weakest desc → members lex), w=0.5 order proven identical to stored rank order in tests; FLIP re-ink in `useLayoutEffect` with `prefers-reduced-motion` guard; honest empty-family (`family.reason`), thin-pool note, not-measured prior verbatim; card `onEdgeClick` extension point left for W-7.4. Design locks held (no shadow/radius/gradient in s2.css; letter+mark grading; keyboard-reachable controls; aria on squares/field summary). Delegation deviation: first three `task` spawns were cancelled (two before any write, one left the uncommitted s2 sources with zero tests) → orchestrator adopted, reviewed, completed, and verified the increment. Gates independently run: typecheck 0, lint 0, **569 pass / 5 skips** (+30), build PASS, **e2e 4/4** fresh dist (server restarted), secret scan **0 hits**. Known limitation: Field marks always reflect stored-order finalists while the rail letters follow the dial (letters can swap under a moved dial — stored marks stay keyed by member set). |
 | W-7.4 | S3 Connections workspace (Map of meaning MDS, Distance chart, Evidence drawer, node sheet) | EDIT: `src/web/routes/RunRoute.tsx` (+34/−5 — "connections" view, s3Key/s3Pair state, S2↔S3 wiring, map persists, PriorCard hidden on S3), `src/web/screens/s2/{CompositionsPanel.tsx (+19/−1), s2.css (+5)}` (Show-the-graph CTA + weakest-link `onEdgeClick` navigation); NEW: `src/web/screens/s3/` (`s3Model.ts` (1115), `ConnectionsPanel.tsx`, `MapOfMeaning.tsx`, `DistanceChart.tsx`, `EvidenceDrawer.tsx`, `NodeSheet.tsx`, `s3.css`), `tests/web/s3Model.test.ts` (30) | **DONE 2026-10-12 — 4th spawn cancelled mid-write (D-7.9), orchestrator adopted the 5-file partial, reviewed line-by-line, completed panel/CSS/tests, committed `3591f75`** (contract `ee3bddd`). Mechanism: `buildS3Model(run, key)` — deterministic classical MDS (double-centered `1 − edge.value` dissimilarities, power iteration with index-derived starts + canonicalized eigenvectors, LRU-cached by graph signature, index-derived jitter fallback) + Kruskal-style stress with distorted-pair counting (locked sentences, high-stress ≥0.25 points to View B); per-pair state = triangulation state → band fallback, empty/absent `sharedEntities` → unmeasured; options A/B/C(+P when prior measured), default leader, unknown key falls back honestly; Evidence drawer claim locks ProductSpec line 203 wording with pool-resolved exemplar names, tiles sorted by `dotContribution` (fraction vs edge max), triangulation sentences per `focalInTopHalf`/`resultCount` (agrees/disagrees/thin-count/failed-no-returns/not-recorded), ledger links = term-matched `run.evidence` first then `kind:"insights"` fallback, cap 4, honest "recorded in the full ledger" fallback; node sheet = pool role/exemplars/5-step provenance/evidenceState with honest empty state; Distance chart = triangular matrix (SVG `<pattern>` hatch — no CSS gradients), band-sized dots (solid/hollow), selected L3 outline, break mark, sorted pair-list twin (sole view <768 px); Map = lines only for selected members, non-members hollow `ink-350`, hit-overlay buttons (keyboard + aria-labels), one-shot 600 ms pulse with reduced-motion guard; `onReplace`/`onChallenge` optional and not yet passed (W-7.5/Phase 8 hooks). **Orchestrator correctives:** removed 3 unused symbols (TS6133/6196), lint `let maxExtent`→`const`, `findWeakestReason` now falls through to band when a confirmed grade reason yields no sentence. Design locks verified by grep (no shadow/radius/gradient, no `console.*`, no comments, no `Math.random`/`Date.now`). Gates independently run: typecheck 0, lint 0, **598 pass / 6 skips** (+29; 6th = degradedBoot port skip with server up), build PASS, **e2e 4/4** fresh dist (server restarted), secret scan **0 hits**. Known limitations: `onOpenLedger` returns to the S1 ledger view without row-level highlight (LedgerPanel has no filter prop — deferred); `state.graph` display-only, never re-ingested. |
 | W-7.5 | Replace route + Replace panel + revisions | EDIT: `src/server/orchestrator/{measure.ts (+203/−95 — faithful extraction of `projectRunGraph`/`projectCompositionsNode` + exported helpers), orchestrator.ts (+47 `replaceComponent`), types.ts}`, `src/server/routes.ts` (real handler), `src/shared/{routes,run}.ts` (`compositionKey` + `runRevisionSchema`), `src/web/{lib/api.ts, routes/RunRoute.tsx, screens/s3/ConnectionsPanel.tsx, screens/s3/s3.css (+242)}`, `tests/{api/runs,routes}.test.ts`; NEW: `src/server/orchestrator/replace.ts`, `src/web/screens/s3/{ReplacePanel.tsx, replaceModel.ts}`, `tests/orchestrator/replace.test.ts` (19), `tests/web/replaceModel.test.ts` (14) | **DONE 2026-10-13 — 5th spawn cancelled after writing 17 files with zero tests and zero gates run; orchestrator adopted, reviewed line-by-line, fixed 4 defects, ran the full ladder, committed `bd1cb20`** (contract `ee3bddd`). Mechanism: `applyReplacement` — state guards (resumable/stopped/failed refuse; revision cap 100) → XOR candidate/custom → role preservation → `before` = keyed composition when `compositionKey` present (normalized delimiters, honest refusals) else first ranked containing target → pool path: swapped set must exist in ranked (refuse, never guess), zero Qloo, state untouched → custom path: cap→brief→neighborhood→budget guards then 4 probes → new component with full provenance → idf/graph/family/ranking/prior rebuild → after must be ranked → mini stress (ablation over `stressPool` + rival sweep over `stressRanked`, verdict Survived/Revised) → revision appended. **§17 correctives:** family size pinned to stored `family.size` (D-7.17 — spawn's `min(5, poolAfter)` produced one size-4 composition so no size-3 swap ever matched, proven by `tmp/debug-replace.ts` reproduction); triangulation re-derived from `graphAfter` with stored probes (D-7.18); cap guard moved ahead of brief/neighborhoods (spawn's own test expected it); `compositionKey` threaded schema→server→model→panel→ConnectionsPanel→RunRoute (D-7.11). Gates independently re-run: typecheck 0, lint 0, **631 pass / 5 skips** (+33), build PASS, **e2e 4/4** fresh dist, secret scan **0 hits**. Known limitation: a replace issued after an S4 challenge would overwrite `stressReport` (D-7.16 Phase 8 note). |
+| W-8.1 | Constraint/format engine (deterministic kernel) | NEW: `src/server/engine/{formats,fit}.ts` (413 + 343), `tests/engine/formats.test.ts` (159); EDIT: `src/server/engine/index.ts` (barrel +25) | **DONE 2026-10-15 — committed `0c8ba6f`.** typecheck 0, lint 0; 12 tests (keyword/role format resolution, 85% circulation rule, constraint-chip parsing, downshift-before-drop with Anchor preserved, honest infeasibility reasons). Every export carries the `[Zorq heuristic]` marker per contract; no orchestrator/route wiring (recompute path lands with W-8.5). |
+| W-8.2a | S4 challenge engine [server pass] | NEW: `src/server/orchestrator/challenge.ts` (887), `tests/orchestrator/challenge.test.ts` (22), `tests/api/challenge.test.ts`; EDIT: `src/shared/{run,routes}.ts` (challenge schemas + `challengeReport` on RunState; `attackKindSchema` moved to run.ts as canonical owner), `src/server/orchestrator/{types,orchestrator}.ts` (`challengeRun`), `src/server/routes.ts` (real handler), `measure.ts` (+`projectExemplars` moved from replace.ts), `replace.ts` (export `sameMembers`/`guardMutationState`, generic mutation wording), `tests/routes.test.ts` (strict `{run, report}` fixtures), `tests/support/judgePipeline.ts` (+bridge operation) | **DONE 2026-10-15 — committed `f786607`.** typecheck 0, lint 0, build PASS; **677 pass / 5 skips** (+23). Mechanism: guards (status/compositions/ranked) → bounded LLM attack-order turn (fence-stripped zod parse, dedupe) or diagnostic fallback → up to 3 stress rounds × 5 attacks in `attackOrder` (ablation re-measures rest subsets against size-n−1 coherences; substitution same-role pool alts; bridge ≤3 evidence-linked probes with budget/outage/empty honesty; catchment deterministic city re-measure; rival rank-margin + flip), best-gain swap/drop mutation (ε=1e-6, swap preferred on tie) applied ≤2 → `resolveVerdict` (no change → Survived, member shared with prior leader → Revised, else Replaced + `verdictRival`) → `gradeCap` B on any "not completed" → `runStateSchema.parse({…state, challengeReport})` persisted via write-through ledger + `saveRunState` + `emitState`. Ledger events: `challenge.order(.fallback)`, `challenge.stress`, `challenge.mutation`, `challenge.verdict`, `challenge.bridge_probe`. |
 
 **Orchestrator integration review (AGENTS §17):** both diffs inspected; W-1.1 touched only `ARCHITECTURE.md`;
 W-1.2 touched only temp-dir files (repo `git status` shows no spike artifacts); key never echoed; worker claims
@@ -960,6 +978,36 @@ returned the pre-persist Prior object (unfrozen, separate object from the persis
 (`62f29af`).
 
 ## Verified Tests / Evidence
+
+### Phase 8 — W-8.1 format/fit + W-8.2a challenge engine (2026-10-15, commits `0c8ba6f`, `f786607`)
+
+- **Orchestrator gate run (post-review):** typecheck 0 (both tsconfigs), lint 0
+  (`npx eslint .`), Vitest **677 pass / 5 gated-live skips** (682 total — +12 W-8.1,
+  +23 W-8.2a over the 642 Phase 7 close), **build PASS** (vite 170 modules, dist/web
+  regenerated). e2e + fixture-browser walk deferred to the Phase 8 exit gate (no web
+  surface changed in W-8.1/W-8.2a; the e2e contract requires challenge→blueprint→
+  without-Qloo, which needs W-8.3/W-8.4). `git diff --check` clean (LF/CRLF notices
+  only, repo-wide pre-existing).
+- **New coverage:** `tests/engine/formats.test.ts` (12 — format resolution, 85%
+  circulation rule, chip parsing, downshift-before-drop with Anchor preserved,
+  infeasibility honesty); `tests/orchestrator/challenge.test.ts` (22 — `resolveVerdict`
+  3-way incl. Replaced; Survived fixture: diagnostic order, evidence-linked bridge,
+  exact reason copy; swap-then-drop fixture stops at the 2-mutation bound with rounds 3;
+  drop-only fixture rounds 2 (unique roles block substitution); deterministic double-run
+  via canonical report + ledger labels (evidence ids stripped — `randomUUID`);
+  bridge outage / empty-entities / budget-exhaustion honesty with **zero** gateway
+  calls at budget 0; LLM order fenced-JSON success, partial-order padding, garbage and
+  throw fallbacks each emitting `challenge.order_fallback`; focus-first ordering;
+  status/pool/compositions/ranked guards; orchestrator-level RunNotFound, persisted
+  `challengeReport` round-trip, RunBusyError via gated llm); `tests/api/challenge.test.ts`
+  (1 — POST challenge over the real judge fixture server: strict `{run, report}` schema
+  validation, attacks in spec order, `attackOrderSource` diagnostic, gradeCap A,
+  prior/compositions/graph/candidatePool byte-equal after challenge, 1–3 probe evidence
+  delta, ledger labels, persisted re-read via GET). `tests/routes.test.ts` challenge
+  fixtures upgraded to the strict contract (invalid fixture proves verdict `Shattered`
+  and gradeCap `S` rejection); `judgePipeline` fixture gateway gained a `bridge`
+  operation (Sonic Youth / Yo La Tengo entities) so the HTTP path can reach cap A —
+  same extension pattern as its existing search/insights branches.
 
 ### Phase 7 — W-7.5 Replace + revisions (2026-10-13, commit `bd1cb20`)
 
@@ -1367,6 +1415,13 @@ with both mini-challenge attack rows after a real in-browser replace.
 | D-7.16 | **Mini challenge pass persisted as `stressReport` with `kind:"mini"` (ablation verdict over the run's `stressPool` + rival sweep over `stressRanked`, Survived/Revised). Phase 8 integration note: S4 must distinguish `kind==="mini"` from a full challenge report, and a post-S4 replace would overwrite an S4-authored `stressReport` — resolve in Phase 8.** | ProductSpec line 233 requires the mini pass after a replace; `stressReport` was the existing slot and marking the kind is the honest way to keep provenance without inventing a new field before S4 exists. Overwrite risk recorded now, not discovered later. | Yes — Phase 8 may move mini reports to a dedicated slot. |
 | D-7.17 | **Custom-path family size = `min(stored family.size, poolAfter.length)` (never `min(5, poolAfter)`): after pool growth the family must keep the run's measured size so the swapped composition stays comparable.** | Orchestrator §17 corrective: the spawn sized the rebuilt family at 5, producing ONE size-4 composition while the swap is size 3 — nothing size-3 was ever ranked, so every custom replace failed with "swapped composition is not ranked" (reproduced in `tmp/debug-replace.ts`). Pinning to the stored size preserves the family contract (D-7.6) across pool growth. | No (corrective restoring family continuity). |
 | D-7.18 | **Custom path re-derives triangulation route1 from the rebuilt graph (stored probes `resultCount`/`focalInTopHalf` carried forward) and updates ledger wording to say triangulation is re-derived; never passes stale route1 values through.** | The spawn copied the old graph's route1 (a pre-pool-growth value) onto entries whose edges had just been recomputed — numeric truth must come from the engine's current graph (AGENTS §13), and probes are independent of the graph so they legitimately carry forward. Ledger copy follows the actual behavior. | No (invariant). |
+| D-8.1 | **D-7.16 FINAL RESOLUTION: full S4 challenge reports persist to a typed `runStateSchema.challengeReport` (`kind:"challenge"`); `stressReport` stays `z.unknown()` and keeps owning the replace mini pass.** | Zod strips undeclared keys, so the report must be a declared field to survive parse/rehydrate/SSE; a dedicated field is the recorded promise that a post-S4 replace can no longer clobber the S4 verdict, and neither report masquerades as the other's shape. Smallest reversible schema change that makes both artifacts durable. | Yes — merge slots only if a higher-order source demands it. |
+| D-8.2 | **Catchment attack = deterministic city re-measure (`computeIdf` → `buildGraph` → `measureComposition` over stored city neighborhoods), zero new Qloo calls; Δ ≥ −0.005 (`CATCHMENT_HOLD_EPSILON`) → "holds", else "depends on the site catchment"; no stored neighborhoods or engine throw → status "skipped" (no grade cap).** | The shift-scale mutation re-reads the city baseline the measurement chain already captured — a second heatmap fetch would spend budget re-learning known numbers, and heatmap is not a locked Phase 8 capability (AGENTS §2 no-invention). Epsilon keeps float noise from flipping the verdict; skipped is an honest evidence state. | Yes — replace with a real heatmap probe only if a higher-order source locks that capability. |
+| D-8.3 | **Bridge-insertion mutation operator and the production Replaced path deferred to W-8.2b (shift-scale operator deferred with it).** | Replaced requires rebuilding idf/graph/family/ranking/prior after inserting a bridge member; that rebuild block is currently inline in `replace.ts` and must first be extracted to one canonical owner (existing-file-first, no duplicate mutation engine). Verdict logic and Replaced semantics are already implemented and unit-proven via fixtures. | Yes — W-8.2b is the recorded next action. |
+| D-8.4 | **`rounds` counts stress/attack passes (1–3); the autonomy cap is `mutations ≤ 2` (schema mutation `round` 1..3).** | The contract's stop rule (leader survives AND no mutation gains > ε) can legitimately need a third verification pass after the second mutation; the spec-locked bound is on mutation rounds, so the report counts passes honestly instead of capping fieldwork at 2. | No (the ≤2 mutation bound is spec-locked). |
+| D-8.5 | **`BRIDGE_PROBE_LIMIT = 3` bridge probes per challenge run; budget-exhausted or thrown probe → attack row "not completed" + reason, `challenge.bridge_probe` failed-call ledger event, grade capped at B, and no evidence record; success → evidence via `observationEvent` + `createEvidenceRecord` + provenance + `projectExemplars`.** | The failed-probe rule needs a concrete per-run bound; 3 keeps challenge inside the 180/run target even under a 3-round loop (tested: loop stops calling the gateway once the limit is hit). Never fabricating evidence on failure keeps the UI claim → Evidence ID → ledger chain intact. | Yes — tune only from measured budget evidence (AGENTS §13). |
+| D-8.6 | **Attack order = bounded non-essential LLM turn (`challenge.attack_order`, ≤300 output tokens) with code-fence stripping + zod enum parse + dedupe; unusable output or thrown LLM → `challenge.order_fallback` compute event + deterministic diagnostic order (weakest link < 0.35 → bridge first, else rivalFlips non-empty → rival first, remainder spec order); report carries `attackOrderSource` = "llm" or "diagnostic" and `attacks[]` is always sorted to spec order.** | The spec assigns emphasis choice to the agent but forbids fabricated transcripts; a labeled fallback keeps the agent's role real without letting garbage text steer the run, the source field makes any substitution judge-visible, and sorted attacks let blueprint/UI parse a stable shape regardless of execution order. | Yes — improve parsing only; never remove the fallback or the label. |
+| D-8.7 | **Challenge response shape = `{run: runStateSchema, report: challengeReportSchema}`, replacing the placeholder `{runId, status:"running", stress}`; the response `run` carries no `evidence` projection — GET /api/runs/:id remains the single projecting read (B-10 posture).** | Challenge is synchronous like replace (worst case = 3 local re-measures + ≤3 bridge probes); the "running" status was placeholder text. Evidence rows live in the store and are projected only by GET, so the mutation endpoints share one honest contract instead of each re-implementing projection. | Yes — revisit with B-10 unification. |
 
 ## Deviations from contract
 
@@ -1461,29 +1516,26 @@ with both mini-challenge attack rows after a real in-browser replace.
 
 ## Last Verified Commit
 
-`1acb896` — *test: add the judge fixture pipeline and chain API coverage.*
-Preceded by `0d9344b` (weakest-link success line), `b1f276e` (evidence slot + entity
-names + typed weakest-link), `bd1cb20` (W-7.5 Replace), `cf23d4a` (W-7.5 state docs),
-`3591f75` (W-7.4 S3 graph), `f8717d7` (W-7.3 S2 workspace), `7180387` (W-7.2 measurement
-chain), `99b53bd` (W-7.1), `ee3bddd` (Phase 7 contract). Gates green on the tree at
-sign-off: typecheck, lint, **642 pass / 5 gated-live skips**, build PASS, **e2e 8/8**,
-`dist/web` secret scan **0 hits**, fixture-browser walk **zero console errors**.
-Docs commit (this file) lands the Phase 7 close-out. Push target:
-**https://github.com/louji2308/zorq** (`main`, PUBLIC, MIT; pushed this session on
-explicit user request).
+`f786607` — *feat: add the S4 challenge engine with five attack families.*
+Preceded by `0c8ba6f` (W-8.1 format library + constraint-fit engine), `c81bfbb`
+(Phase 8 contract), `1acb896` (judge fixture pipeline). Gates green on the tree at
+sign-off: typecheck 0, lint 0, **677 pass / 5 gated-live skips**, **build PASS**.
+e2e + fixture-browser walk deferred to the Phase 8 exit gate (no web surface in this
+increment; full-chain e2e contract needs W-8.3/W-8.4). Docs commit (this file) records
+W-8.1 + W-8.2a. Push target: **https://github.com/louji2308/zorq** (`main`, PUBLIC,
+MIT; push on explicit user request).
 
 ## Next Highest-Value Action
 
-**Phase 8 boundary + contract** (Plan lines 734+, S4/S5: Challenge, Constraint Fit &
-Blueprint). Highest-value bottleneck: the S4/S5 judge path — challenge engine,
-constraint fit, evidence-bound Place Blueprint, Without-Qloo comparison — is still
-placeholder-only behind the real S1–S7 pipeline that Phases 6–7 built. Before any
-implementation: re-read all 7 ProjectSpec sources + AGENTS.md (boundary refresh),
-rebuild the current-state model (including the B-09/B-10 pre-work: decide the
-evidence-projection unification posture and the FD-684 ledger-reload question), write
-the Phase 8 contract, then decompose. Spawn channel 5/5 cancelled → orchestrator-direct
-(D-7.7 lineage). Parallel user-side: **top up DeepSeek (B-02)** → one real browser
-judge pass closes Phase 6's two open boxes. Deadline: Oct 30 2026, internal freeze Oct 28.
+**W-8.2b — bridge insertion + the production Replaced path.** Extract `replace.ts`'s
+rebuild block (idf → graph → family → ranking → prior, ~lines 514–592) into one shared
+canonical owner, implement the bridge-insertion mutation operator against it, and prove
+Replaced end-to-end (mutated leader leaves the ranked family → `verdictRival` recorded
+by the real path, not only fixtures). Sequenced because W-8.3 Blueprint consumes the
+grade cap, risks, and verdict feed from a complete W-8.2. Then W-8.3 → W-8.4 → W-8.5 →
+Phase 8 exit gate (typecheck/lint/unit/build/e2e/secret scan/browser walk). Parallel
+user-side: **top up DeepSeek (B-02)** → one real browser judge pass. Deadline:
+Oct 30 2026, internal freeze Oct 28.
 
 ## Phase 7 Exit-Gate Status (PASSED 2026-10-15 — one escalated deviation, B-09)
 
