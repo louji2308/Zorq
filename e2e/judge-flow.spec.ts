@@ -1,7 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
 import {
+  JUDGE_ATTACK_ORDER,
+  JUDGE_COMPOSE_TITLE,
+  JUDGE_INVENTED_CITATION,
+  judgeChallengeAndCompose,
   startJudgeFixtureServer,
-  type JudgeFixtureServer
+  type JudgeFixtureServer,
+  type JudgeLlmOptions
 } from "../tests/support/judgePipeline.js";
 
 interface ErrorGuard {
@@ -22,8 +27,11 @@ function attachErrorGuard(page: Page): ErrorGuard {
   return guard;
 }
 
-async function withFixture(run: (server: JudgeFixtureServer) => Promise<void>): Promise<void> {
-  const server = await startJudgeFixtureServer({ nodeEnv: "production" });
+async function withFixture(
+  run: (server: JudgeFixtureServer) => Promise<void>,
+  options: JudgeLlmOptions = {}
+): Promise<void> {
+  const server = await startJudgeFixtureServer({ nodeEnv: "production", ...options });
   try {
     await run(server);
   } finally {
@@ -178,6 +186,123 @@ test.describe("narrow viewport", () => {
       expect(guard.pageErrors).toEqual([]);
     });
   });
+});
+
+test("S4 challenge runs five attacks and reports the agent's order without inventing a verdict", async ({
+  page
+}) => {
+  const guard = attachErrorGuard(page);
+  await withFixture(
+    async (server) => {
+      await gotoRun(page, server);
+      await page.getByRole("button", { name: "Challenge", exact: true }).click();
+
+      const banner = page.locator(".s4-verdict-word");
+      await expect(banner).toHaveText("Can the leader be broken?");
+      await expect(page.locator(".s4-attack-list li.s4-attack")).toHaveCount(0);
+      await expect(page.locator(".s4-attacks .s4-empty")).toBeVisible();
+
+      await page.getByRole("button", { name: "Challenge the plan", exact: true }).click();
+      await expect(page.locator(".s4-verdict-word")).not.toHaveText("Can the leader be broken?");
+      await expect(banner).not.toHaveText("Can the leader be broken?");
+
+      const rows = page.locator(".s4-attack-list li.s4-attack");
+      await expect(rows).toHaveCount(5);
+
+      const names = await page.locator(".s4-attack-name").allInnerTexts();
+      expect(new Set(names).size).toBe(5);
+      await expect(rows.first()).toHaveClass(/is-(measured|skipped|not-completed)/);
+      await expect(page.locator(".s4-banner-meta")).toContainText("chosen by the agent");
+
+      const rendered = await page.locator("body").innerText();
+      expectHonestRenderedText(rendered);
+      expect(rendered).toContain(JUDGE_ATTACK_ORDER[0]);
+
+      expect(guard.consoleErrors).toEqual([]);
+      expect(guard.pageErrors).toEqual([]);
+    },
+    {
+      labelLlmResponses: {
+        "challenge.attack_order": [judgeChallengeAndCompose],
+        "blueprint:compose": [judgeChallengeAndCompose]
+      }
+    }
+  );
+});
+
+test("S5 blueprint cites stored evidence, drops the invented id, and the share view is read-only", async ({
+  page,
+  browser
+}) => {
+  const guard = attachErrorGuard(page);
+  await withFixture(
+    async (server) => {
+      await gotoRun(page, server);
+      await page.getByRole("button", { name: "Challenge", exact: true }).click();
+      await page.getByRole("button", { name: "Challenge the plan", exact: true }).click();
+      await expect(page.locator(".s4-verdict-word")).toHaveText("Revised");
+
+      await page.getByRole("button", { name: "Blueprint", exact: true }).click();
+      await expect(page.locator('section[aria-label="Place Blueprint"]')).toBeVisible();
+
+      await expect(page.locator(".s5-title")).toHaveText(JUDGE_COMPOSE_TITLE);
+      await expect(page.locator(".s5-source-pill")).toHaveText("LLM");
+
+      const rationale = page.locator(".s5-rationale");
+      await expect(rationale).toContainText("The corner plan holds a micro-screening anchor");
+      await expect(rationale).not.toContainText(JUDGE_INVENTED_CITATION);
+      await expect(rationale).not.toContainText(JUDGE_INVENTED_CITATION.replace("ev-", ""));
+
+      const refs = page.locator(".s5-rationale sup.s5-sup");
+      expect(await refs.count()).toBeGreaterThanOrEqual(1);
+
+      const receipts = page.locator(".s5-receipt-list li");
+      expect(await receipts.count()).toBeGreaterThan(0);
+
+      await expect(page.locator(".s5-grade-square")).toHaveAttribute("aria-label", /^Evidence grade [A-C]$/);
+      await expect(page.locator(".s5-method-link")).toHaveAttribute("href", "/method");
+
+      await page.getByRole("button", { name: "Without Qloo", exact: true }).click();
+      const modal = page.locator("#s5-compare-title");
+      await expect(modal).toBeVisible();
+      await expect(page.locator("#s5-compare-title")).toHaveText("Without Qloo");
+      await expect(
+        page.locator('section[aria-label="With no cultural evidence"] h3')
+      ).toHaveText("What the agent would have recommended with no cultural evidence");
+      await page.keyboard.press("Escape");
+
+      await page.getByRole("button", { name: "Share blueprint", exact: true }).click();
+      await expect(page.locator(".s5-share-status")).toContainText("Anyone with the link can read this snapshot.");
+
+      await expect(page.getByRole("button", { name: "Copy as Markdown", exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Print", exact: true })).toBeVisible();
+
+      const snapshot = await server.store.findBlueprintSnapshot(server.runId);
+      expect(snapshot).not.toBeNull();
+      const shareUrl = `${server.baseUrl}/run/${server.runId}/blueprint?share=${snapshot?.shareToken ?? ""}`;
+      expect(shareUrl).toContain("share=");
+
+      const shareContext = await browser.newContext();
+      const sharePage = await shareContext.newPage();
+      await sharePage.goto(shareUrl);
+      await expect(sharePage.locator(".s5-title")).toHaveText(JUDGE_COMPOSE_TITLE);
+      await expect(sharePage.getByRole("button", { name: "Challenge the plan" })).toHaveCount(0);
+      await expect(sharePage.locator(".s1-tab")).toHaveCount(0);
+      await shareContext.close();
+
+      const rendered = await page.locator("body").innerText();
+      expectHonestRenderedText(rendered);
+
+      expect(guard.consoleErrors).toEqual([]);
+      expect(guard.pageErrors).toEqual([]);
+    },
+    {
+      labelLlmResponses: {
+        "challenge.attack_order": [judgeChallengeAndCompose],
+        "blueprint:compose": [judgeChallengeAndCompose]
+      }
+    }
+  );
 });
 
 test("S3 replacement records R1, runs the mini challenge, and shows the revision row", async ({
