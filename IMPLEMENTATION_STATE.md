@@ -10,9 +10,10 @@
 **PHASE 8 — S4/S5: Challenge, Constraint Fit & Blueprint**. Status: **IN PROGRESS —
 boundary reconstruction COMPLETE 2026-10-15; contract written (see `PHASE 8
 CONTRACT`); orchestrator-direct implementation in progress — W-8.1, W-8.2a, W-8.2b,
-W-8.3, W-8.4, W-8.5, W-8.6 committed; next = Phase 8 exit gate** (e2e +
-fixture-browser walk + independent review + clause map; the API-level full chain is
-already proven — see W-8.6). Phase 7 closed 2026-10-15
+W-8.3, W-8.4, W-8.5, W-8.6, and exit-gate e2e (commit `0f3620a`) committed; next =
+fixture-browser walk + independent review + clause map** (the API-level full chain is
+already proven — see W-8.6; the S4/S5 browser paths are now covered — see the
+exit-gate e2e entry under Verified Tests). Phase 7 closed 2026-10-15
 (exit-gate clause map PASSED, see `Phase 7 Exit-Gate Status`; close-out commits
 `b1f276e`, `0d9344b`, `1acb896`, `94dade1`). Phase 7 shipped: W-7.1 `99b53bd`,
 W-7.2 `7180387`, W-7.3 `f8717d7`, W-7.4 `3591f75`, W-7.5 `bd1cb20`, exit-gate work
@@ -830,7 +831,18 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 
 - **PHASE 8 IN PROGRESS (contract `c81bfbb`) — W-8.1 DONE (`0c8ba6f`); W-8.2a DONE
   (`f786607`); W-8.2b DONE (`6903c25`); W-8.3 DONE (`ff54a0d`); W-8.4 DONE
-  (`99510fc`); W-8.5 DONE (`424cf76`); W-8.6 DONE (`cce7b87`).** W-8.6 was the
+  (`99510fc`); W-8.5 DONE (`424cf76`); W-8.6 DONE (`cce7b87`). Exit-gate e2e DONE
+  (`0f3620a`).** The exit-gate e2e added browser proof for the two Phase 8 surfaces:
+  the S4 test drives the real challenge click (pre-verdict question → five attack rows
+  with distinct names and a real state class → `chosen by the agent` banner → order
+  starts with `JUDGE_ATTACK_ORDER[0]`), and the S5 test drives the blueprint reading
+  screen (scripted title, LLM source pill, invented citation absent from the rendered
+  rationale, receipt superscripts non-empty, honest grade label, `/method` link), the
+  Without-Qloo compare modal (`Without Qloo` heading + `With no cultural evidence`
+  column, Escape closes), and the share route read-only in a fresh context. Two of my
+  own assertions were written wrong and corrected from evidence: the compare heading is
+  the literal `Without Qloo`, and Share only writes to the clipboard — the share view
+  is reached from the persisted `findBlueprintSnapshot().shareToken`. W-8.6 was the
   API-level full chain: `fakeLlm` gained a per-label fallback queue (positional stays
   authoritative, so no existing call-ordered test moved — proven by re-running
   `challenge.test.ts`, which fails if the label queue takes precedence), the fixture
@@ -1036,6 +1048,48 @@ returned the pre-persist Prior object (unfrozen, separate object from the persis
 (`62f29af`).
 
 ## Verified Tests / Evidence
+
+### Phase 8 — exit-gate e2e: S4 + S5 browser coverage (2026-10-16, commit `0f3620a`)
+
+- **Orchestrator gate run:** typecheck 0 (both tsconfigs), lint 0 (`npx eslint .`),
+  Vitest **742 pass / 5 gated-live skips** (unchanged from the W-8.6 tree), Playwright
+  **10 pass** (6 judge-flow + 4 smoke), **build PASS**. `git diff --check` clean; diff
+  secret scan clean (one `shareToken` local-name hit in my own assertion, no key
+  material).
+- **New coverage — `e2e/judge-flow.spec.ts`, S4 test:** pre-challenge banner reads
+  `Can the leader be broken?`, the attack list is empty and the `.s4-empty` placeholder
+  is visible; after the click the banner changes, five `.s4-attack` rows render with
+  five distinct `.s4-attack-name` values, the first row carries a real
+  `is-(measured|skipped|not-completed)` state class, `.s4-banner-meta` records
+  `chosen by the agent` (the `attackOrderSource === "llm"` path), the rendered order
+  starts with `JUDGE_ATTACK_ORDER[0]`, and the honest-text guard passes.
+- **New coverage — S5 test:** blueprint title equals `JUDGE_COMPOSE_TITLE`, source pill
+  reads `LLM`, the rationale carries the scripted sentence, the invented citation
+  `JUDGE_INVENTED_CITATION` (and its `ev-`-stripped stem) is **absent** from the
+  rendered rationale, `.s5-rationale sup.s5-sup` refs and `.s5-receipt-list li`
+  receipts are non-empty, the grade square has an honest A/B/C `aria-label` and
+  `.s5-method-link` points at `/method`. The Without-Qloo modal opens with heading
+  `Without Qloo` and the `With no cultural evidence` column, then closes on Escape.
+  A fresh browser context loads the share route read-only (title renders, no
+  `Challenge the plan` button, no `.s1-tab` nav).
+- **Two assertions I wrote wrong, found by evidence not inference:** (1) I first
+  asserted the compare modal contained the prose `Without Qloo comparison` — the real
+  heading is the literal `Without Qloo` (`CompareModal.tsx:44`) and the column is
+  labelled `With no cultural evidence`. (2) I first read the share URL from
+  `window.location.href` after clicking Share — wrong: `Share blueprint` only writes
+  `blueprint.shareUrl` to the **clipboard** (`BlueprintPanel.tsx:86`) and never
+  rewrites the route. The share view is now reached from the token the server actually
+  persisted (`store.findBlueprintSnapshot(runId).shareToken`), which is the real read
+  path (`findBlueprintSnapshotByShare`).
+- **Fixture plumbing:** `withFixture` in the spec gained an optional `JudgeLlmOptions`
+  second argument, so the two new tests opt into `labelLlmResponses` for
+  `challenge.attack_order` and `blueprint:compose` while every existing test keeps the
+  default four-turn positional fixture untouched.
+- **Order-dependence note (not a defect):** during the first full-suite run, the
+  pre-existing `S3 replacement records R1` test failed with an empty
+  `.s3-replace-attack-kind` list, then passed both in isolation and on the subsequent
+  full run. My diff touches only this spec file (adding two tests) and the S3 failure
+  mode is unrelated to the S4/S5 paths I added; recorded as observed, not diagnosed.
 
 ### Phase 8 — W-8.6 S4/S5 full-chain contract test (2026-10-16, commit `cce7b87`)
 
@@ -1783,34 +1837,37 @@ with both mini-challenge attack rows after a real in-browser replace.
 
 ## Last Verified Commit
 
-`cce7b87` — *test: script the judge fixture turns by label.*
-Preceded by `424cf76` (feat: S4 challenge view, S5 blueprint, Without-Qloo compare),
-`f02f6b9` (docs: W-8.4 + D-8.15), `99510fc` (W-8.4 Without-Qloo polish),
-`02093c5` (docs: W-8.3 + D-8.10…D-8.14), `ff54a0d` (W-8.3 Place
-Blueprint + share snapshots), `b938cbe` (docs: W-8.2b), `6903c25` (W-8.2b bridge
-insertion + rebuild chain), `f3f90a4` (docs: W-8.1 + W-8.2a), `f786607` (W-8.2a
-challenge engine), `0c8ba6f` (W-8.1 format library + constraint-fit engine),
+`0f3620a` — *test: cover S4 challenge and S5 blueprint end to end.*
+Preceded by `7893e56` (docs: W-8.6 + D-8.17), `cce7b87` (test: script the judge
+fixture turns by label), `424cf76` (feat: S4 challenge view, S5 blueprint,
+Without-Qloo compare), `f02f6b9` (docs: W-8.4 + D-8.15), `99510fc` (W-8.4
+Without-Qloo polish), `02093c5` (docs: W-8.3 + D-8.10…D-8.14), `ff54a0d` (W-8.3
+Place Blueprint + share snapshots), `b938cbe` (docs: W-8.2b), `6903c25` (W-8.2b
+bridge insertion + rebuild chain), `f3f90a4` (docs: W-8.1 + W-8.2a), `f786607`
+(W-8.2a challenge engine), `0c8ba6f` (W-8.1 format library + constraint-fit engine),
 `c81bfbb` (Phase 8 contract).
 Gates green on the tree at sign-off: typecheck 0, lint 0, **742 pass / 5 gated-live
-skips**, **build PASS**; `git diff --check` clean (LF/CRLF notices only), diff secret
-scan clean. **No production source changed in this commit** — `src/` is byte-identical
-to `424cf76`; the diff is confined to three test files. e2e + fixture-browser walk
-still open (next). Docs commit (this file) records W-8.6.
+skips**, **Playwright 10 pass** (6 judge-flow + 4 smoke), **build PASS**;
+`git diff --check` clean, diff secret scan clean (one `shareToken` local-name hit, no
+key material). **No production source changed in this commit** — the diff is confined
+to `e2e/judge-flow.spec.ts` (+128/−3). Remaining exit-gate work: fixture-browser walk,
+independent review, and the clause map (this docs commit records the e2e evidence).
 Push target: **https://github.com/louji2308/zorq** (`main`, PUBLIC, MIT; push on
 explicit user request).
 
 ## Next Highest-Value Action
 
-**Playwright e2e + fixture-browser walk (in progress — contract test landed, UI path
-not yet driven).** The API-level chain is now proven (`cce7b87`: challenge order by
-label, blueprint narrative from the real compose turn, citation strip-unknown against
-stored evidence). What remains is the **browser** proof over the W-8.5 UI: S4
-Challenge renders the 5 attacks in `JUDGE_ATTACK_ORDER` order with the observed
-statuses; S5 renders the LLM title, receipts for the one real citation, and omits the
-invented one; Without-Qloo compare; and the fresh-context read-only share view.
-Then the clause-by-clause proof map vs Plan 734–808 closes the phase. Parallel
-user-side: **top up DeepSeek (B-02)** → one real browser judge pass. Deadline:
-Oct 30 2026, internal freeze Oct 28.
+**Fixture-browser walk (chrome-devtools) over the S4/S5 surfaces, then the independent
+review and the clause map.** The browser proof landed at `0f3620a` (S4 five attacks +
+agent-order banner; S5 LLM title, receipts, invented citation omitted, Without-Qloo
+compare modal, read-only share route in a fresh context). A first full-suite run
+observed a failure in the pre-existing `S3 replacement records R1` test that passed in
+isolation and on the immediate re-run; recorded as order-dependent observation, not
+diagnosed. Remaining for the gate: fixture-browser walk (S4 right column, S5 reading
+screen, compare modal, tab underline), independent review of the Phase 8 diffs
+(fallback: recorded self-review), then the clause-by-clause proof map vs Plan 734–808
+closes the phase. Parallel user-side: **top up DeepSeek (B-02)** → one real browser
+judge pass. Deadline: Oct 30 2026, internal freeze Oct 28.
 
 ## Phase 7 Exit-Gate Status (PASSED 2026-10-15 — one escalated deviation, B-09)
 
