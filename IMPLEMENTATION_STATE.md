@@ -10,7 +10,9 @@
 **PHASE 8 — S4/S5: Challenge, Constraint Fit & Blueprint**. Status: **IN PROGRESS —
 boundary reconstruction COMPLETE 2026-10-15; contract written (see `PHASE 8
 CONTRACT`); orchestrator-direct implementation in progress — W-8.1, W-8.2a, W-8.2b,
-W-8.3, W-8.4, W-8.5 committed; next = Phase 8 exit gate**. Phase 7 closed 2026-10-15
+W-8.3, W-8.4, W-8.5, W-8.6 committed; next = Phase 8 exit gate** (e2e +
+fixture-browser walk + independent review + clause map; the API-level full chain is
+already proven — see W-8.6). Phase 7 closed 2026-10-15
 (exit-gate clause map PASSED, see `Phase 7 Exit-Gate Status`; close-out commits
 `b1f276e`, `0d9344b`, `1acb896`, `94dade1`). Phase 7 shipped: W-7.1 `99b53bd`,
 W-7.2 `7180387`, W-7.3 `f8717d7`, W-7.4 `3591f75`, W-7.5 `bd1cb20`, exit-gate work
@@ -828,7 +830,14 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 
 - **PHASE 8 IN PROGRESS (contract `c81bfbb`) — W-8.1 DONE (`0c8ba6f`); W-8.2a DONE
   (`f786607`); W-8.2b DONE (`6903c25`); W-8.3 DONE (`ff54a0d`); W-8.4 DONE
-  (`99510fc`); W-8.5 DONE (`424cf76`).** Phase boundary
+  (`99510fc`); W-8.5 DONE (`424cf76`); W-8.6 DONE (`cce7b87`).** W-8.6 was the
+  API-level full chain: `fakeLlm` gained a per-label fallback queue (positional stays
+  authoritative, so no existing call-ordered test moved — proven by re-running
+  `challenge.test.ts`, which fails if the label queue takes precedence), the fixture
+  scripts challenge order + blueprint narrative by label, and the chain test asserts
+  `attackOrderSource "llm"`, the observed fixture attack statuses, `narrativeSource
+  "llm"`, and every rationale citation resolving to stored evidence with the invented
+  id stripped. Phase boundary
   reconstructed from all seven ProjectSpec
   sources + AGENTS.md; spawn channel 5/5 cancelled → orchestrator-direct (D-7.7
   lineage). W-8.1: `engine/formats.ts` (FORMAT_TYPES ≈25 types × 2-3 formats, every
@@ -1027,6 +1036,52 @@ returned the pre-persist Prior object (unfrozen, separate object from the persis
 (`62f29af`).
 
 ## Verified Tests / Evidence
+
+### Phase 8 — W-8.6 S4/S5 full-chain contract test (2026-10-16, commit `cce7b87`)
+
+- **Orchestrator gate run:** typecheck 0 (both tsconfigs), lint 0 (`npx eslint .`),
+  Vitest **742 pass / 5 gated-live skips** (747 total — +1 over the W-8.5 tree: the
+  full-chain judge test), **build PASS** (dist/web regenerated). `git diff --check`
+  clean (LF/CRLF notices only); diff secret scan clean (3 files, no key material).
+- **Root cause found by evidence, not inference:** the fake LLM queue is strictly
+  positional (`responses[calls.length]`), so a label-keyed responder placed at index 4
+  was consumed as call #5 and the blueprint compose turn (#6) fell through to the
+  deterministic fallback. The first assertion of `narrativeSource === "llm"` failed with
+  `"deterministic"`, and the ledger event `blueprint.compose_fallback` carried
+  `fake llm: unexpected call #6 ("blueprint:compose") with no scripted response` — that
+  summary was the evidence, not a guess.
+- **Fixture fix (`tests/agent/support/fakes.ts`):** `fakeLlm` gained an optional
+  per-label queue consulted **only after** the positional queue is exhausted, so every
+  existing call-ordered test keeps its exact prior behaviour and a test can script
+  just the post-completion turns without counting the unscripted turns between them.
+  Missing from both queues still throws the original honest error. No label takes
+  precedence over a scripted positional slot.
+- **Verified regression check:** with a fixture-wide label queue wired in, `tests/api/challenge.test.ts`
+  failed with `attackOrderSource "llm"` where it scripts no order and expects
+  `"diagnostic"`. Reverted to opt-in `labelLlmResponses`; that suite is green again.
+- **New coverage — `tests/api/judgeChain.test.ts` (4th test in the file):** POST
+  `/challenge` → 200, `challengeResponseSchema` parse, `attackOrderSource "llm"`, the
+  five kinds in `JUDGE_ATTACK_ORDER` order, and the **observed** fixture statuses
+  (`measured, skipped, skipped, measured, measured` — written from a captured run, not
+  assumed); then GET `/blueprint` → 200, `blueprintResponseSchema` parse,
+  `narrativeSource "llm"` (proves the compose turn now runs for real),
+  `title === JUDGE_COMPOSE_TITLE`, the invented citation `JUDGE_INVENTED_CITATION`
+  absent from the rationale, every remaining `[id]` present in
+  `fixture.store.listEvidence(runId)`, `evidenceGrade.rule` non-empty, honest
+  `gradeCap`/`verdict` enum membership, `methodUrl "/method"`, a share URL carrying
+  `?share=`, and a non-empty `expiresAt`.
+- **Contract assertion that was corrected mid-work:** an early version asserted
+  `document.evidenceGrade.grade === report.gradeCap`. That conflates two distinct
+  fields — `evidenceGrade.grade` is evidence quality (A/B/C) and `gradeCap` is the
+  post-challenge cap (A/B). The chain is the authoritative source; the test now asserts
+  each against its own contract. Both were `B`/`Revised` in the observed run.
+- **Design note (D-8.17):** `fakeLlm`'s label queue is a **test-infra** affordance. It
+  does not weaken production code, does not fabricate Qloo/DeepSeek data, and does not
+  alter any production label. The fixture's compose turn cites one real stored evidence
+  id and one invented id precisely so the strip-unknown rule is proven against a real
+  HTTP response rather than asserted.
+- **Remaining for the exit gate:** e2e (Playwright) over the W-8.5 UI, the
+  fixture-browser walk, the independent review, and the clause map.
 
 ### Phase 8 — W-8.5 S4/S5 UI (2026-10-16, commit `424cf76`)
 
@@ -1728,30 +1783,34 @@ with both mini-challenge attack rows after a real in-browser replace.
 
 ## Last Verified Commit
 
-`424cf76` — *feat: add the S4 challenge view, S5 blueprint, and Without-Qloo
-compare to the run.*
-Preceded by `f02f6b9` (docs: W-8.4 + D-8.15), `99510fc` (W-8.4 Without-Qloo polish),
+`cce7b87` — *test: script the judge fixture turns by label.*
+Preceded by `424cf76` (feat: S4 challenge view, S5 blueprint, Without-Qloo compare),
+`f02f6b9` (docs: W-8.4 + D-8.15), `99510fc` (W-8.4 Without-Qloo polish),
 `02093c5` (docs: W-8.3 + D-8.10…D-8.14), `ff54a0d` (W-8.3 Place
 Blueprint + share snapshots), `b938cbe` (docs: W-8.2b), `6903c25` (W-8.2b bridge
 insertion + rebuild chain), `f3f90a4` (docs: W-8.1 + W-8.2a), `f786607` (W-8.2a
 challenge engine), `0c8ba6f` (W-8.1 format library + constraint-fit engine),
 `c81bfbb` (Phase 8 contract).
-Gates green on the tree at sign-off: typecheck 0, lint 0, **741 pass / 5 gated-live
+Gates green on the tree at sign-off: typecheck 0, lint 0, **742 pass / 5 gated-live
 skips**, **build PASS**; `git diff --check` clean (LF/CRLF notices only), diff secret
-scan clean. e2e + fixture-browser walk deferred to the Phase 8 exit gate — now
-unblocked by W-8.5. Docs commit (this file) records W-8.5 + D-8.16.
+scan clean. **No production source changed in this commit** — `src/` is byte-identical
+to `424cf76`; the diff is confined to three test files. e2e + fixture-browser walk
+still open (next). Docs commit (this file) records W-8.6.
 Push target: **https://github.com/louji2308/zorq** (`main`, PUBLIC, MIT; push on
 explicit user request).
 
 ## Next Highest-Value Action
 
-**Phase 8 exit gate.** Full-gate verification of the whole judge path (Challenge →
-constraint fit → Place Blueprint → Without-Qloo comparison), honest under real
-services: typecheck / lint / unit / build / **e2e + fixture-browser walk** (now
-unblocked — the full-chain contract needs the W-8.5 UI, which has landed) / secret
-scan, then the clause-by-clause proof map vs Plan 734–808. Parallel user-side:
-**top up DeepSeek (B-02)** → one real browser judge pass. Deadline: Oct 30 2026,
-internal freeze Oct 28.
+**Playwright e2e + fixture-browser walk (in progress — contract test landed, UI path
+not yet driven).** The API-level chain is now proven (`cce7b87`: challenge order by
+label, blueprint narrative from the real compose turn, citation strip-unknown against
+stored evidence). What remains is the **browser** proof over the W-8.5 UI: S4
+Challenge renders the 5 attacks in `JUDGE_ATTACK_ORDER` order with the observed
+statuses; S5 renders the LLM title, receipts for the one real citation, and omits the
+invented one; Without-Qloo compare; and the fresh-context read-only share view.
+Then the clause-by-clause proof map vs Plan 734–808 closes the phase. Parallel
+user-side: **top up DeepSeek (B-02)** → one real browser judge pass. Deadline:
+Oct 30 2026, internal freeze Oct 28.
 
 ## Phase 7 Exit-Gate Status (PASSED 2026-10-15 — one escalated deviation, B-09)
 
