@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { replaceResponseSchema, runResponseSchema } from "../../src/shared/index.js";
-import { startJudgeFixtureServer, type JudgeFixtureServer } from "../support/judgePipeline.js";
+import {
+  blueprintResponseSchema,
+  challengeResponseSchema,
+  replaceResponseSchema,
+  runResponseSchema
+} from "../../src/shared/index.js";
+import {
+  JUDGE_ATTACK_ORDER,
+  JUDGE_COMPOSE_TITLE,
+  JUDGE_INVENTED_CITATION,
+  judgeChallengeAndCompose,
+  startJudgeFixtureServer,
+  type JudgeFixtureServer
+} from "../support/judgePipeline.js";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -43,7 +55,7 @@ interface RankedComposition {
   gradeReasons: string[];
 }
 
-describe("Phase 7 judge chain over real HTTP (scripted LLM + fake gateway)", () => {
+describe("Judge chain over real HTTP (scripted LLM + fake gateway)", () => {
   it("serves the edge-inspection chain: measured graph, evidence with ledger links, triangulation, and prior", async () => {
     const { fixture, run } = await createMeasuredRun();
     try {
@@ -229,6 +241,73 @@ describe("Phase 7 judge chain over real HTTP (scripted LLM + fake gateway)", () 
     } finally {
       await first.fixture.close();
       await second.fixture.close();
+    }
+  });
+
+  it("challenges then builds a blueprint whose narrative cites stored evidence and strips the invented id", async () => {
+    const fixture = await startJudgeFixtureServer({
+      labelLlmResponses: {
+        "challenge.attack_order": [judgeChallengeAndCompose],
+        "blueprint:compose": [judgeChallengeAndCompose]
+      }
+    });
+    try {
+      const challengeResponse = await fetch(`${fixture.baseUrl}/api/runs/${fixture.runId}/challenge`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}"
+      });
+      expect(challengeResponse.status).toBe(200);
+      const challengeBody: unknown = await challengeResponse.json();
+      const challenge = challengeResponseSchema.safeParse(challengeBody);
+      expect(challenge.success).toBe(true);
+      if (!challenge.success) {
+        throw new Error("challenge response failed schema validation");
+      }
+      const { report } = challenge.data;
+      expect(report.attackOrderSource).toBe("llm");
+      expect(report.attackOrder).toEqual([...JUDGE_ATTACK_ORDER]);
+      expect(new Set(report.attacks.map((attack) => attack.kind))).toEqual(
+        new Set(["ablation", "substitution", "bridge", "catchment", "rival"])
+      );
+      expect(report.attacks.every((attack) => attack.detail.length > 0)).toBe(true);
+      expect(report.verdict === "Survived" || report.verdict === "Revised" || report.verdict === "Replaced").toBe(
+        true
+      );
+      expect(report.gradeCap === "A" || report.gradeCap === "B").toBe(true);
+      expect(report.attacks.map((attack) => attack.status)).toEqual([
+        "measured",
+        "skipped",
+        "skipped",
+        "measured",
+        "measured"
+      ]);
+
+      const blueprintResponse = await fetch(`${fixture.baseUrl}/api/runs/${fixture.runId}/blueprint`);
+      expect(blueprintResponse.status).toBe(200);
+      const blueprintBody: unknown = await blueprintResponse.json();
+      const blueprint = blueprintResponseSchema.safeParse(blueprintBody);
+      expect(blueprint.success).toBe(true);
+      if (!blueprint.success) {
+        throw new Error("blueprint response failed schema validation");
+      }
+      const { blueprint: document } = blueprint.data;
+      expect(document.narrativeSource).toBe("llm");
+      expect(document.title).toBe(JUDGE_COMPOSE_TITLE);
+      expect(document.rationale).not.toContain(JUDGE_INVENTED_CITATION);
+      const cited = [...document.rationale.matchAll(/\[([^[\]]{1,100})\]/g)].map((match) => match[1] ?? "");
+      expect(cited.length).toBeGreaterThanOrEqual(1);
+      const stored = new Set((await fixture.store.listEvidence(fixture.runId)).map((record) => record.id));
+      for (const id of cited) {
+        expect(stored.has(id)).toBe(true);
+      }
+      expect(document.evidenceGrade.rule.length).toBeGreaterThan(0);
+      expect(document.evidenceGrade.grade === "A" || document.evidenceGrade.grade === "B").toBe(true);
+      expect(document.methodUrl).toBe("/method");
+      expect(document.shareUrl).toContain(`/run/${fixture.runId}/blueprint?share=`);
+      expect(document.expiresAt.length).toBeGreaterThan(0);
+    } finally {
+      await fixture.close();
     }
   });
 });

@@ -2,6 +2,7 @@ import type { Express } from "express";
 import type { Brief } from "../../src/shared/brief.js";
 import { createApp } from "../../src/server/app.js";
 import { loadConfig } from "../../src/server/config.js";
+import { challengeReportSchema } from "../../src/shared/run.js";
 import { createLogger } from "../../src/server/logger.js";
 import { createOrchestrator } from "../../src/server/orchestrator/index.js";
 import { createMemoryStore, type RunStore } from "../../src/server/persistence/index.js";
@@ -26,6 +27,55 @@ export interface JudgeFixtureServer {
 }
 
 export type JudgeLlmResponse = FakeLlmResponse | ((request: LlmCompletionRequest) => FakeLlmResponse);
+
+/** Distinctive order so the e2e can prove `attackOrderSource: "llm"` (Plan 738). */
+export const JUDGE_ATTACK_ORDER = challengeReportSchema.shape.attackOrder.parse([
+  "bridge",
+  "ablation",
+  "substitution",
+  "catchment",
+  "rival"
+]);
+
+export const JUDGE_COMPOSE_TITLE = "The Williamsburg corner plan";
+/** Cited in the fixture narrative to prove the strip-unknown rule live (D-8.11). */
+export const JUDGE_INVENTED_CITATION = "ev-invented-not-real";
+
+function firstAllowedEvidenceId(request: LlmCompletionRequest): string {
+  const user = request.messages.find((message) => message.role === "user");
+  if (typeof user?.content !== "string") {
+    return "";
+  }
+  try {
+    const payload = JSON.parse(user.content) as { allowedEvidenceIds?: unknown };
+    const first = Array.isArray(payload.allowedEvidenceIds) ? payload.allowedEvidenceIds[0] : undefined;
+    return typeof first === "string" ? first : "";
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Answers the two post-completion turns the judge flow needs (S4 challenge order
+ * and S5 narrative). Keyed on the request label, so it survives call-order drift;
+ * any other turn gets an honest refusal rather than a scripted success.
+ */
+export const judgeChallengeAndCompose: JudgeLlmResponse = (request) => {
+  if (request.label === "challenge.attack_order") {
+    return { content: JSON.stringify({ order: [...JUDGE_ATTACK_ORDER] }) };
+  }
+  if (request.label === "blueprint:compose") {
+    const real = firstAllowedEvidenceId(request);
+    const realCitation = real === "" ? "" : `[${real}]`;
+    return {
+      content: JSON.stringify({
+        title: JUDGE_COMPOSE_TITLE,
+        rationale: `${realCitation} The corner plan holds a micro-screening anchor beside a quiet social edge [${JUDGE_INVENTED_CITATION}]; its thinnest audience bridge is the honest weakness to watch.`
+      })
+    };
+  }
+  throw new Error(`judge fixture: no scripted response for label "${request.label}"`);
+};
 
 export const JUDGE_BRIEF: Brief = {
   location: "Williamsburg, Brooklyn, NY",
@@ -575,9 +625,15 @@ async function listen(app: Express): Promise<{ baseUrl: string; close: () => Pro
   };
 }
 
-export async function startJudgeFixtureServer(
-  options: { nodeEnv?: "test" | "production"; extraLlmResponses?: JudgeLlmResponse[] } = {}
-): Promise<JudgeFixtureServer> {
+export interface JudgeLlmOptions {
+  nodeEnv?: "test" | "production";
+  /** Turn order after the four setup turns. Label-keyed turns stay out of this queue. */
+  extraLlmResponses?: JudgeLlmResponse[];
+  /** Turns answered by label only, after the positional queue is exhausted. */
+  labelLlmResponses?: Record<string, JudgeLlmResponse[]>;
+}
+
+export async function startJudgeFixtureServer(options: JudgeLlmOptions = {}): Promise<JudgeFixtureServer> {
   const config = loadConfig({
     NODE_ENV: options.nodeEnv ?? "test",
     APP_BASE_URL: "http://127.0.0.1:3999",
@@ -586,13 +642,8 @@ export async function startJudgeFixtureServer(
   });
   const store = createMemoryStore();
   const hub = createEventHub();
-  const llm = fakeLlm([
-    { content: JUDGE_PRIOR },
-    TURN_ONE,
-    TURN_TWO,
-    FINAL_TURN,
-    ...(options.extraLlmResponses ?? [])
-  ]);
+  const base: FakeLlmResponse[] = [{ content: JUDGE_PRIOR }, TURN_ONE, TURN_TWO, FINAL_TURN];
+  const llm = fakeLlm([...base, ...(options.extraLlmResponses ?? [])], options.labelLlmResponses ?? {});
   const scripted = judgeGateway();
   const orchestrator = createOrchestrator({
     store,

@@ -52,13 +52,32 @@ export interface FakeLlm {
   calls: LlmCompletionRequest[];
 }
 
-export function fakeLlm(responses: Array<FakeLlmResponse | ((request: LlmCompletionRequest) => FakeLlmResponse)>): FakeLlm {
+/**
+ * The positional `responses` queue stays authoritative, so a test that scripts
+ * turns in call order keeps the behaviour it always had. `labelResponses` is
+ * consulted only when the positional queue has no entry left, which lets a test
+ * script a subset of turns without guessing how many unscripted turns the chain
+ * makes in between. Missing from both is an error rather than a silent guess.
+ */
+export function fakeLlm(
+  responses: Array<FakeLlmResponse | ((request: LlmCompletionRequest) => FakeLlmResponse)>,
+  labelResponses: Record<string, Array<FakeLlmResponse | ((request: LlmCompletionRequest) => FakeLlmResponse)>> = {}
+): FakeLlm {
   const calls: LlmCompletionRequest[] = [];
+  const labelCursor: Record<string, number> = {};
   const client: LlmClient = {
     async complete(request: LlmCompletionRequest): Promise<LlmCompletionResult> {
       const index = calls.length;
       calls.push({ ...request, messages: [...request.messages] });
-      const scripted = responses[index];
+      let scripted = responses[index];
+      if (scripted === undefined) {
+        const queued = labelResponses[request.label];
+        if (queued !== undefined) {
+          const cursor = labelCursor[request.label] ?? 0;
+          scripted = queued[cursor];
+          labelCursor[request.label] = cursor + 1;
+        }
+      }
       if (scripted === undefined) {
         throw new Error(`fake llm: unexpected call #${index + 1} ("${request.label}") with no scripted response`);
       }
