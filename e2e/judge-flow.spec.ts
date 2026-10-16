@@ -210,13 +210,29 @@ test("S4 challenge runs five attacks and reports the agent's order without inven
       await expect(rows).toHaveCount(5);
 
       const names = await page.locator(".s4-attack-name").allInnerTexts();
-      expect(new Set(names).size).toBe(5);
+      // The panel renders the five attacks in spec order; the agent's own order
+      // travels in challengeReport (asserted below) and surfaces as the banner
+      // source, not as row order.
+      expect(names).toEqual([
+        "Remove a member",
+        "Substitute a member",
+        "Bridge the weakest link",
+        "Shift the catchment",
+        "Check the rival"
+      ]);
       await expect(rows.first()).toHaveClass(/is-(measured|skipped|not-completed)/);
       await expect(page.locator(".s4-banner-meta")).toContainText("chosen by the agent");
 
+      const response = (await fetch(`${server.baseUrl}/api/runs/${server.runId}`)) as Response;
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as {
+        run?: { challengeReport?: { attackOrder?: string[]; attackOrderSource?: string } | null };
+      };
+      expect(body.run?.challengeReport?.attackOrderSource).toBe("llm");
+      expect(body.run?.challengeReport?.attackOrder).toEqual([...JUDGE_ATTACK_ORDER]);
+
       const rendered = await page.locator("body").innerText();
       expectHonestRenderedText(rendered);
-      expect(rendered).toContain(JUDGE_ATTACK_ORDER[0]);
 
       expect(guard.consoleErrors).toEqual([]);
       expect(guard.pageErrors).toEqual([]);
@@ -269,6 +285,12 @@ test("S5 blueprint cites stored evidence, drops the invented id, and the share v
       await expect(
         page.locator('section[aria-label="With no cultural evidence"] h3')
       ).toHaveText("What the agent would have recommended with no cultural evidence");
+      const priorItems = await page
+        .locator('section[aria-label="With no cultural evidence"] li.s5-modal-item')
+        .allInnerTexts();
+      expect(priorItems).toContain("Devoción");
+      expect(priorItems).not.toContain("thesis");
+      expect(priorItems).not.toContain("members");
       await page.keyboard.press("Escape");
 
       await page.getByRole("button", { name: "Share blueprint", exact: true }).click();
