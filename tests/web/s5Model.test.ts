@@ -120,8 +120,11 @@ function fixtureRun(overrides?: Partial<RunState>): RunState {
     }),
     prior: {
       composition: {
-        anchor: ["micro-cinema"],
-        social: ["late café"]
+        thesis: "A micro-screening anchor beside a quiet social edge",
+        members: [
+          { role: "Anchor", name: "micro-cinema" },
+          { role: "Social", name: "late café" }
+        ]
       },
       generatedAt: "2026-10-11T00:00:00.000Z",
       model: "deepseek-chat",
@@ -261,18 +264,19 @@ describe("buildS5Model", () => {
     );
   });
 
-  it("compare model: polish from the frozen Prior, changed names tagged on both columns", () => {
+  it("compare model: polish from the frozen Prior, members only — never structural keys", () => {
     const model = buildS5Model(fixtureRun(), fixtureBlueprint());
     expect(model?.compare.state).toBe("changed");
     expect(model?.compare.polish).toBe(
       "A late-night cinema bar anchors the block with a quiet social edge."
     );
     expect(model?.compare.priorMembers).toEqual([
-      { name: "anchor", changed: false },
       { name: "micro-cinema", changed: true },
-      { name: "social", changed: false },
       { name: "late café", changed: false }
     ]);
+    const priorLabels = model?.compare.priorMembers.map((member) => member.name) ?? [];
+    expect(priorLabels).not.toContain("thesis");
+    expect(priorLabels).not.toContain("members");
     expect(model?.compare.finalMembers).toEqual([
       { name: "Micro-cinema", changed: true },
       { name: "Late café", changed: false }

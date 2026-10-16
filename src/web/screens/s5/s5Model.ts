@@ -11,8 +11,7 @@
  */
 import type { Blueprint, BlueprintMember, BlueprintReceipt, BlueprintRoleGroup } from "../../../shared/routes.js";
 import type { Brief } from "../../../shared/brief.js";
-import type { RunState } from "../../../shared/run.js";
-import { extractPriorComponents } from "../s1/s1Model.js";
+import { extractPriorMemberEntries, type RunState } from "../../../shared/run.js";
 
 export type S5CompareState = "changed" | "neutral" | "no-prior";
 
@@ -316,9 +315,9 @@ function buildCompare(run: RunState | null, bp: Blueprint): S5CompareModel {
   const priorMembers =
     priorComposition === undefined
       ? []
-      : extractPriorComponents(priorComposition).map((component) => ({
-          name: component.label,
-          changed: changedNames.has(component.label.toLowerCase())
+      : extractPriorMemberEntries(priorComposition).map((entry) => ({
+          name: entry.name,
+          changed: changedNames.has(entry.name.toLowerCase())
         }));
   const finalMembers: S5CompareColumnMember[] = bp.compositionByRole.flatMap((group) =>
     group.members.map((member) => ({

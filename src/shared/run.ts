@@ -80,6 +80,60 @@ export const poolComponentRoles = [
 
 export type PoolComponentRole = (typeof poolComponentRoles)[number];
 
+/**
+ * Canonical prior-member extraction for diffs and comparisons. Only member
+ * entries are returned — structural fields the Prior allows (a `thesis`
+ * string, grouping keys) are never members and must not surface in a member
+ * column, where they would read as manufactured Prior-only entries (Plan 803:
+ * "Do not manufacture divergence"). Moved here from orchestrator/measure.ts so
+ * the web layer can share the one implementation (AGENTS §3).
+ */
+export function extractPriorMemberEntries(composition: unknown): Array<{ role?: string; name: string }> {
+  const entries: Array<{ role?: string; name: string }> = [];
+  const pushEntry = (value: unknown, role?: string): void => {
+    if (typeof value === "string" && value.trim() !== "") {
+      entries.push(role !== undefined ? { role, name: value.trim() } : { name: value.trim() });
+      return;
+    }
+    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+      const record = value as Record<string, unknown>;
+      if (typeof record.name !== "string" || record.name.trim() === "") {
+        return;
+      }
+      const entryRole =
+        typeof record.role === "string" && record.role.trim() !== "" ? record.role.trim() : role;
+      entries.push(entryRole !== undefined ? { role: entryRole, name: record.name.trim() } : { name: record.name.trim() });
+    }
+  };
+  if (Array.isArray(composition)) {
+    for (const item of composition) {
+      pushEntry(item);
+    }
+    return entries;
+  }
+  if (typeof composition === "object" && composition !== null) {
+    const record = composition as Record<string, unknown>;
+    if (Array.isArray(record.members)) {
+      for (const item of record.members) {
+        pushEntry(item);
+      }
+      return entries;
+    }
+    const roleKeys = poolComponentRoles as readonly string[];
+    for (const [key, value] of Object.entries(record)) {
+      const role = roleKeys.includes(key) ? key : undefined;
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          pushEntry(item, role);
+        }
+      } else if (role !== undefined) {
+        pushEntry(value, role);
+      }
+    }
+  }
+  return entries;
+}
+
 export const runRevisionSchema = z.strictObject({
   rev: z.number().int().min(1),
   replacedMember: z.string().trim().min(1).max(200),

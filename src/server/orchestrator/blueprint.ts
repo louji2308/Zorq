@@ -10,6 +10,7 @@ import {
 } from "../../shared/routes.js";
 import {
   componentDisplayName,
+  extractPriorMemberEntries,
   poolComponentRoles,
   type ChallengeLeader,
   type PoolComponent,
@@ -28,7 +29,7 @@ import {
   type FormatChoice
 } from "../engine/index.js";
 import { OrchestratorStateError } from "./errors.js";
-import { computeEvent, extractPriorMemberEntries } from "./measure.js";
+import { computeEvent } from "./measure.js";
 
 export const BLUEPRINT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 

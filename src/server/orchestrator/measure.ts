@@ -11,7 +11,7 @@ import type {
   RunRankedComposition,
   RunState
 } from "../../shared/run.js";
-import { poolComponentRoles } from "../../shared/run.js";
+import { extractPriorMemberEntries } from "../../shared/run.js";
 import { provenanceFromEnvelope } from "../agent/tools.js";
 import type { Ledger, LedgerEntry } from "../agent/ledger.js";
 import {
@@ -377,52 +377,6 @@ async function probeRoute2(
     radius = widened;
   }
   return { resultCount: 0, focalInTopHalf: null };
-}
-
-export function extractPriorMemberEntries(composition: unknown): Array<{ role?: string; name: string }> {
-  const entries: Array<{ role?: string; name: string }> = [];
-  const pushEntry = (value: unknown, role?: string): void => {
-    if (typeof value === "string" && value.trim() !== "") {
-      entries.push(role !== undefined ? { role, name: value.trim() } : { name: value.trim() });
-      return;
-    }
-    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
-      const record = value as Record<string, unknown>;
-      if (typeof record.name !== "string" || record.name.trim() === "") {
-        return;
-      }
-      const entryRole =
-        typeof record.role === "string" && record.role.trim() !== "" ? record.role.trim() : role;
-      entries.push(entryRole !== undefined ? { role: entryRole, name: record.name.trim() } : { name: record.name.trim() });
-    }
-  };
-  if (Array.isArray(composition)) {
-    for (const item of composition) {
-      pushEntry(item);
-    }
-    return entries;
-  }
-  if (typeof composition === "object" && composition !== null) {
-    const record = composition as Record<string, unknown>;
-    if (Array.isArray(record.members)) {
-      for (const item of record.members) {
-        pushEntry(item);
-      }
-      return entries;
-    }
-    const roleKeys = poolComponentRoles as readonly string[];
-    for (const [key, value] of Object.entries(record)) {
-      const role = roleKeys.includes(key) ? key : undefined;
-      if (Array.isArray(value)) {
-        for (const item of value) {
-          pushEntry(item, role);
-        }
-      } else if (role !== undefined) {
-        pushEntry(value, role);
-      }
-    }
-  }
-  return entries;
 }
 
 export function resolvePriorMarker(
