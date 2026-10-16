@@ -1,9 +1,11 @@
 /*
- * Typed same-origin API client for the real Phase 5–7 routes:
+ * Typed same-origin API client for the real Phase 5—8 routes:
  *   POST /api/runs              -> create a Run (201 { run: created run })
  *   GET  /api/runs/:id          -> canonical RunState (200 { run })
  *   POST /api/runs/:id/stop     -> stop a run (200 { run })
  *   POST /api/runs/:id/replace  -> role-preserving replacement (200 ReplaceResponse)
+ *   POST /api/runs/:id/challenge -> S4 challenge pass (200 { run, report })
+ *   GET  /api/runs/:id/blueprint -> Place Blueprint, ?share= optional (200 { blueprint })
  * (GET /api/runs/:id/events is SSE — owned by ./sse.ts, the single stream owner.)
  *
  * Contract:
@@ -26,9 +28,14 @@ import {
   type ApiErrorCode
 } from "../../shared/errors.js";
 import {
+  blueprintResponseSchema,
+  challengeResponseSchema,
   postRunsResponseSchema,
   replaceResponseSchema,
   runResponseSchema,
+  type Blueprint,
+  type ChallengeRequest,
+  type ChallengeResponse,
   type PostRunsResponse,
   type ReplaceRequest,
   type ReplaceResponse
@@ -215,4 +222,53 @@ export async function replaceComponent(
     );
   }
   return parsed.data;
+}
+
+/** Synchronous S4 challenge pass. Returns the run projection plus the report. */
+export async function challengeRun(
+  id: string,
+  request: ChallengeRequest = {},
+  options?: ApiCallOptions
+): Promise<ChallengeResponse> {
+  const response = await requestJson(
+    `/api/runs/${encodeURIComponent(id)}/challenge`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(request)
+    },
+    options
+  );
+  const parsed = challengeResponseSchema.safeParse(response.body);
+  if (!parsed.success) {
+    throw new ApiClientError(
+      "INVALID_RESPONSE",
+      "POST /api/runs/:id/challenge response did not match the expected contract",
+      response.status
+    );
+  }
+  return parsed.data;
+}
+
+/** Evidence-bound Place Blueprint, optionally read through a share token. */
+export async function getBlueprint(
+  id: string,
+  share?: string,
+  options?: ApiCallOptions
+): Promise<Blueprint> {
+  const query = share === undefined || share === "" ? "" : `?share=${encodeURIComponent(share)}`;
+  const response = await requestJson(
+    `/api/runs/${encodeURIComponent(id)}/blueprint${query}`,
+    undefined,
+    options
+  );
+  const parsed = blueprintResponseSchema.safeParse(response.body);
+  if (!parsed.success) {
+    throw new ApiClientError(
+      "INVALID_RESPONSE",
+      "GET /api/runs/:id/blueprint response did not match the expected contract",
+      response.status
+    );
+  }
+  return parsed.data.blueprint;
 }

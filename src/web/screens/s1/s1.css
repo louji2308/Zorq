@@ -19,6 +19,15 @@
   background: var(--zq-paper);
 }
 
+/* The S5 Blueprint is a reading screen: one full-width column, no map. */
+.s1.is-reading {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    "top"
+    "ledger";
+}
+
 /* ---- Top region: optional banners + top bar + site line ---- */
 
 .s1-top {
@@ -62,6 +71,53 @@
   font-weight: var(--zq-weight-strong);
   color: var(--zq-ink);
   overflow-wrap: anywhere;
+}
+
+/* ---- Run tabs (Final Design §6.4: five views, underline slide) ---- */
+
+.s1-tabs {
+  position: relative;
+  display: flex;
+  gap: var(--zq-space-16);
+  align-items: baseline;
+  min-width: 0;
+}
+
+.s1-tab {
+  font-family: var(--zq-font-ui);
+  font-size: var(--zq-text-small);
+  font-weight: var(--zq-weight-strong);
+  background: none;
+  border: none;
+  color: var(--zq-ink-600);
+  padding: var(--zq-space-4) 0;
+  cursor: pointer;
+  position: relative;
+}
+
+.s1-tab.is-active {
+  color: var(--zq-ink);
+}
+
+.s1-tab:disabled {
+  color: var(--zq-ink-350);
+  cursor: not-allowed;
+}
+
+.s1-tab:focus-visible {
+  outline: var(--zq-focus-ring-width) solid var(--zq-ink);
+  outline-offset: var(--zq-focus-ring-offset);
+}
+
+.s1-tab-indicator {
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  height: var(--zq-l3);
+  background: var(--zq-ink);
+  transition:
+    transform var(--zq-motion-tab) var(--zq-ease-out),
+    width var(--zq-motion-tab) var(--zq-ease-out);
 }
 
 /* ---- Map (left, ~56%) ---- */

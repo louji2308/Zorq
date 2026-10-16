@@ -19,9 +19,9 @@
  *  - "See compositions" docks only when the server actually delivered
  *    compositions, which Phase 7 measurement now does after a run completes.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ApiClientError, getRun } from "../lib/api.js";
+import { ApiClientError, challengeRun, getRun } from "../lib/api.js";
 import { createRunEventStream, type RunStreamHandle } from "../lib/sse.js";
 import { useRunStore } from "../store/runStore.js";
 import { DnaStrip } from "../screens/s1/DnaStrip.js";
@@ -47,9 +47,24 @@ import { buildS2Model } from "../screens/s2/s2Model.js";
 import { ConnectionsPanel } from "../screens/s3/ConnectionsPanel.js";
 import { ReplacePanel } from "../screens/s3/ReplacePanel.js";
 import { buildS3Model, pairKey } from "../screens/s3/s3Model.js";
+import { ChallengePanel } from "../screens/s4/ChallengePanel.js";
+import { buildS4Model } from "../screens/s4/s4Model.js";
+import { BlueprintPanel } from "../screens/s5/BlueprintPanel.js";
 import "../screens/s1/s1.css";
 import "../screens/s2/s2.css";
 import "../screens/s3/s3.css";
+import "../screens/s4/s4.css";
+import "../screens/s5/s5.css";
+
+const RUN_TABS = [
+  { id: "investigate", label: "Investigate" },
+  { id: "compositions", label: "Compositions" },
+  { id: "connections", label: "Connections" },
+  { id: "challenge", label: "Challenge" },
+  { id: "blueprint", label: "Blueprint" }
+] as const;
+
+type RunView = (typeof RUN_TABS)[number]["id"];
 
 /** VITE_MAPTILER_KEY is public by design (D-6.1); never logged. */
 function readMapApiKey(): string | null {
@@ -75,13 +90,38 @@ export function RunRoute() {
   const [stopError, setStopError] = useState<string | null>(null);
   const [priorCollapsed, setPriorCollapsed] = useState(false);
   const [dnaCollapsed, setDnaCollapsed] = useState(false);
-  const [view, setView] = useState<"investigate" | "compositions" | "connections">("investigate");
+  const [view, setView] = useState<RunView>("investigate");
   const [s3Key, setS3Key] = useState<string | null>(null);
   const [s3Pair, setS3Pair] = useState<{ a: string; b: string } | null>(null);
   const [replaceTarget, setReplaceTarget] = useState<{
     memberId: string;
     compositionKey: string | null;
   } | null>(null);
+  const [challenging, setChallenging] = useState(false);
+  const [challengeError, setChallengeError] = useState<string | null>(null);
+  const tabsRef = useRef<HTMLElement | null>(null);
+  const activeTabRef = useRef<HTMLButtonElement | null>(null);
+  const [indicator, setIndicator] = useState({ left: 0, width: 0 });
+
+  useEffect(() => {
+    const el = activeTabRef.current;
+    if (el === null) {
+      return;
+    }
+    setIndicator({ left: el.offsetLeft, width: el.offsetWidth });
+  }, [view]);
+
+  useEffect(() => {
+    function measure(): void {
+      const el = activeTabRef.current;
+      if (el === null) {
+        return;
+      }
+      setIndicator({ left: el.offsetLeft, width: el.offsetWidth });
+    }
+    globalThis.window.addEventListener("resize", measure);
+    return () => globalThis.window.removeEventListener("resize", measure);
+  }, []);
 
   useEffect(() => {
     if (runId === "") {
@@ -99,6 +139,8 @@ export function RunRoute() {
     setS3Key(null);
     setS3Pair(null);
     setReplaceTarget(null);
+    setChallenging(false);
+    setChallengeError(null);
 
     void (async () => {
       try {
@@ -164,6 +206,7 @@ export function RunRoute() {
     [run, evidence]
   );
   const s3Model = useMemo(() => buildS3Model(graphRun, s3Key), [graphRun, s3Key]);
+  const s4Model = useMemo(() => buildS4Model(run), [run]);
 
   const statusCopy =
     run === null ? (loadError !== null ? "Unavailable" : "Opening…") : describeRunStatus(run.status);
@@ -174,6 +217,7 @@ export function RunRoute() {
   const streamNotice = describeStreamNotice(connection, run?.status ?? null);
   const ready = run !== null;
   const s2Available = s2Model !== null && hasCompositions(run);
+  const s3Available = s3Model !== null;
   const showS2 = view === "compositions" && s2Available && s2Model !== null;
   const showS3 = view === "connections" && s3Model !== null;
 
@@ -197,8 +241,37 @@ export function RunRoute() {
     })();
   }, [runId, stopping]);
 
+  const handleChallenge = useCallback(() => {
+    if (runId === "" || challenging) {
+      return;
+    }
+    setChallenging(true);
+    setChallengeError(null);
+    void (async () => {
+      try {
+        const response = await challengeRun(runId);
+        useRunStore.getState().applyState(response.run);
+        try {
+          const latest = await getRun(runId);
+          useRunStore.getState().applyState(latest);
+          useRunStore.getState().applyEvidence(latest.evidence ?? []);
+        } catch {
+          /* evidence refresh is best-effort; the report itself is already applied */
+        }
+      } catch (error) {
+        setChallengeError(
+          error instanceof ApiClientError
+            ? error.message
+            : "We couldn't reach the server to challenge the plan. Try again in a moment."
+        );
+      } finally {
+        setChallenging(false);
+      }
+    })();
+  }, [runId, challenging]);
+
   return (
-    <div className="s1">
+    <div className={view === "blueprint" ? "s1 is-reading" : "s1"}>
       <div className="s1-top">
         {(apiError !== null || streamNotice !== null || stopError !== null || refreshError !== null) && (
           <div className="s1-banner" role="alert">
@@ -209,6 +282,43 @@ export function RunRoute() {
           <h1 className="s1-wordmark">
             <Link to="/">Zorq</Link>
           </h1>
+          {ready && (
+            <nav className="s1-tabs" aria-label="Run views" ref={tabsRef}>
+              {RUN_TABS.map((tab) => {
+                const disabled =
+                  (tab.id === "compositions" && !s2Available) ||
+                  (tab.id === "connections" && !s3Available);
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    className={view === tab.id ? "s1-tab is-active" : "s1-tab"}
+                    aria-current={view === tab.id ? "page" : undefined}
+                    disabled={disabled}
+                    title={
+                      tab.id === "compositions" && !s2Available
+                        ? "Compositions appear once the run measures the candidate pool."
+                        : tab.id === "connections" && !s3Available
+                          ? "Connections appear once compositions are measured."
+                          : undefined
+                    }
+                    onClick={() => setView(tab.id)}
+                    ref={view === tab.id ? activeTabRef : undefined}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+              <span
+                className="s1-tab-indicator"
+                style={{
+                  transform: `translateX(${indicator.left}px)`,
+                  width: `${indicator.width}px`
+                }}
+                aria-hidden="true"
+              />
+            </nav>
+          )}
           <div className="s1-site-line">
             <span className="s1-site-location">{run?.brief?.location ?? "Investigation"}</span>
             <span className="zq-nums" role="status">
@@ -230,23 +340,27 @@ export function RunRoute() {
         </div>
       ) : (
         <>
-          <div className="s1-map">
-            <InvestigateMap apiKey={MAP_API_KEY} site={site} anchors={anchors} heat={heat} />
-            {!showS2 && !showS3 && (
-              <>
-                <PriorCard
-                  model={priorModel}
-                  collapsed={priorCollapsed}
-                  onToggle={() => setPriorCollapsed((current) => !current)}
-                />
-                {priorModel === null && (
-                  <p className="s1-prior-wait">Waiting for the frozen Prior…</p>
-                )}
-              </>
-            )}
-          </div>
+          {view !== "blueprint" && (
+            <div className="s1-map">
+              <InvestigateMap apiKey={MAP_API_KEY} site={site} anchors={anchors} heat={heat} />
+              {view === "investigate" && (
+                <>
+                  <PriorCard
+                    model={priorModel}
+                    collapsed={priorCollapsed}
+                    onToggle={() => setPriorCollapsed((current) => !current)}
+                  />
+                  {priorModel === null && (
+                    <p className="s1-prior-wait">Waiting for the frozen Prior…</p>
+                  )}
+                </>
+              )}
+            </div>
+          )}
 
-          {showS3 && s3Model !== null ? (
+          {view === "blueprint" ? (
+            <BlueprintPanel run={run} runId={runId} />
+          ) : showS3 && s3Model !== null ? (
             <ConnectionsPanel
               run={graphRun}
               model={s3Model}
@@ -268,6 +382,14 @@ export function RunRoute() {
                 setView("connections");
               }}
             />
+          ) : view === "challenge" && s4Model !== null ? (
+            <ChallengePanel
+              model={s4Model}
+              challenging={challenging}
+              challengeError={challengeError}
+              onChallenge={handleChallenge}
+              onOpenBlueprint={() => setView("blueprint")}
+            />
           ) : (
             <LedgerPanel
               rows={rows}
@@ -286,7 +408,7 @@ export function RunRoute() {
         </>
       )}
 
-      {ready && (
+      {ready && view !== "blueprint" && (
         <DnaStrip
           groups={dnaGroups}
           collapsed={dnaCollapsed}

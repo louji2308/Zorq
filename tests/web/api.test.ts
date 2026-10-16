@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { Brief } from "../../src/shared/brief.js";
-import type { RunState } from "../../src/shared/run.js";
-import { ApiClientError, createRun, getRun, stopRun } from "../../src/web/lib/api.js";
+import { blueprintSchema } from "../../src/shared/routes.js";
+import { challengeReportSchema, type RunState } from "../../src/shared/run.js";
+import {
+  ApiClientError,
+  challengeRun,
+  createRun,
+  getBlueprint,
+  getRun,
+  stopRun
+} from "../../src/web/lib/api.js";
 
 const TEST_BRIEF: Brief = {
   location: "Broadway & 7th, Los Angeles",
@@ -205,5 +213,188 @@ describe("api client", () => {
     const error = await expectApiClientError(createRun(TEST_BRIEF, { fetchImpl }));
 
     expect(error.code).toBe("INVALID_RESPONSE");
+  });
+});
+
+const TEST_CHALLENGE_REPORT = challengeReportSchema.parse({
+  kind: "challenge",
+  verdict: "Survived",
+  reason: "the leader held against all five attacks",
+  attackOrder: ["ablation", "substitution", "bridge", "catchment", "rival"],
+  attackOrderSource: "diagnostic",
+  rounds: 2,
+  leaderBefore: {
+    members: ["coffee", "cinema"],
+    coherence: 0.7,
+    percentile: 80,
+    distinctivenessMean: 0.5,
+    weakestLink: { a: "coffee", b: "cinema", value: 0.4 }
+  },
+  leaderAfter: {
+    members: ["coffee", "cinema"],
+    coherence: 0.7,
+    percentile: 80,
+    distinctivenessMean: 0.5,
+    weakestLink: { a: "coffee", b: "cinema", value: 0.4 }
+  },
+  mutations: [],
+  attacks: [
+    { kind: "ablation", status: "measured", summary: "held without cinema", detail: "coherence stayed 0.68" },
+    { kind: "substitution", status: "measured", summary: "no same-role alternative", detail: "pool had no fit" },
+    { kind: "bridge", status: "measured", summary: "no bridge candidate", detail: "empty intersection" },
+    { kind: "catchment", status: "measured", summary: "reading held", detail: "east shift only" },
+    { kind: "rival", status: "measured", summary: "rival behind", detail: "coherence gap 0.06" }
+  ],
+  gradeCap: "A",
+  generatedAt: "2026-10-15T00:00:00.000Z"
+});
+
+const TEST_BLUEPRINT = blueprintSchema.parse({
+  title: "Cinema corner",
+  rationale: "A micro-screening anchor [ev-1] beside the station.",
+  narrativeSource: "llm",
+  compositionByRole: [
+    {
+      role: "Anchor",
+      members: [
+        {
+          memberId: "comp-cinema",
+          name: "Micro-cinema",
+          role: "Anchor",
+          format: {
+            typeDisplayName: "cinema",
+            formatName: "micro-screening",
+            footprintSqFtMin: 900,
+            footprintSqFtMax: 1200,
+            noiseClass: "quiet",
+            open: "14:00",
+            close: "23:00",
+            downshiftedFrom: "cinema"
+          },
+          receipts: [{ kind: "path", text: "anchor → coffee → café", evidenceIds: ["ev-1"] }]
+        }
+      ]
+    }
+  ],
+  fitToSite: {
+    footprint: {
+      areaSqFt: 5000,
+      usableSqFt: 4250,
+      totalFootprintSqFt: 3200,
+      withinUsable: true,
+      rule: "85% circulation rule"
+    },
+    hours: {
+      timeline: [{ memberId: "comp-cinema", name: "Micro-cinema", open: "14:00", close: "23:00" }],
+      constraintReads: [{ key: "lateNight", source: "from the brief" }]
+    },
+    downshifts: [
+      { memberId: "comp-cinema", name: "Micro-cinema", sentence: "cinema becomes micro-screening" }
+    ]
+  },
+  whatQlooChanged: {
+    kept: [{ member: "Micro-cinema", evidenceIds: ["ev-1"] }],
+    added: [],
+    removed: [],
+    reformatted: []
+  },
+  risks: [],
+  evidenceGrade: { grade: "A", reasons: ["all members measured"], rule: "worst-of rule" },
+  revisionHistory: [],
+  methodUrl: "/method",
+  shareUrl: "http://localhost:3000/run/run-1/blueprint?share=abc",
+  generatedAt: "2026-10-12T00:00:00.000Z",
+  expiresAt: "2026-11-11T00:00:00.000Z"
+});
+
+describe("s4/s5 api client", () => {
+  it("challengeRun POSTs and returns the validated run plus report", async () => {
+    const { fetchImpl, calls } = fakeFetch(async () =>
+      jsonResponse({ run: TEST_RUN_STATE, report: TEST_CHALLENGE_REPORT })
+    );
+
+    const response = await challengeRun("run-1", {}, { fetchImpl });
+
+    expect(response.report).toEqual(TEST_CHALLENGE_REPORT);
+    expect(response.run).toEqual(TEST_RUN_STATE);
+    expect(calls[0]?.url).toBe("/api/runs/run-1/challenge");
+    expect(calls[0]?.init?.method).toBe("POST");
+    expect(calls[0]?.init?.headers).toEqual({ "content-type": "application/json" });
+    expect(calls[0]?.init?.body).toBe(JSON.stringify({}));
+  });
+
+  it("challengeRun sends an optional focus and encodes the run id", async () => {
+    const { fetchImpl, calls } = fakeFetch(async () =>
+      jsonResponse({ run: TEST_RUN_STATE, report: TEST_CHALLENGE_REPORT })
+    );
+
+    await challengeRun("a/b c", { focus: "bridge" }, { fetchImpl });
+
+    expect(calls[0]?.url).toBe("/api/runs/a%2Fb%20c/challenge");
+    expect(calls[0]?.init?.body).toBe(JSON.stringify({ focus: "bridge" }));
+  });
+
+  it("challengeRun surfaces a server guard refusal as a typed CONFLICT error", async () => {
+    const body = {
+      error: {
+        code: "CONFLICT",
+        message: "run run-1 has no ranked composition to lead the challenge",
+        requestId: "req-11"
+      }
+    };
+    const { fetchImpl } = fakeFetch(async () => jsonResponse(body, 409));
+
+    const error = await expectApiClientError(challengeRun("run-1", {}, { fetchImpl }));
+
+    expect(error.code).toBe("CONFLICT");
+    expect(error.status).toBe(409);
+    expect(error.message).toBe(body.error.message);
+  });
+
+  it("challengeRun rejects a 2xx body that does not match the shared schema", async () => {
+    const { fetchImpl } = fakeFetch(async () => jsonResponse({ run: TEST_RUN_STATE }));
+
+    const error = await expectApiClientError(challengeRun("run-1", {}, { fetchImpl }));
+
+    expect(error.code).toBe("INVALID_RESPONSE");
+  });
+
+  it("getBlueprint fetches and returns the validated blueprint", async () => {
+    const { fetchImpl, calls } = fakeFetch(async () =>
+      jsonResponse({ blueprint: TEST_BLUEPRINT })
+    );
+
+    const blueprint = await getBlueprint("run-1", undefined, { fetchImpl });
+
+    expect(blueprint).toEqual(TEST_BLUEPRINT);
+    expect(calls[0]?.url).toBe("/api/runs/run-1/blueprint");
+    expect(calls[0]?.init).toBeUndefined();
+  });
+
+  it("getBlueprint encodes the optional share token as a query parameter", async () => {
+    const { fetchImpl, calls } = fakeFetch(async () =>
+      jsonResponse({ blueprint: TEST_BLUEPRINT })
+    );
+
+    await getBlueprint("run-1", "a b&c", { fetchImpl });
+
+    expect(calls[0]?.url).toBe("/api/runs/run-1/blueprint?share=a%20b%26c");
+  });
+
+  it("getBlueprint maps an expired snapshot to its typed error", async () => {
+    const body = {
+      error: {
+        code: "SNAPSHOT_EXPIRED",
+        message: "This snapshot has expired.",
+        requestId: "req-12"
+      }
+    };
+    const { fetchImpl } = fakeFetch(async () => jsonResponse(body, 410));
+
+    const error = await expectApiClientError(getBlueprint("run-1", "abc", { fetchImpl }));
+
+    expect(error.code).toBe("SNAPSHOT_EXPIRED");
+    expect(error.status).toBe(410);
+    expect(error.message).toBe(body.error.message);
   });
 });
