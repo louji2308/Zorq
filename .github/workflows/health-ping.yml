@@ -1,0 +1,35 @@
+# Scheduled public health ping (Tools & Requirements §3, §18):
+# a best-effort warm-up for the Render Free cold start while the app is live through judging.
+# Kept secret-free by design: the public service URL lives in the repository variable
+# HEALTHZ_URL (no key data, no token header). With repository-private repos the plain URL
+# would be out of scope for exposure, and with public ones it is a public URL by definition.
+# Unset variable → the workflow skips instead of pinging a placeholder or failing the repo red.
+name: healthz-ping
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: healthz-ping
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    if: vars.HEALTHZ_URL != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /healthz and require a healthy 200
+        env:
+          HEALTHZ_URL: ${{ vars.HEALTHZ_URL }}
+        run: |
+          set -eu
+          code=$(curl -sS -o /tmp/healthz.json -w '%{http_code}' "$HEALTHZ_URL/healthz")
+          # Print only the status code and response body, never the URL or any credentials.
+          echo "healthz status: $code"
+          cat /tmp/healthz.json
+          echo
+          test "$code" = "200"
