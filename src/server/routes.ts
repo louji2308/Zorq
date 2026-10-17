@@ -22,18 +22,29 @@ import type { Orchestrator } from "./orchestrator/index.js";
 import { RunNotFound, RunStoreError, type RunStore } from "./persistence/index.js";
 import { createRunEventsHandler, type EventHub } from "./sse/index.js";
 
+// Honest unavailable answers for routes registered without their runtime
+// dependencies (a partially wired app) and for the two endpoints that ship as
+// typed 503 stubs in this build. Copy names the missing dependency or states
+// current unavailability — never internal build-phase language (Phase 9 W-9.1).
 export const UNIMPLEMENTED_MESSAGES = {
-  createRun: "Run creation is not implemented yet; it lands in Phase 5 (durable Run state).",
-  getRun: "Reading run state is not implemented yet; it lands in Phase 5 (durable Run state).",
-  runEvents: "SSE event streaming is not implemented yet; it lands in Phase 5 (SSE and recovery).",
-  stopRun: "Stopping a run is not implemented yet; it lands in Phase 5 (stop and cancellation).",
+  createRun:
+    "Run creation is unavailable because this server is running without its run store and orchestrator. See /healthz for configuration status.",
+  getRun:
+    "Reading run state is unavailable because this server is running without its run store. See /healthz for configuration status.",
+  runEvents:
+    "Live event streaming is unavailable because this server is running without its run store and event hub. See /healthz for configuration status.",
+  stopRun:
+    "Stopping a run is unavailable because this server is running without its run store and orchestrator. See /healthz for configuration status.",
   unpinAnchor:
-    "Unpinning an anchor is not implemented yet; it lands with the agent core (Phase 3) and durable run state (Phase 5).",
-  replaceComponent: "Role-preserving replacement is not implemented yet; it lands in Phase 7 (Replace).",
-  challenge: "Challenge the Plan is not implemented yet; it lands in Phase 8 (S4 Challenge).",
+    "Unpinning an anchor is not part of this build. The agent's anchor selections are shown in the Agent Ledger; start a new brief to investigate with different anchors.",
+  replaceComponent:
+    "Role-preserving replacement is unavailable because this server is running without its run store and orchestrator. See /healthz for configuration status.",
+  challenge:
+    "Challenge the Plan is unavailable because this server is running without its run store and orchestrator. See /healthz for configuration status.",
   recompute:
-    "Recompute is not implemented yet; it lands in Phase 8 (constraint engine) on Phase 5 run state.",
-  blueprint: "The Place Blueprint endpoint is not implemented yet; it lands in Phase 8 (S5 Blueprint)."
+    "Recomputing fit for changed constraints is not available as a standalone endpoint in this build. Start a new brief with the updated constraints; constraint fit is applied when the Place Blueprint is built.",
+  blueprint:
+    "The Place Blueprint is unavailable because this server is running without its run store and orchestrator. See /healthz for configuration status."
 } as const;
 
 function unimplemented(message: string) {

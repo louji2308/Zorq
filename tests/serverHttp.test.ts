@@ -57,7 +57,7 @@ describe("server HTTP contract (ARCHITECTURE.md 3.0)", () => {
     expect(parsed.error.requestId.length).toBeGreaterThan(0);
   });
 
-  it("f. accepts a valid brief but answers honestly with 503 naming Phase 5 (no pretend run)", async () => {
+  it("f. accepts a valid brief but answers honestly with 503 naming the missing runtime (no pretend run)", async () => {
     const response = await fetch(`${shared.baseUrl}/api/runs`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -71,7 +71,8 @@ describe("server HTTP contract (ARCHITECTURE.md 3.0)", () => {
     expect(Object.keys(parsed)).toEqual(["error"]);
     expect(parsed.run).toBeUndefined();
     expect(parsed.error.code).toBe("SERVICE_UNAVAILABLE");
-    expect(parsed.error.message).toContain("Phase 5");
+    expect(parsed.error.message).toContain("run store");
+    expect(parsed.error.message).not.toMatch(/Phase \d/);
     expect(parsed.error).not.toHaveProperty("id");
     expect(JSON.stringify(body)).not.toMatch(/"run"\s*:/);
     expect(JSON.stringify(body)).not.toMatch(/run_[A-Za-z0-9]/);
@@ -159,19 +160,21 @@ describe("malformed :id (ARCHITECTURE.md 3.3)", () => {
     expect(apiError.details?.[0]?.path.startsWith("params")).toBe(true);
   });
 
-  it("keeps routable ids permissive until Phase 5 fixes the id format (flagged spec ambiguity)", async () => {
-    // runIdParamsSchema is deliberately min(1) because Phase 5 has not fixed the id
+  it("keeps routable ids permissive and answers honestly when the run store is absent", async () => {
+    // runIdParamsSchema is deliberately min(1); Phase 5 shipped with that permissive
     // format. Express 5 requires :id to match at least one character, so an empty id
     // cannot be produced over HTTP (verified empirically) — the 400 path is covered
     // by the boundary test above. A space-only id therefore reaches the honest
-    // Phase-5 unimplemented answer rather than a fabricated 404 or a premature 400.
+    // unavailable-dependency answer (names the missing run store; never internal
+    // build-phase language — W-9.1) rather than a fabricated 404 or a premature 400.
     const server = await startServer(createApp(createLogger("test"), { config: testConfig() }));
     try {
       const response = await fetch(`${server.baseUrl}/api/runs/%20`);
       expect(response.status).toBe(503);
       const body = (await response.json()) as { error: { code: string; message: string } };
       expect(body.error.code).toBe("SERVICE_UNAVAILABLE");
-      expect(body.error.message).toContain("Phase 5");
+      expect(body.error.message).toContain("run store");
+      expect(body.error.message).not.toMatch(/Phase \d/);
     } finally {
       await server.close();
     }
