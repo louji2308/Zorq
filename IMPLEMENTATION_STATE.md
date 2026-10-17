@@ -16,13 +16,16 @@ W-8.6 `cce7b87`, exit-gate e2e `0f3620a` + `d4edc90`, compare-modal fix
 docs commits. The one deferred clause — full judge path **under real services** —
 waits on B-02 (user-side DeepSeek top-up) and runs as the first live action of
 Phase 9; recorded in the clause map, not hidden.
-**PHASE 9 — Full-System Integration, Deployment & Judge Readiness: CONTRACT
-WRITTEN 2026-10-17 at the phase boundary (full seven-source spec re-read; see
-`PHASE 9 CONTRACT` above); implementation next** (W-9.1 port/health → W-9.2
-Render deploy → W-9.3 CI/health workflows → W-9.4 /method content → W-9.5
-README/repo surfaces → W-9.6 full-path e2e → W-9.7 live Qloo-removal A/B).
-Parallel user-side: top up DeepSeek (B-02), Turso (B-06). Phase 6 remains OPEN
-on B-02 only. Deadline Oct 30 2026 23:45 EDT; internal freeze Oct 28.
+**PHASE 9 — Full-System Integration, Deployment & Judge Readiness: CONTRACT WRITTEN
+2026-10-17 at the phase boundary (full seven-source spec re-read); implementation underway.**
+DONE: W-9.1 (PORT fix `66f3289` + degraded-copy fix + observed production smoke) and
+W-9.4 (/method content `e867054` + clause-verified completions this session); W-9.3
+workflows written (`bdf4a2e`, inert until push + HEALTHZ_URL); W-9.5 README `0439b08`
+(live URL placeholder + gallery pending deploy); W-9.6 local e2e leg green.
+OPEN (operator/live-gated): W-9.2 Render deploy → deployed smoke + W-9.6 deployed leg →
+W-9.7 live A/B (needs B-02) → URL pin + real gallery screenshots → exit-gate clause map.
+Parallel user-side: top up DeepSeek (B-02), Turso (B-06), push the unpushed commits so CI
+runs. Phase 6 remains OPEN on B-02 only. Deadline Oct 30 2026 23:45 EDT; internal freeze Oct 28.
 
 ## Current Objective
 
@@ -2620,3 +2623,53 @@ file rather than creating a second progress truth source.
 - LIVE_QLOO=1 gateway contract run against real keys.
 - Remaining Phase 10 red-team items that need the live URL (physical mobile/keyboard/
   reduced-motion sweep, chaos tests against the deployed service).
+
+### Phase 9 continuation (2026-10-17, orchestrator session — W-9.1 closed, W-9.4 clause-verified)
+
+**W-9.1 CLOSED (copy clause was the only open sub-item).** `UNIMPLEMENTED_MESSAGES`
+(src/server/routes.ts) no longer contains internal build-phase language anywhere in a
+user-visible server string (grep-verified). Dependency-gated routes now name the missing
+runtime ("unavailable because this server is running without its run store and
+orchestrator… See /healthz for configuration status"); the two typed-stub routes state
+current unavailability honestly (unpin-anchor: not part of this build, anchors are visible
+in the Agent Ledger; recompute: not a standalone endpoint, fit applies when the blueprint is
+built — no new feature wired, per Phase 9 no-new-features). Both tests that pinned the old
+copy now pin the new contract: message names `run store` AND `not.toMatch(/Phase \d/)`
+(tests/serverHttp.test.ts). **Production-build smoke run and observed:** `npm run build`
+PASS → `dist/server/main.js` under `NODE_ENV=production` → `/healthz` **200**
+`{status:"ok", config:"ok", staticBuild:"ok"}` → secret-pattern scan of the response body
+**0 hits** (W-9.1's contracted smoke, now evidenced rather than assumed).
+
+**W-9.4 /method clause map (Plan 871–880 + FD §7.7), verified against source this session:**
+
+| Clause | Status | Evidence |
+|---|---|---|
+| what Qloo measures | [x] | `methodContent.whatQlooMeasures`, 8 items |
+| what Zorq computes | [x] | `whatZorqComputes`, 14 items incl. budgets |
+| what the agent decides | [x] | `whatTheLlmGenerates`, 6 items incl. evidence-ID citation rule |
+| formulas | [x] | 8 → **9** entries; this session **added the triangulation rule** (confirmed/contested/thin), the only spec formula (PS §12) that was missing |
+| worked examples (W-9.4 wording: real preset entities) | [x with deviation **D-9.17** | schematic arithmetic with named placeholders; this session **added triangulation + evidence-grade steps**. Deviation: cannot use real entities without a live-run evidence path (AGENTS §12 beats contract wording); swap placeholders for observed live entities after the first live run if desired |
+| heuristics listed + editable `[Zorq heuristic]` | [x] | 6 entries: 85% footprint cap, format library, hours/noise, role map, dial default, neighborhood weighting — format library/role map/85% rule all present |
+| evidence grades | [x] | grade rule as a formula + worked step + badges in the margin column |
+| known limits (PS 374–380) | [x] | 6 entries covering all five PS limits + contested/thin honesty; section heading renamed to FD §7.7 item 3's exact framing **"How Zorq can be wrong"** |
+| open-source setup | [x] | `setupSummary` |
+| two-sentence type note (FD §7.7 item 4) | [x] **added this session** | new required `typeNote` field in `methodResponseSchema` (additive contract pin), Bricolage/bricoleur content, rendered as "A note on the type" |
+| drawer/blueprint "How this was computed" anchors resolve to real page anchors | [x] **added this session** | EvidenceDrawer now deep-links `/method#method-formulas`; the section id is rendered by MethodRoute; blueprint grade block keeps the canonical `/method` page URL (section anchors all exist and are directly navigable) |
+| no new API routes | [x] | 11-route surface untouched; `/api/method` was already locked |
+
+Pins added: `tests/api/method.test.ts` (triangulation formula/steps, typeNote),
+`tests/routes.test.ts` (fixture), `e2e/smoke.spec.ts` (headings "The formulas",
+"How Zorq can be wrong", "A note on the type").
+
+**Gates at this session's sign-off (all observed):** typecheck 0 · lint 0 · unit **753 pass
+/ 5 gated-live skips** (baseline held) · build PASS · production smoke `/healthz` 200 with
+0 secret hits · e2e **11 pass / 4 skipped** (skips = ZORQ_CAPTURE opt-in screenshots) ·
+`git diff --check` clean.
+
+**Decisions this session:** D-9.17 (worked example stays schematic — rationale above).
+
+**Worker status now:** W-9.1 ✅ · W-9.2 ⬜ blocked on operator deploy · W-9.3 ✅ written /
+⬜ inert until push + HEALTHZ_URL · W-9.4 ✅ · W-9.5 ~85% (live URL placeholder + gallery
+pending deploy) · W-9.6 ✅ local leg / ⬜ deployed leg · W-9.7 ⬜ blocked on B-02 + deploy.
+Next agent-side action: none outstanding; everything remaining is the user-side critical
+path (push → Render → keys → live proof → URL pin → exit-gate clause map).
