@@ -2583,3 +2583,40 @@ outage yields an honest partial state."*
 - [x] Real-service diagnostic evidence recorded (10 calls)
 - [x] All Phase 0 exit items closed. **Hand-off item → Phase 1 gate:** write the Phase 1 contract
       (first action of the next phase, tracked there, not here).
+
+---
+
+## Phase 9 — in progress (section appended 2026-10-17 by the Phase 9 agent)
+
+Append-only note: this section was written without reading the file's earlier content, per an
+explicit user instruction to distrust/ignore content written by the previous agent, to avoid
+inheriting unverified claims. Per IMPLEMENTATION_PLAN §12, this record uses the established
+file rather than creating a second progress truth source.
+
+### Verification evidence gained this phase (all exit codes observed, not assumed)
+- Phase 8 claims re-verified independently: typecheck 0 errors; lint 0 warnings; unit
+  746→753 tests passing (5 live tests skipped, credential-gated); e2e judge path 10→11 passed.
+- Known deferred Phase 2 defect resolved: server now prefers the platform-injected PORT
+  (resolveListenPort in src/server/config.ts), with a loud fallback warning on a rejected
+  PORT; pinned in tests/config.test.ts. Commit 66f3289.
+- CI added: on-push gates (.github/workflows/ci.yml: install→typecheck→lint→unit→build) and
+  a secret-free ten-minute /healthz ping (health-ping.yml, repository var HEALTHZ_URL).
+  Commit bdf4a2e.
+- /method is real: canonical content single-source (src/server/method.ts), served validated
+  by GET /api/method with the method response schema tightened, and rendered by the /method
+  reading page in the ink-on-paper design language. Commits e867054.
+- README rewritten judge-facing: why Qloo is indispensable, Qloo integration table, verified
+  judge path, deployment contract, screenshots (docs/screenshots/, capture spec is opt-in via
+  ZORQ_CAPTURE=1 e2e/screenshots.spec.ts), honest limitations. Commit 0439b08.
+- Release audit recorded in docs/release-audit.md: secret scan clean (.env untracked; web
+  bundle only reads documented-public VITE_MAPTILER_KEY), production-path anti-pattern scan
+  clean (only UI placeholder idioms). Qloo-removal proof with test sources and the exact live
+  A/B receipt procedure: docs/qloo-removal-proof.md. Commit fcacd36.
+
+### Open at freeze (requires live keys / operator, cannot be fabricated)
+- Render deploy + public URL, then pin the URL in README and capture real-run gallery
+  screenshots (never fixture data).
+- Live A/B receipts in docs/qloo-removal-proof.md §3 (two divergent presets + one control).
+- LIVE_QLOO=1 gateway contract run against real keys.
+- Remaining Phase 10 red-team items that need the live URL (physical mobile/keyboard/
+  reduced-motion sweep, chaosagainst deployed service).
