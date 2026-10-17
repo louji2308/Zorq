@@ -208,6 +208,9 @@ export function BlueprintPanel({ run, runId, share }: BlueprintPanelProps) {
                 {row.formatLabel !== null && (
                   <div className="s5-member-format">{row.formatLabel}</div>
                 )}
+                {row.constraintDropped !== null && (
+                  <div className="s5-member-dropped">{row.constraintDropped}</div>
+                )}
                 {row.footprintLabel !== null && (
                   <div className="s5-member-footprint">
                     <span className="s5-member-footprint-label">{row.footprintLabel}</span>
@@ -237,8 +240,11 @@ export function BlueprintPanel({ run, runId, share }: BlueprintPanelProps) {
             <div className="s5-fit-line">
               <span className="s5-fit-label">Footprint</span>
               <span className="s5-fit-value">
-                {model.fit.totalLabel} of {model.fit.areaLabel}
-                {model.fit.withinUsable ? " — within usable area" : " — exceeds usable area"}
+                {model.fit.withinUsable === null
+                  ? "not measured (no floor area supplied)"
+                  : `${model.fit.totalLabel} of ${model.fit.areaLabel}${
+                      model.fit.withinUsable ? " — within usable area" : " — exceeds usable area"
+                    }`}
               </span>
             </div>
             <p className="s5-fit-rule">{model.fit.rule}</p>

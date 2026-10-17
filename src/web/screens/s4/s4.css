@@ -166,6 +166,12 @@
   margin: var(--zq-space-4) 0 0 calc(16px + var(--zq-space-8));
 }
 
+.s4-attack-detail {
+  font-size: var(--zq-text-small);
+  color: var(--zq-ink-600);
+  margin: var(--zq-space-2) 0 0 calc(16px + var(--zq-space-8));
+}
+
 .s4-empty {
   font-size: var(--zq-text-small);
   color: var(--zq-ink-600);

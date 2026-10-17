@@ -43,6 +43,8 @@ export interface S5MemberRow {
   readonly role: string;
   readonly name: string;
   readonly formatLabel: string | null;
+  /** Set when the fit engine dropped this member: the honest reason, verbatim. */
+  readonly constraintDropped: string | null;
   readonly footprintLabel: string | null;
   readonly footprintFraction: number | null;
   readonly hoursLabel: string | null;
@@ -63,7 +65,8 @@ export interface S5HoursRow {
 export interface S5FitModel {
   readonly areaLabel: string;
   readonly totalLabel: string;
-  readonly withinUsable: boolean;
+  /** Tri-state: null = footprint fit not measured (no floor area supplied). */
+  readonly withinUsable: boolean | null;
   readonly rule: string;
   readonly hoursRows: readonly S5HoursRow[];
   readonly constraintReads: readonly { readonly label: string; readonly source: string }[];
@@ -248,6 +251,7 @@ function toMemberRow(
     role,
     name: member.name,
     formatLabel: format === undefined ? null : `${format.formatName} · ${format.typeDisplayName}`,
+    constraintDropped: member.constraintDropped ?? null,
     footprintLabel:
       format === undefined
         ? null
@@ -358,12 +362,26 @@ export function blueprintToMarkdown(bp: Blueprint, runId: string): string {
         member.format === undefined
           ? ""
           : ` — ${member.format.formatName} (${member.format.typeDisplayName})`;
-      lines.push(`- ${group.role}: ${member.name}${format}`);
+      const dropped =
+        member.constraintDropped === undefined ? "" : ` — dropped from fit: ${member.constraintDropped}`;
+      lines.push(`- ${group.role}: ${member.name}${format}${dropped}`);
     }
   }
   lines.push("");
   lines.push("## Fit to site");
-  lines.push(bp.fitToSite.footprint.rule);
+  const footprint = bp.fitToSite.footprint;
+  const withinTail =
+    footprint.withinUsable === null
+      ? " — footprint not measured (no floor area supplied)"
+      : footprint.withinUsable
+        ? " — within usable area"
+        : " — exceeds usable area";
+  lines.push(
+    footprint.withinUsable === null
+      ? "- Footprint: not measured (no floor area supplied)"
+      : `- Footprint: ${formatSqFt(footprint.totalFootprintSqFt)} of ${formatSqFt(footprint.areaSqFt)}${withinTail}`
+  );
+  lines.push(footprint.rule);
   for (const downshift of bp.fitToSite.downshifts) {
     lines.push(`- ${downshift.sentence}`);
   }

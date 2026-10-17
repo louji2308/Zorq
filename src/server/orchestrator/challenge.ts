@@ -1,4 +1,4 @@
-import { runStateSchema } from "../../shared/run.js";
+import { runStateSchema, componentDisplayName } from "../../shared/run.js";
 import { attackKinds, attackKindSchema, poolComponentRoles } from "../../shared/run.js";
 import type {
   AttackKind,
@@ -104,6 +104,8 @@ interface AttackContext {
   distinctiveness: Record<string, number | null> | undefined;
   neighborhoods: RunNeighborhoods | undefined;
   leader: ChallengeLeader;
+  /** Resolve member ids to display names for judge-facing prose; data fields keep ids. */
+  nameOf: (id: string) => string;
 }
 
 interface BridgeProbeDeps {
@@ -250,8 +252,8 @@ function ablationAttack(ctx: AttackContext): AttackResult {
   const percentile = coherences.length > 0 ? percentileOf(weakestCoherence, coherences) : null;
   const remainderText =
     worstGain < 0
-      ? `without ${weakestId}, coherence ${signed(worstGain)} and lands at the ${percentileText(percentile)} percentile of size-${members.length - 1} compositions`
-      : `removing ${weakestId} is the least costly cut: ${signed(worstGain)}${percentile === null ? "" : ` (remainder at ${percentileText(percentile)} percentile)`}`;
+      ? `without ${ctx.nameOf(weakestId)}, coherence ${signed(worstGain)} and lands at the ${percentileText(percentile)} percentile of size-${members.length - 1} compositions`
+      : `removing ${ctx.nameOf(weakestId)} is the least costly cut: ${signed(worstGain)}${percentile === null ? "" : ` (remainder at ${percentileText(percentile)} percentile)`}`;
   const distinctivenessMean = subsetDistinctivenessMean(weakestRest, ctx.distinctiveness);
   let candidate: MutationCandidate | null = null;
   if (worstGain > MUTATION_EPSILON && distinctivenessMean !== null) {
@@ -881,11 +883,15 @@ function rivalAttack(ctx: AttackContext): AttackResult {
   const summary =
     index >= 0
       ? `the leader holds rank ${index + 1} of ${ctx.ranked.length}`
-      : `the mutated leader is not a family entry; the family leader remains ${ctx.ranked[0]!.members.join(" + ")}`;
+      : `the mutated leader is not a family entry; the family leader remains ${ctx.ranked[0]!.members
+          .map(ctx.nameOf)
+          .join(" + ")}`;
   const flipText =
     flips.length === 0
       ? "no rival takes the lead across the dial sweep"
-      : `${flips.length} sweep flip(s); at weight ${flips[0]!.weight.toFixed(2)} leadership moves to ${(flips[0]!.to ?? []).join(" + ")}`;
+      : `${flips.length} sweep flip(s); at weight ${flips[0]!.weight.toFixed(2)} leadership moves to ${(flips[0]!.to ?? [])
+          .map(ctx.nameOf)
+          .join(" + ")}`;
   const marginText = margin === null ? "" : `; rank-1 margin ${margin.toFixed(4)}`;
   return {
     attack: {
@@ -1008,17 +1014,17 @@ async function chooseAttackOrder(input: {
   return { order: finalizeOrder(diagnosticOrder(input.state, input.leader), input.focus), source: "diagnostic" };
 }
 
-function describeMutation(mutation: ChallengeMutation): string {
+function describeMutation(mutation: ChallengeMutation, nameOf: (id: string) => string): string {
   if (mutation.operator === "swap" && mutation.memberIn !== null) {
-    return `swapped ${mutation.memberOut} for ${mutation.memberIn}`;
+    return `swapped ${nameOf(mutation.memberOut ?? "")} for ${nameOf(mutation.memberIn)}`;
   }
   if (mutation.operator === "drop") {
-    return `dropped ${mutation.memberOut}`;
+    return `dropped ${nameOf(mutation.memberOut ?? "")}`;
   }
   if (mutation.operator === "bridge" && mutation.memberIn !== null) {
-    return `bridged ${mutation.memberIn} beside ${mutation.memberOut ?? "the weakest link"}`;
+    return `bridged ${nameOf(mutation.memberIn)} beside ${nameOf(mutation.memberOut ?? "the weakest link")}`;
   }
-  return `revised ${mutation.memberOut ?? "the leader"}`;
+  return `revised ${mutation.memberOut === null ? "the leader" : nameOf(mutation.memberOut)}`;
 }
 
 export function resolveVerdict(
@@ -1044,26 +1050,38 @@ function buildReason(input: {
   mutations: readonly ChallengeMutation[];
   results: readonly AttackResult[];
   pending: MutationCandidate | null;
+  nameOf: (id: string) => string;
 }): string {
-  const { verdict, before, after, mutations, results, pending } = input;
+  const { verdict, before, after, mutations, results, pending, nameOf } = input;
   if (verdict === "Survived") {
     const notes = results.map((result) => result.note).filter((note): note is string => note !== undefined);
-    return ["The leader held against all five attacks.", ...notes].join(" ").slice(0, 500);
+    const measured = results.filter((result) => result.attack.status === "measured").length;
+    const skipped = results.filter((result) => result.attack.status === "skipped").length;
+    const missing = results.filter((result) => result.attack.status === "not completed").length;
+    const lead =
+      results.length === 5 && measured === 5
+        ? "The leader held against all five attacks."
+        : `The leader held against ${measured} measured attack${measured === 1 ? "" : "s"}${
+            skipped > 0 ? `, ${skipped} skipped` : ""
+          }${missing > 0 ? `, ${missing} not completed` : ""}.`;
+    return [lead, ...notes].join(" ").slice(0, 500);
   }
   const movement = `Coherence moved ${signed(after.coherence - before.coherence)} to ${after.coherence.toFixed(4)}.`;
   const applied = `${mutations.length} mutation${mutations.length === 1 ? "" : "s"} applied: ${mutations
-    .map((mutation) => `${mutation.round}·${describeMutation(mutation)}`)
+    .map((mutation) => `${mutation.round}·${describeMutation(mutation, nameOf)}`)
     .join("; ")}.`;
   const stopNote =
     pending !== null
       ? pending.operator === "bridge" && pending.memberIn !== null
-        ? ` A further bridge ${pending.memberIn} (Δ ${signed(pending.gain)}) remained at the two-round stop.`
+        ? ` A further bridge ${nameOf(pending.memberIn)} (Δ ${signed(pending.gain)}) remained at the two-round stop.`
         : ` A further ${pending.operator}${
-            pending.memberIn === null ? ` ${pending.memberOut}` : ` ${pending.memberOut} → ${pending.memberIn}`
+            pending.memberIn === null
+              ? ` ${nameOf(pending.memberOut ?? "")}`
+              : ` ${nameOf(pending.memberOut ?? "")} → ${nameOf(pending.memberIn)}`
           } (Δ ${signed(pending.gain)}) remained at the two-round stop.`
       : "";
   if (verdict === "Replaced") {
-    return `Replaced by ${after.members.join(" + ")}. ${applied} ${movement}${stopNote}`.slice(0, 500);
+    return `Replaced by ${after.members.map(nameOf).join(" + ")}. ${applied} ${movement}${stopNote}`.slice(0, 500);
   }
   return `${applied} ${movement}${stopNote}`.slice(0, 500);
 }
@@ -1120,6 +1138,14 @@ export async function runChallenge(input: ChallengeInput): Promise<ChallengeOutc
   const bridgeRecorded = { found: false };
   let scratch: ScratchState | null = null;
 
+  // Display-name resolution for every id that can surface in judge-facing prose
+  // (verdict reason, mutation ledger lines). Pool first; components introduced by
+  // mutations are registered the moment they are applied.
+  const nameLookup = new Map<string, string>(
+    pool.map((component) => [component.id, componentDisplayName(component)])
+  );
+  const nameOf = (id: string): string => nameLookup.get(id) ?? id;
+
   const leaderBefore = leaderFromRanked(ranked[0]!);
   let leader = leaderBefore;
 
@@ -1149,7 +1175,8 @@ export async function runChallenge(input: ChallengeInput): Promise<ChallengeOutc
     familyCoherences: scratch?.familyCoherences ?? compositions.family.coherenceDistribution,
     distinctiveness: scratch?.distinctiveness ?? distinctivenessFor(state),
     neighborhoods: scratch?.neighborhoods ?? state.neighborhoods,
-    leader: current
+    leader: current,
+    nameOf
   });
 
   const runRound = async (round: number): Promise<AttackResult[]> => {
@@ -1202,11 +1229,14 @@ export async function runChallenge(input: ChallengeInput): Promise<ChallengeOutc
       ...(inserted !== undefined ? { component: inserted } : {})
     };
     mutations.push(mutation);
+    if (inserted !== undefined) {
+      nameLookup.set(inserted.id, componentDisplayName(inserted));
+    }
     leader = candidate.leaderAfter;
     ledger.append(
       computeEvent(
         "challenge.mutation",
-        `round ${mutation.round}: ${describeMutation(mutation)}; coherence ${signed(mutation.coherenceAfter - mutation.coherenceBefore)}`,
+        `round ${mutation.round}: ${describeMutation(mutation, nameOf)}; coherence ${signed(mutation.coherenceAfter - mutation.coherenceBefore)}`,
         0,
         mutation.round
       )
@@ -1226,9 +1256,15 @@ export async function runChallenge(input: ChallengeInput): Promise<ChallengeOutc
     candidate = pickCandidate(results);
   }
   const pending = candidate !== null && candidate.gain > MUTATION_EPSILON ? candidate : null;
+  if (pending !== null && pending.memberIn !== null && !nameLookup.has(pending.memberIn)) {
+    const pendingComponent = pending.scratch?.pool.find((component) => component.id === pending.memberIn);
+    if (pendingComponent !== undefined) {
+      nameLookup.set(pendingComponent.id, componentDisplayName(pendingComponent));
+    }
+  }
 
   const { verdict, verdictRival } = resolveVerdict(leaderBefore, leader, mutations);
-  const reason = buildReason({ verdict, before: leaderBefore, after: leader, mutations, results, pending });
+  const reason = buildReason({ verdict, before: leaderBefore, after: leader, mutations, results, pending, nameOf });
   const attacksBySpecOrder = [...results]
     .sort(
       (left, right) =>

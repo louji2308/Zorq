@@ -163,9 +163,15 @@
 
 .s5-member-format,
 .s5-member-hours,
-.s5-member-footprint-label {
+.s5-member-footprint-label,
+.s5-member-dropped {
   font-size: var(--zq-text-small);
   color: var(--zq-ink-600);
+}
+
+.s5-member-dropped {
+  border-left: var(--zq-l2) solid var(--zq-ink-450);
+  padding-left: var(--zq-space-8);
 }
 
 .s5-member-footprint {

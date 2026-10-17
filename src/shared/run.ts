@@ -145,7 +145,11 @@ export const runRevisionSchema = z.strictObject({
   coherenceAfter: z.number().finite().min(0).max(1),
   percentileBefore: z.number().finite().min(0).max(100).nullable(),
   percentileAfter: z.number().finite().min(0).max(100).nullable(),
-  custom: z.boolean()
+  custom: z.boolean(),
+  /** Wall-clock ms of the replace; lets the blueprint detect a replace that
+   *  happened after the challenge report (challengeReport stays authoritative
+   *  only while no revision post-dates its generatedAt). */
+  at: z.number().finite().optional()
 });
 
 export type RunRevision = z.infer<typeof runRevisionSchema>;

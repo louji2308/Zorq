@@ -148,6 +148,7 @@ export function ChallengePanel({
                   </div>
                   <p className="s4-attack-asks">{attack.asks}</p>
                   <p className="s4-attack-result">{attack.summary}</p>
+                  {attack.detail !== "" && <p className="s4-attack-detail">{attack.detail}</p>}
                 </li>
               ))}
             </ol>

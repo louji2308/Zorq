@@ -557,7 +557,8 @@ export async function applyReplacement(input: ReplaceInput): Promise<ReplaceOutc
     coherenceAfter: plan.after.coherence,
     percentileBefore: before.percentile,
     percentileAfter: plan.after.percentile,
-    custom: plan.custom
+    custom: plan.custom,
+    at: now()
   };
   const stress = miniStress({
     rev,

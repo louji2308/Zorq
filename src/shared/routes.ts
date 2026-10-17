@@ -154,6 +154,9 @@ export const blueprintMemberSchema = z.object({
   name: z.string().trim().min(1).max(200),
   role: z.enum(poolComponentRoles),
   format: blueprintMemberFormatSchema.optional(),
+  /** Set when the fit engine dropped this member: the exact drop reason, so a
+   *  member that no format fits is never presented as fitted silently. */
+  constraintDropped: z.string().trim().min(1).max(300).optional(),
   receipts: z.array(blueprintReceiptSchema).max(3)
 });
 
@@ -192,7 +195,8 @@ export const blueprintSchema = z.object({
       areaSqFt: z.number().finite().nullable(),
       usableSqFt: z.number().finite().nullable(),
       totalFootprintSqFt: z.number().finite().nullable(),
-      withinUsable: z.boolean(),
+      /** Tri-state: null = footprint fit not measured (no floor area supplied). */
+      withinUsable: z.boolean().nullable(),
       rule: z.string().trim().min(1).max(200)
     }),
     hours: z.object({

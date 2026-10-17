@@ -162,8 +162,16 @@ function resolveLeaderView(state: RunState): LeaderView {
     );
   }
   const report = state.challengeReport;
+  // The challenge report describes the leader as it stood at verdict time. A
+  // replace after the verdict rewrote compositions but not the report, so the
+  // current ranked leader wins whenever a revision post-dates the report.
+  const staleAfterReplace =
+    report !== undefined &&
+    (state.revisions ?? []).some(
+      (revision) => revision.at !== undefined && revision.at > Date.parse(report.generatedAt)
+    );
   const leader: ChallengeLeader =
-    report !== undefined
+    report !== undefined && !staleAfterReplace
       ? report.leaderAfter
       : {
           members: top.members,
@@ -284,11 +292,13 @@ function buildRoleGroups(
       }
       const choice = fit.choices.find((candidate) => candidate.memberId === entry.id);
       const format = buildFormat(choice);
+      const drop = fit.drops.find((entry2) => entry2.memberId === entry.id);
       members.push({
         memberId: entry.id,
         name: componentDisplayName(entry.component),
         role,
         ...(format !== undefined ? { format } : {}),
+        ...(drop !== undefined ? { constraintDropped: clamp(drop.reason, 300) } : {}),
         receipts: buildReceipts(entry.component, state, index)
       });
     }
@@ -343,7 +353,7 @@ function buildWhatQlooChanged(
     matchedFinal.add(matchIndex);
     const member = view.members[matchIndex]!;
     const item = {
-      member: member.id,
+      member: componentDisplayName(member.component),
       role: member.component.role,
       evidenceIds: memberEvidenceIds(index, member.id)
     };
@@ -360,7 +370,7 @@ function buildWhatQlooChanged(
       return;
     }
     added.push({
-      member: member.id,
+      member: componentDisplayName(member.component),
       role: member.component.role,
       evidenceIds: memberEvidenceIds(index, member.id)
     });
@@ -422,13 +432,15 @@ function buildRisks(
     if (reason !== undefined) {
       risks.push({ kind: "constraint-conflict", text: clamp(reason, 300), evidenceIds: [] });
     }
-    for (const drop of fit.drops) {
-      risks.push({
-        kind: "constraint-conflict",
-        text: clamp(`dropped ${drop.name}: ${drop.reason}`, 300),
-        evidenceIds: memberEvidenceIds(index, drop.memberId)
-      });
-    }
+  }
+  // Constraint drops stay visible even when the footprint still fits: a member
+  // the fit engine refused is a real conflict the artifact must surface.
+  for (const drop of fit.drops) {
+    risks.push({
+      kind: "constraint-conflict",
+      text: clamp(`dropped ${drop.name}: ${drop.reason}`, 300),
+      evidenceIds: memberEvidenceIds(index, drop.memberId)
+    });
   }
   return risks.slice(0, 20);
 }
@@ -456,7 +468,9 @@ function buildEvidenceGrade(
   const reasons = engine.reasons.map((reason) => clamp(reason, 200));
   const cap = state.challengeReport?.gradeCap ?? "A";
   const capped = gradeSeverity(cap) > gradeSeverity(engine.grade);
-  if (capped) {
+  // The cap reason stays in the artifact even when the engine grade is already
+  // worse: a failed probe must remain visible in the standalone share (Plan 754).
+  if (capped || cap === "B") {
     reasons.push(GRADE_CAP_B_REASON);
   }
   return {
@@ -476,7 +490,9 @@ function buildFitToSite(brief: Brief, view: LeaderView, fit: FitResult): Bluepri
       areaSqFt: brief.areaSqFt ?? null,
       usableSqFt: fit.usableSqFt,
       totalFootprintSqFt: fit.totalFootprintSqFt,
-      withinUsable: fit.feasible,
+      // Tri-state honesty: with no floor area the fit is unmeasured — never a
+      // positive "within usable area" claim over missing data.
+      withinUsable: fit.usableSqFt === null ? null : fit.feasible,
       rule: FOOTPRINT_RULE
     },
     hours: {
@@ -499,11 +515,26 @@ function buildFitToSite(brief: Brief, view: LeaderView, fit: FitResult): Bluepri
   };
 }
 
-function buildRevisionHistory(state: RunState): Blueprint["revisionHistory"] {
+/** Resolve any run member id (pool, challenge mutations) to its display name;
+ *  ids only survive as a fallback when nothing in the run defines the member. */
+function buildMemberNameResolver(state: RunState): (id: string) => string {
+  const lookup = new Map<string, string>();
+  for (const component of state.candidatePool ?? []) {
+    lookup.set(component.id, componentDisplayName(component));
+  }
+  for (const mutation of state.challengeReport?.mutations ?? []) {
+    if (mutation.component !== undefined) {
+      lookup.set(mutation.component.id, componentDisplayName(mutation.component));
+    }
+  }
+  return (id) => lookup.get(id) ?? id;
+}
+
+function buildRevisionHistory(state: RunState, nameOf: (id: string) => string): Blueprint["revisionHistory"] {
   return (state.revisions ?? []).slice(0, 100).map((revision) => ({
     rev: revision.rev,
-    replacedMember: revision.replacedMember,
-    newMember: revision.newMember,
+    replacedMember: nameOf(revision.replacedMember),
+    newMember: nameOf(revision.newMember),
     role: revision.role,
     coherenceBefore: revision.coherenceBefore,
     coherenceAfter: revision.coherenceAfter,
@@ -520,14 +551,18 @@ function deterministicNarrative(
 ): Narrative {
   const title = clamp(`${brief.objective} — ${brief.location}`, 200);
   const names = view.members.slice(0, 6).map((entry) => componentDisplayName(entry.component));
+  const nameOf = (id: string): string => {
+    const member = view.members.find((entry) => entry.id === id);
+    return member === undefined ? id : componentDisplayName(member.component);
+  };
   const verdict = state.challengeReport?.verdict;
   const percentile =
     view.leader.percentile !== null ? ` at percentile ${view.leader.percentile.toFixed(0)}` : "";
   const parts = [
-    `${verdict !== undefined ? `After the ${verdict.toLowerCase()} challenge, the` : "The"} leader holds ${
-      names.length
-    } measured components: ${names.join(", ")}.`,
-    `Coherence ${view.leader.coherence.toFixed(2)}${percentile}; weakest link ${view.leader.weakestLink.a} + ${view.leader.weakestLink.b}.`,
+    `${
+      verdict !== undefined ? `After a challenge that ended ${verdict}, the` : "The"
+    } leader holds ${names.length} measured components: ${names.join(", ")}.`,
+    `Coherence ${view.leader.coherence.toFixed(2)}${percentile}; weakest link ${nameOf(view.leader.weakestLink.a)} + ${nameOf(view.leader.weakestLink.b)}.`,
     `Evidence grade ${grade.grade}: ${grade.reasons[0] ?? "no dominant reason recorded"}.`
   ];
   const body = clamp(parts.join(" "), 1000);
@@ -603,6 +638,12 @@ function stripUnknownCitations(text: string, allowed: Set<string>): { text: stri
   return { text: cleaned.replace(/\s{2,}/g, " ").trim(), kept };
 }
 
+/** Numeric truth belongs to the deterministic artifact; the LLM must not author
+ *  it. Digits inside kept [evidence-id] citations do not count. */
+function hasNumericProse(text: string): boolean {
+  return text.replace(CITATION_PATTERN, "").search(/\d/) !== -1;
+}
+
 function parseNarrativeContent(content: string | null): { title: string; rationale: string } | null {
   if (content === null) {
     return null;
@@ -664,6 +705,9 @@ async function attemptNarrative(
   }
   if (title === "" || rationale === "") {
     return { narrative: null, failure: "the narrative turn produced an empty title or rationale" };
+  }
+  if (hasNumericProse(title) || hasNumericProse(rationale)) {
+    return { narrative: null, failure: "the narrative stated numeric content the artifact owns" };
   }
   input.ledger.append(
     computeEvent(
@@ -731,7 +775,7 @@ export async function composeBlueprint(input: ComposeBlueprintInput): Promise<Bl
     whatQlooChanged: changed,
     risks,
     evidenceGrade: grade,
-    revisionHistory: buildRevisionHistory(state),
+    revisionHistory: buildRevisionHistory(state, buildMemberNameResolver(state)),
     methodUrl: "/method",
     shareUrl: `/run/${state.id}/blueprint?share=${input.shareToken}`,
     generatedAt,

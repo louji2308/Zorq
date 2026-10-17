@@ -8,7 +8,13 @@
  * (orchestrator/replace.ts:141, challenge.ts:1108) so the button does not
  * invite a guaranteed refusal; the server stays the authority on errors.
  */
-import { attackKinds, type AttackKind, type ChallengeReport, type RunState } from "../../../shared/run.js";
+import {
+  attackKinds,
+  componentDisplayName,
+  type AttackKind,
+  type ChallengeReport,
+  type RunState
+} from "../../../shared/run.js";
 
 export type S4Circle = "filled" | "half" | "crossed" | "empty";
 
@@ -42,7 +48,7 @@ export interface S4Model {
   readonly hasVerdict: boolean;
   readonly verdictWord: "Survived" | "Revised" | "Replaced" | null;
   readonly verdictSquare: "solid" | "half-hatched" | "crossed" | null;
-  /** Always the server's reason; Replaced prepends "Replaced by {rival}". */
+  /** Always the server's reason verbatim; the server owns verdict prose. */
   readonly verdictSentence: string;
   readonly rivalLabel: string | null;
   readonly attacks: readonly S4AttackRow[];
@@ -95,7 +101,25 @@ function squareFor(verdict: "Survived" | "Revised" | "Replaced"): "solid" | "hal
   return verdict === "Revised" ? "half-hatched" : "crossed";
 }
 
-function buildLeaderRows(report: ChallengeReport): S4LeaderRow[] {
+/** Display-name resolution for member ids; falls back to the id itself when the
+ *  run carries no pool entry — a name is never invented. */
+function buildNameResolver(run: RunState | null): (id: string) => string {
+  if (run === null) {
+    return (id) => id;
+  }
+  const lookup = new Map<string, string>();
+  for (const component of run.candidatePool ?? []) {
+    lookup.set(component.id, componentDisplayName(component));
+  }
+  for (const mutation of run.challengeReport?.mutations ?? []) {
+    if (mutation.component !== undefined) {
+      lookup.set(mutation.component.id, componentDisplayName(mutation.component));
+    }
+  }
+  return (id) => lookup.get(id) ?? id;
+}
+
+function buildLeaderRows(report: ChallengeReport, nameOf: (id: string) => string): S4LeaderRow[] {
   const before = report.leaderBefore.members;
   const after = report.leaderAfter.members;
   const afterSet = new Set(after);
@@ -107,17 +131,17 @@ function buildLeaderRows(report: ChallengeReport): S4LeaderRow[] {
       shown.add(mutation.memberIn);
     }
   }
-  const rows: S4LeaderRow[] = before.map((name) => ({
-    key: `before:${name}`,
-    name,
-    struck: !afterSet.has(name),
-    replacement: swapIn.get(name) ?? null,
+  const rows: S4LeaderRow[] = before.map((memberId) => ({
+    key: `before:${memberId}`,
+    name: nameOf(memberId),
+    struck: !afterSet.has(memberId),
+    replacement: swapIn.has(memberId) ? nameOf(swapIn.get(memberId)!) : null,
     added: false
   }));
-  for (const name of after) {
-    if (!before.includes(name) && !shown.has(name)) {
-      rows.push({ key: `after:${name}`, name, struck: false, replacement: null, added: true });
-      shown.add(name);
+  for (const memberId of after) {
+    if (!before.includes(memberId) && !shown.has(memberId)) {
+      rows.push({ key: `after:${memberId}`, name: nameOf(memberId), struck: false, replacement: null, added: true });
+      shown.add(memberId);
     }
   }
   return rows;
@@ -174,16 +198,16 @@ export function buildS4Model(run: RunState | null): S4Model | null {
       blockedReason: gate.reason
     };
   }
+  const nameOf = buildNameResolver(run);
   const rivalLabel =
     report.verdict === "Replaced" && report.verdictRival !== undefined
-      ? report.verdictRival.join(", ")
+      ? report.verdictRival.map(nameOf).join(", ")
       : null;
   return {
     hasVerdict: true,
     verdictWord: report.verdict,
     verdictSquare: squareFor(report.verdict),
-    verdictSentence:
-      rivalLabel === null ? report.reason : `Replaced by ${rivalLabel}. ${report.reason}`,
+    verdictSentence: report.reason,
     rivalLabel,
     attacks: [...report.attacks]
       .sort((left, right) => attackKinds.indexOf(left.kind) - attackKinds.indexOf(right.kind))
@@ -197,7 +221,7 @@ export function buildS4Model(run: RunState | null): S4Model | null {
       detail: attack.detail,
       evidenceId: attack.evidenceId ?? null
     })),
-    leaderRows: buildLeaderRows(report),
+    leaderRows: buildLeaderRows(report, nameOf),
     mutationCount: report.mutations.length,
     rounds: report.rounds,
     gradeCap: report.gradeCap,
