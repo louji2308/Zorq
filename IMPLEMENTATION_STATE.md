@@ -2619,4 +2619,4 @@ file rather than creating a second progress truth source.
 - Live A/B receipts in docs/qloo-removal-proof.md §3 (two divergent presets + one control).
 - LIVE_QLOO=1 gateway contract run against real keys.
 - Remaining Phase 10 red-team items that need the live URL (physical mobile/keyboard/
-  reduced-motion sweep, chaosagainst deployed service).
+  reduced-motion sweep, chaos tests against the deployed service).
