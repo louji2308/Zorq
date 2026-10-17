@@ -322,27 +322,56 @@ const cases: SchemaCase[] = [
       schema: methodResponseSchema,
       valid: {
         method: {
+          title: "How Zorq measures",
+          updated: "2026-10-17",
           whatQlooMeasures: ["entity affinities"],
           whatZorqComputes: ["coherence percentile"],
           whatTheLlmGenerates: ["prior composition"],
-          heuristics: [{ name: "role map", editable: true }],
+          heuristics: [
+            {
+              name: "role map",
+              detail: "roles every valid composition covers",
+              editable: true,
+              note: "[Zorq heuristic]"
+            }
+          ],
           formulas: ["weakest link = min(edge weights)"],
-          examples: ["worked example"],
+          workedExample: {
+            title: "Schematic example of the arithmetic",
+            intro: "Placeholders only; real values come from measured Qloo results.",
+            steps: ["weight each entity, apply IDF, take the cosine"]
+          },
           knownLimits: ["thin evidence caps grade at B"],
           setupSummary: "Qloo via MCP, DeepSeek for interpretation.",
-          evidenceVsInference: "Every claim cites an evidence ID."
+          evidenceVsInference: {
+            badges: [{ badge: "[Qloo]", meaning: "directly measured" }],
+            rule: "Every claim cites an evidence ID."
+          }
         }
       },
       invalid: {
         method: {
+          title: "How Zorq measures",
+          updated: "2026-10-17",
           whatQlooMeasures: "not-an-array",
-          whatZorqComputes: [],
-          whatTheLlmGenerates: [],
-          heuristics: [],
-          formulas: [],
-          examples: [],
-          knownLimits: [],
-          setupSummary: "x",
+          whatZorqComputes: ["coherence percentile"],
+          whatTheLlmGenerates: ["prior composition"],
+          heuristics: [
+            {
+              name: "role map",
+              detail: "roles every valid composition covers",
+              editable: true,
+              note: "[Zorq heuristic]"
+            }
+          ],
+          formulas: ["weakest link = min(edge weights)"],
+          workedExample: {
+            title: "Schematic example of the arithmetic",
+            intro: "Placeholders only; real values come from measured Qloo results.",
+            steps: ["weight each entity, apply IDF, take the cosine"]
+          },
+          knownLimits: ["thin evidence caps grade at B"],
+          setupSummary: "Qloo via MCP, DeepSeek for interpretation.",
           evidenceVsInference: "y"
         }
       }

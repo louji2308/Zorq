@@ -4,6 +4,7 @@ import {
   blueprintQuerySchema,
   challengeRequestSchema,
   eventsRequestSchema,
+  methodResponseSchema,
   postRunsRequestSchema,
   recomputeRequestSchema,
   replaceRequestSchema,
@@ -16,6 +17,7 @@ import {
 } from "../shared/index.js";
 import type { HealthzResult } from "./healthz.js";
 import { validate } from "./middleware/validate.js";
+import { methodContent } from "./method.js";
 import type { Orchestrator } from "./orchestrator/index.js";
 import { RunNotFound, RunStoreError, type RunStore } from "./persistence/index.js";
 import { createRunEventsHandler, type EventHub } from "./sse/index.js";
@@ -31,8 +33,7 @@ export const UNIMPLEMENTED_MESSAGES = {
   challenge: "Challenge the Plan is not implemented yet; it lands in Phase 8 (S4 Challenge).",
   recompute:
     "Recompute is not implemented yet; it lands in Phase 8 (constraint engine) on Phase 5 run state.",
-  blueprint: "The Place Blueprint endpoint is not implemented yet; it lands in Phase 8 (S5 Blueprint).",
-  method: "The method content endpoint is not implemented yet; it lands in Phase 9 (/method documentation)."
+  blueprint: "The Place Blueprint endpoint is not implemented yet; it lands in Phase 8 (S5 Blueprint)."
 } as const;
 
 function unimplemented(message: string) {
@@ -239,5 +240,9 @@ export function registerRoutes(app: Express, dependencies: RouteDependencies): v
     }
   );
 
-  app.get("/api/method", unimplemented(UNIMPLEMENTED_MESSAGES.method));
+  // The method content is authored in src/server/method.ts (the single source) and served
+  // validated, so a content edit that breaks the published contract fails loudly here.
+  app.get("/api/method", (_req, res) => {
+    res.status(200).json(methodResponseSchema.parse({ method: methodContent }));
+  });
 }

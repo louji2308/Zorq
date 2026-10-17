@@ -268,20 +268,47 @@ export const blueprintResponseSchema = z.object({
 
 export type BlueprintResponse = z.infer<typeof blueprintResponseSchema>;
 
+export const methodHeuristicSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  detail: z.string().trim().min(1).max(400),
+  /** Every footprint/hours/rule number is labelled and editable on /method (spec §14). */
+  editable: z.boolean(),
+  note: z.string().trim().min(1).max(400)
+});
+export type MethodHeuristic = z.infer<typeof methodHeuristicSchema>;
+
+export const methodWorkedExampleSchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  intro: z.string().trim().min(1).max(400),
+  steps: z.array(z.string().trim().min(1).max(400)).max(20)
+});
+export type MethodWorkedExample = z.infer<typeof methodWorkedExampleSchema>;
+
+export const methodBadgeSchema = z.object({
+  badge: z.string().trim().min(1).max(40),
+  meaning: z.string().trim().min(1).max(300)
+});
+export type MethodBadge = z.infer<typeof methodBadgeSchema>;
+
 export const methodResponseSchema = z.object({
   method: z.object({
-    whatQlooMeasures: z.array(z.string()),
-    whatZorqComputes: z.array(z.string()),
-    whatTheLlmGenerates: z.array(z.string()),
-    heuristics: z.array(z.record(z.string(), z.unknown())),
-    formulas: z.array(z.string()),
-    examples: z.array(z.string()),
-    knownLimits: z.array(z.string()),
-    setupSummary: z.string(),
-    evidenceVsInference: z.unknown()
+    title: z.string().trim().min(1).max(200),
+    updated: z.string().trim().min(1).max(40),
+    whatQlooMeasures: z.array(z.string().trim().min(1).max(400)).max(30),
+    whatZorqComputes: z.array(z.string().trim().min(1).max(400)).max(30),
+    whatTheLlmGenerates: z.array(z.string().trim().min(1).max(400)).max(30),
+    heuristics: z.array(methodHeuristicSchema).max(30),
+    formulas: z.array(z.string().trim().min(1).max(400)).max(30),
+    workedExample: methodWorkedExampleSchema,
+    knownLimits: z.array(z.string().trim().min(1).max(400)).max(30),
+    setupSummary: z.string().min(1).max(3000),
+    evidenceVsInference: z.object({
+      badges: z.array(methodBadgeSchema).max(6),
+      rule: z.string().trim().min(1).max(500)
+    })
   })
 });
-
+export type MethodContent = z.infer<typeof methodResponseSchema>["method"];
 export type MethodResponse = z.infer<typeof methodResponseSchema>;
 
 export { runResponseSchema };

@@ -1,0 +1,201 @@
+/*
+ * /method stylesheet — ink on paper per Final Design §3/§5: Raleway UI text,
+ * a reading layout for wide viewports (main column 720px, margin 320px), the
+ * 8px spacing scale, 0px sheet radius, and the provenance pill language
+ * (dashed border = LLM-authority; solid = measured). No colour, no shadows.
+ */
+.method-page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: var(--zq-space-48) var(--zq-space-24) var(--zq-space-72);
+  font-family: var(--zq-font-ui);
+  color: var(--zq-ink-800);
+}
+
+.method-stamp {
+  font-size: var(--zq-text-small);
+  font-weight: var(--zq-weight-body);
+  color: var(--zq-ink-600);
+  letter-spacing: 0.02em;
+}
+
+.method-title {
+  font-family: var(--zq-font-display);
+  font-size: var(--zq-text-display-m);
+  font-weight: var(--zq-weight-strong);
+  color: var(--zq-ink);
+  line-height: var(--zq-leading-heading);
+  margin: var(--zq-space-8) 0 var(--zq-space-16);
+}
+
+.method-intro,
+.method-loading,
+.method-error {
+  max-width: 72ch;
+  font-size: var(--zq-text-body);
+  font-weight: var(--zq-weight-body);
+  line-height: var(--zq-leading-body);
+  color: var(--zq-ink-800);
+}
+
+.method-error {
+  color: var(--zq-ink);
+  font-weight: var(--zq-weight-strong);
+}
+
+.method-error-code,
+.method-editable {
+  font-size: var(--zq-text-small);
+  font-weight: var(--zq-weight-strong);
+  color: var(--zq-ink-500);
+}
+
+.method-retry {
+  margin-top: var(--zq-space-16);
+  border: none;
+  background: var(--zq-ink);
+  color: var(--zq-paper);
+  font-family: var(--zq-font-ui);
+  font-size: var(--zq-text-small);
+  font-weight: var(--zq-weight-strong);
+  padding: var(--zq-space-12) var(--zq-space-24);
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.method-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 720px) 320px;
+  gap: var(--zq-space-48);
+  align-items: start;
+  margin-top: var(--zq-space-32);
+}
+
+.method-main section,
+.method-margin {
+  margin-bottom: var(--zq-space-48);
+}
+
+.method-section-title {
+  font-family: var(--zq-font-ui);
+  font-size: var(--zq-text-heading);
+  font-weight: var(--zq-weight-strong);
+  color: var(--zq-ink);
+  line-height: var(--zq-leading-heading);
+  margin: 0 0 var(--zq-space-12);
+}
+
+.method-list,
+.method-steps {
+  margin: 0;
+  padding-left: 1.4em;
+}
+
+.method-list li,
+.method-steps li,
+.method-formulas li {
+  font-size: var(--zq-text-body);
+  font-weight: var(--zq-weight-body);
+  line-height: var(--zq-leading-body);
+  margin-bottom: var(--zq-space-8);
+  color: var(--zq-ink-800);
+}
+
+.method-formulas {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.method-formulas li {
+  border-left: var(--zq-l2) solid var(--zq-ink-200);
+  padding-left: var(--zq-space-16);
+  margin-bottom: var(--zq-space-12);
+}
+
+.method-formula {
+  font-family: var(--zq-font-mono);
+  font-size: var(--zq-text-mono);
+  font-weight: var(--zq-weight-regular);
+  line-height: var(--zq-leading-body);
+  color: var(--zq-ink-800);
+}
+
+.method-heuristics {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--zq-text-small);
+  font-weight: var(--zq-weight-body);
+  line-height: var(--zq-leading-body);
+  color: var(--zq-ink-800);
+  text-align: left;
+}
+
+.method-heuristics th {
+  border-bottom: var(--zq-l2) solid var(--zq-ink);
+  font-size: var(--zq-text-small);
+  font-weight: var(--zq-weight-strong);
+  color: var(--zq-ink);
+  padding: var(--zq-space-8);
+}
+
+.method-heuristics td {
+  border-bottom: var(--zq-l1) solid var(--zq-ink-200);
+  padding: var(--zq-space-8);
+  vertical-align: top;
+}
+
+.method-heuristic-name {
+  font-weight: var(--zq-weight-strong);
+  color: var(--zq-ink);
+}
+
+.method-heuristic-note {
+  color: var(--zq-ink-600);
+}
+
+.method-margin {
+  border-left: var(--zq-l2) solid var(--zq-ink-200);
+  padding-left: var(--zq-space-24);
+}
+
+.method-margin-title {
+  font-size: var(--zq-text-subheading);
+  font-weight: var(--zq-weight-strong);
+  color: var(--zq-ink);
+  margin: 0 0 var(--zq-space-12);
+}
+
+.method-badge-entry {
+  font-size: var(--zq-text-small);
+  font-weight: var(--zq-weight-body);
+  line-height: var(--zq-leading-body);
+  color: var(--zq-ink-800);
+  margin-bottom: var(--zq-space-12);
+}
+
+.method-badge {
+  display: inline-block;
+  border: var(--zq-l2) dashed var(--zq-ink);
+  border-radius: var(--zq-radius-pill);
+  padding: 1px var(--zq-space-8);
+  font-size: var(--zq-text-micro);
+  font-weight: var(--zq-weight-strong);
+  color: var(--zq-ink);
+  white-space: nowrap;
+}
+
+/* Narrow viewports collapse the margin into the flow (Final Design §10.2). */
+@media (max-width: 899px) {
+  .method-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--zq-space-24);
+  }
+
+  .method-margin {
+    border-left: none;
+    border-top: var(--zq-l2) solid var(--zq-ink-200);
+    padding-left: 0;
+    padding-top: var(--zq-space-16);
+  }
+}

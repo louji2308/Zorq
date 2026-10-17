@@ -30,12 +30,14 @@ import {
 import {
   blueprintResponseSchema,
   challengeResponseSchema,
+  methodResponseSchema,
   postRunsResponseSchema,
   replaceResponseSchema,
   runResponseSchema,
   type Blueprint,
   type ChallengeRequest,
   type ChallengeResponse,
+  type MethodContent,
   type PostRunsResponse,
   type ReplaceRequest,
   type ReplaceResponse
@@ -271,4 +273,18 @@ export async function getBlueprint(
     );
   }
   return parsed.data.blueprint;
+}
+
+/** The /method reading content — what Qloo measures, what Zorq computes, what the LLM generates. */
+export async function getMethod(options?: ApiCallOptions): Promise<MethodContent> {
+  const response = await requestJson("/api/method", undefined, options);
+  const parsed = methodResponseSchema.safeParse(response.body);
+  if (!parsed.success) {
+    throw new ApiClientError(
+      "INVALID_RESPONSE",
+      "GET /api/method response did not match the expected contract",
+      response.status
+    );
+  }
+  return parsed.data.method;
 }
