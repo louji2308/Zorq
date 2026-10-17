@@ -147,12 +147,17 @@ export function MethodRoute() {
           </section>
 
           <section aria-labelledby="method-limits">
-            <h2 id="method-limits" className="method-section-title">Known limits</h2>
+            <h2 id="method-limits" className="method-section-title">How Zorq can be wrong</h2>
             <ul className="method-list">
               {method.knownLimits.map((limit) => (
                 <li key={limit}>{limit}</li>
               ))}
             </ul>
+          </section>
+
+          <section aria-labelledby="method-type">
+            <h2 id="method-type" className="method-section-title">A note on the type</h2>
+            <p className="method-intro">{method.typeNote}</p>
           </section>
 
           <section aria-labelledby="method-setup">

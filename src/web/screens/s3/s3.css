@@ -518,6 +518,11 @@
   color: var(--zq-ink-800);
 }
 
+.s3-how-method-link {
+  color: var(--zq-ink);
+  white-space: nowrap;
+}
+
 .s3-links {
   list-style: none;
   margin: 0;

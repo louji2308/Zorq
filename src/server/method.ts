@@ -97,6 +97,7 @@ export const methodContent: MethodContent = {
     "Percentile(S) = rank of C(S) among ALL role-valid subsets of the same size, enumerated exactly (no sampling). At pool size 10 with 5-member sets that is at most 252 subsets before filtering.",
     "weakest link(S) = the pair with the minimum edge in S; it is always displayed with a name, never hidden in an average.",
     "d(k) = 1 − cosine(N_k^site, N_k^city) — how differently this category behaves at the site scale versus the city scale.",
+    "Triangulation(pair j,k): query place type k with the taste signal of exemplars E_j and compare the rank of returned k-places to the same query under the locality-anchor signal. Agreement (k-places in the top half on both routes) classifies the edge confirmed; disagreement classifies it contested; fewer than 5 results classifies it thin.",
     "rank(S) = z(C(S))·(1−w) + z(mean distinctiveness(S))·w, after hard filters; tie-break by weakest link. Rival checks sweep w ∈ [0,1] and report leadership flips.",
     "Evidence grade: A when every leader edge is triangulated as confirmed; B when any finalist probe is contested, thin or failed; C when any leader member is unmeasured. Grades are caps, not averages."
   ],
@@ -109,7 +110,9 @@ export const methodContent: MethodContent = {
       "Suppose artist_a appears in 6 of the 8 neighborhoods and film_a in 4: IDF(artist_a) = max(0, ln(8/7)) ≈ 0.133 — nearly suppressed. IDF(film_a) = max(0, ln(8/5)) ≈ 0.470. An entity unique to A and B would get ln(8/3) ≈ 0.981.",
       "Weight each entity by its neighborhood weight (affinity if returned, else 1/rank), multiply by IDF, and take the cosine of A's and B's weight vectors. That cosine is the edge.",
       "For a 5-member composition the coherence is the mean of its ten edges; the percentile is its rank among all role-valid 5-member subsets of the pool — enumerated exactly.",
-      "Distinctiveness compares the site-scale and city-scale neighborhoods of the same component: their cosine's complement, d(k), is how much this category means something different here."
+      "Distinctiveness compares the site-scale and city-scale neighborhoods of the same component: their cosine's complement, d(k), is how much this category means something different here.",
+      "Triangulation re-checks one finalist edge through the second route: if B-places rank in the top half for A's audience under both the exemplar signal and the locality-anchor signal, the edge is confirmed; if the two routes disagree it is contested; if either query returns fewer than 5 results it is thin.",
+      "The evidence grade follows from those classifications by rule: A when every leader edge is confirmed; B when any finalist edge is contested, thin or probed-but-failed; C when any leader member is unmeasured. The grade is a cap, never an average."
     ]
   },
   knownLimits: [
@@ -120,6 +123,8 @@ export const methodContent: MethodContent = {
     "No ground truth exists for \"the correct mix\". Zorq's falsification (Challenge the Plan, triangulation, percentiles, control cases) tests internal consistency, and the Without-Qloo view tests what evidence contributed — it cannot validate against an unmeasured real world.",
     "Sparse or contradictory measurement is surfaced as thin or contested and caps the evidence grade; it is never averaged away into confidence."
   ],
+  typeNote:
+    "The interface sets the results of assembly in Bricolage and the explanations in Raleway: the agent is a bricoleur, assembling a place from the cultural fragments Qloo returns, while the code is the engineer, measuring those fragments from first principles. The pairing makes that boundary visible wherever the product speaks.",
   setupSummary:
     "Zorq runs from a public checkout: Node.js 22.19+, npm ci, configuration copied from .env.example (Qloo and DeepSeek keys are server-side only), `npm run build` and `npm start`, or `npm run dev:server` and `npm run dev:web` in development. Quality gates: npm run typecheck, npm run lint, npm test and npm run test:e2e. The Qloo integration runs through the official qloo MCP harness with a direct REST fallback for diagnostics; no keys, endpoints or credentials are embedded in source, and no Qloo responses are committed.",
   evidenceVsInference: {

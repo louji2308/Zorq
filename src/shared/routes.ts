@@ -301,6 +301,8 @@ export const methodResponseSchema = z.object({
     formulas: z.array(z.string().trim().min(1).max(400)).max(30),
     workedExample: methodWorkedExampleSchema,
     knownLimits: z.array(z.string().trim().min(1).max(400)).max(30),
+    /** Final Design §7.7 item 4: two sentences on the Bricolage/bricoleur type idea. */
+    typeNote: z.string().trim().min(1).max(600),
     setupSummary: z.string().min(1).max(3000),
     evidenceVsInference: z.object({
       badges: z.array(methodBadgeSchema).max(6),

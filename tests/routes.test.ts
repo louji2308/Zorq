@@ -342,6 +342,7 @@ const cases: SchemaCase[] = [
             steps: ["weight each entity, apply IDF, take the cosine"]
           },
           knownLimits: ["thin evidence caps grade at B"],
+          typeNote: "The agent assembles; the code calculates.",
           setupSummary: "Qloo via MCP, DeepSeek for interpretation.",
           evidenceVsInference: {
             badges: [{ badge: "[Qloo]", meaning: "directly measured" }],

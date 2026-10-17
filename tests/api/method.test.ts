@@ -37,6 +37,15 @@ describe("GET /api/method", () => {
     ).toBe(true);
     expect((content.workedExample as { steps: string[] }).steps.length).toBeGreaterThan(2);
     expect((content.knownLimits as string[]).length).toBeGreaterThan(3);
+    // W-9.4 clause pins: triangulation is a first-class formula and the worked
+    // example walks triangulation + evidence grade; the type note is two
+    // sentences on the Bricolage/bricoleur idea (Final Design §7.7 items 3–4).
+    expect((content.formulas as string[]).some((f) => /triangulat/i.test(f))).toBe(true);
+    const steps = (content.workedExample as { steps: string[] }).steps.join(" ");
+    expect(steps).toMatch(/triangulat/i);
+    expect(steps).toMatch(/evidence grade/i);
+    expect(typeof content.typeNote).toBe("string");
+    expect((content.typeNote as string).length).toBeGreaterThan(40);
     expect(content.evidenceVsInference).toEqual(
       expect.objectContaining({
         badges: expect.arrayContaining([

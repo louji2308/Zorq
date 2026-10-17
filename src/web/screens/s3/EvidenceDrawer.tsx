@@ -108,7 +108,10 @@ export function EvidenceDrawer({
           </div>
           <p className="s3-how">
             <span className="s3-how-label">How this was computed: </span>
-            {evidence.howComputed}
+            {evidence.howComputed}{" "}
+            <a className="s3-how-method-link" href="/method#method-formulas">
+              See the formulas
+            </a>
           </p>
           {evidence.links.length > 0 && onOpenLedger !== undefined ? (
             <>

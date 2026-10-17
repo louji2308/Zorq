@@ -89,7 +89,9 @@ test("GET /method serves the method reading page from GET /api/method", async ({
 
   await expect(page.getByRole("heading", { level: 1, name: "How Zorq measures" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Measured by Qloo" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Known limits" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "The formulas" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "How Zorq can be wrong" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "A note on the type" })).toBeVisible();
 
   const rendered = await page.locator("body").innerText();
   expect(rendered).not.toContain("a later phase will build this screen");
