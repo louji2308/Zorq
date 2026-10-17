@@ -90,6 +90,10 @@ IN-SCOPE CAPABILITIES (ordered by dependency):
        - production-build smoke: `npm ci && npm run build && npm start` under
          `NODE_ENV=production` → /healthz healthy with zero secrets in the
          response; degraded boot (503 + named vars, D-2.2) preserved.
+       - refresh the degraded-boot fallback copy while there: `UNIMPLEMENTED_MESSAGES`
+         (routes.ts:23–36) still tells judges "lands in Phase 5/7/8" for routes
+         that all shipped — degraded responses must state the missing
+         dependency/config, never internal phase language.
   W-9.2 Render deploy (Plan 836–842)
        - validate `deployment/Dockerfile` + `render.yaml` against a real
          Render Free Docker web service: one same-origin service serving
