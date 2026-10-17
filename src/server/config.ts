@@ -226,6 +226,52 @@ export function resolvePort(config: ZorqConfig): number {
   return 3000;
 }
 
+export type ListenPortSource = "PORT" | "APP_BASE_URL" | "default";
+
+export interface ListenPort {
+  port: number;
+  source: ListenPortSource;
+  /** Present when PORT was rejected; the caller must surface it (no hidden fallback). */
+  invalidWarning?: string;
+}
+
+function resolveFallbackPort(config: ZorqConfig | undefined): Omit<ListenPort, "invalidWarning"> {
+  if (config === undefined) {
+    return { port: 3000, source: "default" };
+  }
+  const url = new URL(config.appBaseUrl);
+  if (url.port !== "") {
+    return { port: Number(url.port), source: "APP_BASE_URL" };
+  }
+  return { port: 3000, source: "default" };
+}
+
+/**
+ * Listen-port precedence: a platform-injected PORT (Render/Dockers inject it; it is the
+ * only port platform traffic reaches) → the port inside APP_BASE_URL → 3000.
+ * An invalid PORT never crashes the boot: it falls back and returns invalidWarning so the
+ * caller surfaces the misconfiguration instead of hiding it.
+ */
+export function resolveListenPort(
+  env: Record<string, string | undefined>,
+  config: ZorqConfig | undefined
+): ListenPort {
+  const rawPort = readString(env, "PORT");
+  if (rawPort !== undefined) {
+    const parsed = Number(rawPort);
+    if (Number.isInteger(parsed) && parsed >= 1 && parsed <= 65535) {
+      return { port: parsed, source: "PORT" };
+    }
+    const fallback = resolveFallbackPort(config);
+    const where = fallback.source === "default" ? "default 3000" : fallback.source.toLowerCase();
+    return {
+      ...fallback,
+      invalidWarning: `invalid PORT: expected an integer TCP port in [1, 65535], received ${JSON.stringify(rawPort)}; falling back to ${where}.`
+    };
+  }
+  return resolveFallbackPort(config);
+}
+
 export function loadConfig(env: Record<string, string | undefined>): ZorqConfig {
   const issues: ConfigIssue[] = [];
 

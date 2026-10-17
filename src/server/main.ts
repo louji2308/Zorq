@@ -1,14 +1,12 @@
 import { existsSync } from "node:fs";
 import { createDeepSeekLlmClient } from "./agent/llm.js";
 import { createApp } from "./app.js";
-import { ConfigError, loadConfig, resolvePort, type ZorqConfig } from "./config.js";
 import { createLogger } from "./logger.js";
+import { ConfigError, loadConfig, resolveListenPort, type ZorqConfig } from "./config.js";
 import { createOrchestrator } from "./orchestrator/index.js";
 import { createRunStore } from "./persistence/index.js";
 import { createQlooGateway, missingQlooConfiguration, type QlooGateway } from "./qloo/index.js";
 import { createEventHub } from "./sse/index.js";
-
-const FALLBACK_PORT = 3000;
 
 function readDotEnv(): void {
   try {
@@ -87,10 +85,14 @@ async function bootstrap(): Promise<void> {
     orchestrator,
     eventHub: hub
   });
-  const port = config !== undefined ? resolvePort(config) : FALLBACK_PORT;
-  app.listen(port, () => {
+  const listenPort = resolveListenPort(process.env, config);
+  if (listenPort.invalidWarning !== undefined) {
+    process.stderr.write(`WARN ${listenPort.invalidWarning}\n`);
+    logger.warn({ port: listenPort.port }, listenPort.invalidWarning);
+  }
+  app.listen(listenPort.port, () => {
     logger.info(
-      { port, degraded: configFailure !== undefined },
+      { port: listenPort.port, portSource: listenPort.source, degraded: configFailure !== undefined },
       "zorq server listening"
     );
   });

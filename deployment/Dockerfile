@@ -36,6 +36,7 @@ COPY .env.example ./.env.example
 # Non-root: the official node image ships the `node` user (uid 1000); app only reads.
 USER node
 EXPOSE 3000
-# Listen port is derived from APP_BASE_URL (src/server/config.ts resolvePort → 3000).
-# Phase 9 must reconcile this with any platform-injected PORT before going live.
+# Listen port is resolved by resolveListenPort (src/server/config.ts): the platform-injected
+# PORT wins (Render/Docker traffic reaches only that port); otherwise the APP_BASE_URL port,
+# otherwise 3000. A rejected PORT degrades loudly (warning + fallback), it is never hidden.
 CMD ["node", "dist/server/main.js"]

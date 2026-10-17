@@ -5,7 +5,9 @@ import {
   LOCK_LLM_BUDGET_USD,
   LOCK_MAX_QLOO_CALLS,
   LOCK_QLOO_CONCURRENCY,
-  loadConfig
+  loadConfig,
+  resolveListenPort,
+  type ZorqConfig
 } from "../src/server/config.js";
 
 const BASE = { NODE_ENV: "development", APP_BASE_URL: "http://localhost:3000" };
@@ -177,5 +179,43 @@ describe("loadConfig", () => {
     expect(caught).toBeInstanceOf(ConfigError);
     expect((caught as ConfigError).issues.map((issue) => issue.variable)).toEqual(["QLOO_BASE_URL"]);
     expect((caught as ConfigError).message).toContain("a valid absolute URL");
+  });
+});
+
+describe("resolveListenPort", () => {
+  it("prefers a platform-injected numeric PORT over APP_BASE_URL", () => {
+    const config = loadConfig({ ...BASE, APP_BASE_URL: "http://localhost:4000" });
+    expect(resolveListenPort({ PORT: "8555" }, config)).toEqual({ port: 8555, source: "PORT" });
+  });
+
+  it("falls back to the APP_BASE_URL port when PORT is absent", () => {
+    const config = loadConfig({ ...BASE, APP_BASE_URL: "http://localhost:4000" });
+    expect(resolveListenPort({}, config)).toEqual({ port: 4000, source: "APP_BASE_URL" });
+  });
+
+  it("defaults to 3000 when PORT is absent and APP_BASE_URL has no port", () => {
+    const config = loadConfig({ ...BASE, APP_BASE_URL: "https://zorq.onrender.com" });
+    expect(resolveListenPort({}, config)).toEqual({ port: 3000, source: "default" });
+  });
+
+  it("falls back to 3000 with no config at all", () => {
+    expect(resolveListenPort({}, undefined)).toEqual({ port: 3000, source: "default" });
+  });
+
+  it("surfaces an invalid PORT in the warning instead of accepting it", () => {
+    for (const invalidPort of ["0", "70000", "not-a-port", "3.5"] as const) {
+      const config: ZorqConfig | undefined = loadConfig({ ...BASE, APP_BASE_URL: "http://localhost:4000" });
+      const resolved = resolveListenPort({ PORT: invalidPort }, config);
+      expect(resolved.port).toBe(4000);
+      expect(resolved.source).toBe("APP_BASE_URL");
+      expect(resolved.invalidWarning).toContain("invalid PORT");
+      expect(resolved.invalidWarning).toContain(String(invalidPort));
+    }
+  });
+
+  it("falls back to 3000 with a warning when PORT is invalid and no config exists", () => {
+    const resolved = resolveListenPort({ PORT: "http://evil" }, undefined);
+    expect(resolved).toMatchObject({ port: 3000, source: "default" });
+    expect(resolved.invalidWarning).toContain("falling back to default 3000");
   });
 });
