@@ -16,11 +16,13 @@ W-8.6 `cce7b87`, exit-gate e2e `0f3620a` + `d4edc90`, compare-modal fix
 docs commits. The one deferred clause — full judge path **under real services** —
 waits on B-02 (user-side DeepSeek top-up) and runs as the first live action of
 Phase 9; recorded in the clause map, not hidden.
-**PHASE 9 — Full-System Integration, Deployment & Judge Readiness is next**
-(Plan 819+: landing→preset→…→share full path, Render Docker deploy, CI, /method
-content, judge readiness). Parallel user-side: top up DeepSeek (B-02), Turso
-(B-06). Phase 6 remains OPEN on B-02 only. Deadline Oct 30 2026 23:45 EDT;
-internal freeze Oct 28.
+**PHASE 9 — Full-System Integration, Deployment & Judge Readiness: CONTRACT
+WRITTEN 2026-10-17 at the phase boundary (full seven-source spec re-read; see
+`PHASE 9 CONTRACT` above); implementation next** (W-9.1 port/health → W-9.2
+Render deploy → W-9.3 CI/health workflows → W-9.4 /method content → W-9.5
+README/repo surfaces → W-9.6 full-path e2e → W-9.7 live Qloo-removal A/B).
+Parallel user-side: top up DeepSeek (B-02), Turso (B-06). Phase 6 remains OPEN
+on B-02 only. Deadline Oct 30 2026 23:45 EDT; internal freeze Oct 28.
 
 ## Current Objective
 
@@ -33,7 +35,162 @@ Deviations to carry: B-09 SSE history gap, B-10 GET-only evidence, /method route
 deferred review polish B-11, S5 in-place Replace (D-8.16). Deadline Oct 30 2026
 23:45 EDT; internal freeze Oct 28.
 
-### PHASE 8 CONTRACT (WRITTEN 2026-10-15 — before implementation; orchestrator-direct)
+### PHASE 9 CONTRACT (WRITTEN 2026-10-17 — at the phase boundary, after full
+### seven-source spec re-read: plan section read direct, other six sources
+### briefed via four parallel read-only spec agents; orchestrator-direct)
+
+```text
+PHASE:        9 — Full-System Integration, Deployment & Judge Readiness
+MISSION:      (Plan 819) Turn the implementation into a public, reliable,
+              self-explanatory submission candidate.
+WHY:          Phases 0–8 built and proved the product on fixtures; nothing yet
+              exists that a fresh judge can reach without us in the room. This
+              phase closes the four remaining submission surfaces — full
+              public path, hosted deployment, CI + health, judge-facing
+              documentation (README + /method) — plus the honest Qloo-removal
+              A/B proof that makes the Qloo integration undeniable. It is the
+              only phase between the closed Phase 8 gate and the Phase 10
+              red-team gate (Plan 899+: "no feature enters unless it fixes a
+              release-blocking defect").
+
+CURRENT-STATE ASSUMPTIONS (verified at boundary 2026-10-17):
+  - Phase 8 CLOSED (`e238db3`); gates green: typecheck 0, lint 0, 746 pass /
+    5 gated-live skips, Playwright 10/10, build PASS; fixture-browser walk
+    proven (`tmp/phase8-walk.json`, zero console errors).
+  - S0–S5 screens, share route, and the /method frontend route exist;
+    GET /api/method belongs to the locked route surface as a stub; the fixture
+    judge pipeline proves the full chain API-level (challenge → blueprint →
+    without-Qloo → share).
+  - `deployment/Dockerfile` + `deployment/render.yaml` exist (Phase 2,
+    review-only — D-0.6: Docker absent locally; image never built; render.yaml
+    documents the known PORT gap).
+  - `.github/` does NOT exist — no CI workflows yet.
+  - `README.md` exists (158 lines) but is unaudited against the Plan's 14
+    above-fold items (Plan 855–870) + T&R 301–303 repository contents.
+  - Live-services judge path AND the Qloo-removal A/B run wait on B-02
+    (user-side DeepSeek top-up); everything else proceeds on fixtures.
+  - Carried deviations: B-09 SSE history gap, B-10 GET-only evidence, B-11
+    (7 items incl. shift-scale operator gap), D-8.16 S5 in-place Replace,
+    /method stub, listen-port derived from APP_BASE_URL (Phase 2 open item —
+    NOW in scope: Render injects PORT).
+  - Gate G / T&R 237 organizer clarification (cache/persistence/key lifetime
+    through judging) still unverified — persistence stays conservative
+    (`PERSIST_QLOO_DERIVED=false` default); do not relax it in this phase.
+  - Dates: internal freeze Oct 28, hard freeze Oct 29, deadline Oct 30 11:45
+    PM EDT, judging through Nov 16. Render Free: 750 instance-hours/month —
+    start ~Oct 20 (288 h Oct + 384 h Nov 1–16 fits); 15-min spin-down, ~1 min
+    wake; scheduled health ping every ~10 min is best-effort warm-up only
+    (T&R 46), never an uptime claim.
+
+IN-SCOPE CAPABILITIES (ordered by dependency):
+  W-9.1 Production boot + health hardening [smallest first]
+       - honor platform-injected `PORT` (fix the recorded Phase 2 item:
+         resolve config reads `PORT` first, falls back to APP_BASE_URL-derived
+         3000) with local-dev behavior unchanged.
+       - production-build smoke: `npm ci && npm run build && npm start` under
+         `NODE_ENV=production` → /healthz healthy with zero secrets in the
+         response; degraded boot (503 + named vars, D-2.2) preserved.
+  W-9.2 Render deploy (Plan 836–842)
+       - validate `deployment/Dockerfile` + `render.yaml` against a real
+         Render Free Docker web service: one same-origin service serving
+         React static + Express API + agent + Qloo MCP + deterministic engine,
+         Turso persistence; **Qloo MCP never serverless-only** (T&R 42).
+       - operator checklist: dashboard-managed env vars
+         (`QLOO_API_KEY`, `DEEPSEEK_API_KEY`, `TURSO_*`, `APP_BASE_URL`,
+         `NODE_ENV`, budget vars) — names only in git (render.yaml `sync:false`).
+       - first live boot evidence: healthy /healthz on the public URL, static
+         assets served, SSE through the public URL, Turso write/read
+         round-trip, share snapshot reachable, zero browser console errors.
+  W-9.3 CI + scheduled health (Plan 843–853 / T&R §18)
+       - `.github/workflows/ci.yml` on push: install → typecheck → lint →
+         unit tests → build → Playwright smoke where appropriate (no secrets
+         anywhere in the workflow).
+       - `.github/workflows/health.yml`: scheduled `GET /healthz` every ~10 min
+         from Oct 20 through judging end (T&R 318–322), loud failure, no
+         secret exposure; explicitly best-effort, not a guarantee.
+  W-9.4 /method content (Plan 871–880 / FD §7.7 690–699 / PS 234)
+       - replace the stub with the full page: what Qloo measures · what Zorq
+         computes · what the agent decides · formulas with WORKED EXAMPLES on
+         real preset entities (IDF edge, null-model percentile,
+         distinctiveness, triangulation, evidence grade) · heuristics listed
+         and marked editable (`[Zorq heuristic]`: format library, role map,
+         85% rule) · evidence grades · the five known limits (PS 374–380) ·
+         open-source setup · two-sentence type note · "How Zorq can be wrong".
+       - evidence-drawer / blueprint "How this was computed" anchors resolve to
+         real page anchors; NO new API routes (11-route surface stays locked).
+  W-9.5 README + repository surfaces (Plan 854–870 / T&R 301–303)
+       - README above the fold: problem · solution · live URL · screenshot ·
+         setup · Qloo integration · why Qloo is indispensable · architecture ·
+         local run · deployment · method · limitations · security · license ·
+         judge path (audit current 158-line README, rewrite to clause).
+       - repo surfaces: `.env.example` placeholders only, architecture diagram,
+         Qloo integration table, test instructions, screenshots, /method
+         mirrored in docs, truthful git timeline (T&R 305).
+  W-9.6 Full public-path browser suite (Plan 822–835)
+       - extend the fixture e2e to the COMPLETE path on production dist:
+         Landing → preset → Prior → S1 + DNA → S2 → S3 → S4 → S5 →
+         Without-Qloo → Share/Print, one journey with honest state at each
+         step; re-run post-deploy against the public URL where fixtures allow.
+  W-9.7 Qloo-removal A/B proof (Plan 881–888)
+       - same brief: A = Zorq + Qloo evidence, B = without Qloo cultural
+         evidence; compare membership, ordering, graph relationships,
+         rationale, evidence, final blueprint. Document genuine dependency;
+         NEVER maximize divergence artificially. Requires real services
+         (B-02) for A; record honestly if still blocked, as Phase 8 did.
+
+REQUIRED INVARIANTS:
+  - One same-origin Render service; Qloo MCP not serverless-only.
+  - Keys server-only: no secrets in CI logs, README, screenshots, /healthz.
+  - Prior write-once; no fallback manufactures evidence; unknown evidence IDs
+    never render; all Phase 8 honesty floors stay green (746-test baseline).
+  - Route surface stays locked at 11; /method adds no endpoints.
+  - Budgets untuned: Qloo ≤180 target/≈200 ceiling, concurrency 6, ≤3 turns,
+    ≤2 mutation rounds, $2 LLM cap.
+  - Fixture fakes remain test-only; public path under live services uses real
+    Qloo + real DeepSeek (AGENTS §12).
+  - Conservative Qloo cache/persistence posture stays until Gate G answers.
+
+DEPENDENCIES:  W-9.1 → W-9.2 → live checks; W-9.3 parallel with W-9.4/W-9.5;
+               W-9.6 extends existing e2e (needs W-9.1–9.2 for the deployed
+               leg); W-9.7 last (needs B-02).
+NON-GOALS:     Phase 10 red-team audits (hardcode audit, per-endpoint API
+               verification, chaos/recovery, agent behavior audit);
+               S5 in-place Replace (D-8.16); B-11 polish items unless a
+               judge-blocking defect surfaces; any NEW feature (Plan 902);
+               paid infra (no pre-spend; fallback host only if Render fails,
+               T&R 346); video (not required — Hackathon L95).
+RISK HOTSPOTS: Docker build observable only on Render (no local Docker,
+               D-0.6); Render spin-down/cold-start during judging; PORT fix
+               regressions on local dev; free-runner CI minutes; README/method
+               accuracy (no claim beyond evidence, forbidden-claims list);
+               B-02 blocking the live A/B + fresh-judge live proof; screenshot
+               freshness for gallery images (FD §11).
+ACCEPTANCE:    typecheck 0 · lint 0 · unit green (≥746 baseline) · build PASS ·
+               full-path e2e green on production dist · CI workflows green on
+               push · public URL healthy (/healthz 200, no secrets) · fresh
+               browser pass on the public URL, zero console errors · README +
+               /method audited clause-by-clause against Plan 854–880 · A/B
+               Qloo-removal comparison recorded live, or honestly deferred with
+               user decision (never faked).
+VERIFICATION:  focused test per fix → full ladder on dist → CI green on
+               GitHub → deployed smoke (health, static, SSE, Turso, share) →
+               clause map vs Plan 819–890 + T&R §17–18 + Architecture §22/§27.
+ARTIFACTS:     `.github/workflows/{ci,health}.yml`; PORT-aware listen config;
+               README.md rewrite; /method page content (frontend only);
+               deployment operator checklist; A/B comparison evidence entry.
+COMMIT SCOPE:  3–6 coherent commits (boot/health hardening; CI workflows;
+               method content; README + repo surfaces; full-path e2e;
+               docs close).
+EXIT GATE:     (Plan 890) A fresh judge can open the public URL and reach a
+               meaningful result without login, private credentials, hidden
+               developer intervention or a fabricated data layer. Clause map vs
+               Plan 819–890 + T&R §17–18 + Architecture §22/§27; live A/B
+               proof recorded or honestly deferred with the user's decision
+               (same disposition discipline as Phase 8's fixture close).
+```
+
+### PHASE 8 CONTRACT (ARCHIVED 2026-10-17 — phase CLOSED, exit-gate PASSED;
+### clause map in `Phase 8 Exit-Gate Status` below. Written 2026-10-15.)
 
 ```text
 PHASE:        8 — S4/S5: Challenge, Constraint Fit & Blueprint
