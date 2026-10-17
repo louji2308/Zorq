@@ -3,50 +3,34 @@
 **Cultural composition intelligence for physical places.**
 
 Zorq is an autonomous cultural composition agent: it takes a brief for a site, freezes an
-LLM-only Prior, investigates the locality with Qloo's taste and locality intelligence,
-measures cultural relationships deterministically, assembles competing compositions,
-stress-tests its own recommendation, and produces an evidence-bound **Place Blueprint** —
-plus an honest *Without-Qloo* comparison showing what Qloo changed.
+LLM-only Prior before touching any data, investigates the locality with Qloo's taste and
+locality intelligence, measures cultural relationships deterministically, assembles competing
+compositions (Prior + A/B/C), stress-tests its own recommendation ("Challenge the Plan"), fits
+the result to physical and operating constraints, and produces an evidence-bound
+**Place Blueprint** — plus an honest *Without-Qloo* comparison showing what the evidence changed.
 
-> Zorq does not use Qloo to find a place; it uses Qloo to measure the cultural relationships
-> that let an agent decide what should exist together — and it leaves the evidence trail
-> showing why the plan changed.
+The deletion test: remove Qloo and Zorq loses the shared-culture edges between components, the
+local-vs-city distinctiveness readings, the provenance path behind every candidate, and the
+reason the Prior changed. Zorq never manufactures divergence: on a control site it says plainly
+that the evidence confirmed the first guess.
 
-**Status: in active build for the [Qloo Agentic Hackathon 2026](https://qloo.devpost.com/).**
-Started 2026-10-06. This README grows with the build; where a command does not exist yet,
-it is not printed here.
+## Status
 
-## What works today
+Submission candidate for the [Qloo Agentic Hackathon 2026](https://qloo.devpost.com/)
+(project started 2026-10-06). Phases 1–8 of the
+[implementation plan](./ProjectSpec/IMPLEMENTATION_PLAN.md) are built and verified.
+Phase 9 (deployment & judge readiness) is in progress; the live URL is pinned here at freeze:
+**Live demo: https://\<zorq service URL\>.onrender.com** *(added at deploy time — no live URL yet
+in this checkout.)*
 
-- **Repository contract:** [`ARCHITECTURE.md`](./ARCHITECTURE.md) — repository ownership map,
-  canonical Run state, the 11-route API contract, Qloo capability contract, UI contract,
-  phase gates and open blockers.
-- **Typed runtime (Phase 2):** Express server with the security baseline (Helmet, per-IP rate
-  limiting, Zod validation, typed error model), `GET /healthz` (200 `{"status":"ok",…}` when
-  configured; 503 typed error naming the missing variables when not), SPA static serving with
-  client-route fallback, shared Zod contracts in [`src/shared`](./src/shared).
-- **Test suites:** Vitest unit/integration (`npm test`) covering health, errors, degraded boot
-  and config; Playwright E2E smoke (`npm run test:e2e`) driving your installed system Chrome
-  against a real production build — `/healthz`, SPA mount, and SPA fallback on an unknown route.
-- **Proven Qloo integration (live, real key, real calls):**
-  - REST path: `/search`, `/v2/tags`, `/v2/insights` verified against `hackathon.api.qloo.com`
-    (locality filters, numeric `affinity` and `popularity`, POST-body query params).
-  - MCP path: the official `qloo mcp` server (stdio) boots, lists 10 tools, serves
-    `qloo_capabilities` (contract v1.0.0, canonical) and executes live tool calls.
-  - Verdict and binding conditions: [`ARCHITECTURE.md` §4.2](./ARCHITECTURE.md).
-- **Competition tracking:** [`HACKATHON_TRACKER.md`](./HACKATHON_TRACKER.md) (requirements,
-  build gates, spikes, submission checklist).
-- **Build state / decisions / evidence:** [`IMPLEMENTATION_STATE.md`](./IMPLEMENTATION_STATE.md).
-
-## What is not built yet
-
-The product itself: the Qloo + DeepSeek agent core (Phase 3), the deterministic measurement
-engine (Phase 4), durable run state / SSE / recovery (Phase 5), the five judge-facing screens
-(Phases 6–8), and deployment (Phase 9). There is **no hosted URL yet**: `deployment/Dockerfile`
-and `deployment/render.yaml` exist as a reviewed-but-unbuilt contract (Docker is not available in
-the local dev environment, so the image is validated on Render when deployment lands). Each phase
-of the [implementation plan](./ProjectSpec/IMPLEMENTATION_PLAN.md) has an explicit exit gate;
-commands appear here only once they actually work on a fresh checkout.
+| Surface | State |
+|---|---|
+| `/` brief → Prior → S1 investigation → S2 compositions → S3 connections → S4 challenge → S5 blueprint | built, judge-path-tested |
+| `/run/:id/blueprint` read-only shareable snapshot | built |
+| `/method` (how Zorq measures: formulas, heuristics, limits) | built |
+| Health endpoint `/healthz` | built (503 typed degraded boot is the documented contract) |
+| Docker / Render deployment contract | in [`deployment/`](./deployment) (image builds on Render — Docker is not available on the dev machine) |
+| CI | on-push gates + scheduled public `/healthz` ping in [`.github/workflows/`](./.github/workflows) |
 
 ## Architecture in one diagram
 
@@ -60,97 +44,108 @@ USER BRIEF → FROZEN LLM PRIOR → QLOO SITE READ → CULTURAL DNA
 
 Separation of powers (non-negotiable):
 
-| Layer | Owns |
-|---|---|
-| **Qloo** (MCP primary, REST fallback) | cultural measurement / external evidence |
-| **Zorq code** | validation, arithmetic, graph, search, constraints, budgets — *all numeric truth* |
-| **LLM (DeepSeek)** | interpretation, probe selection, mutation, explanation — never numeric truth |
+| Layer | Owns | Never owns |
+|---|---|---|
+| **Qloo** (official `qloo mcp` + REST fallback) | cultural measurement: locality, place→culture, culture→place, site-vs-city reads, explainability where supported | any Zorq number |
+| **Zorq deterministic code** | validation, taste neighborhoods, IDF-weighted edges, mean coherence, exact percentile over role-valid subsets, distinctiveness, weakest link, triangulation classification, evidence grades, constraint fit, budgets, Prior→Final diff | subjective prose |
+| **LLM (DeepSeek `deepseek-flash`)** | Prior generation, anchor/probe/attack selection, naming, rationale, downshift wording | any numeric truth, any evidence ID |
 
-## Stack (locked)
+Every claim in the UI carries one of three provenance badges — `[Qloo]`, `[Zorq heuristic]`,
+`[LLM]` — and every `[Qloo]` claim opens evidence that traces claim → evidence ID → ledger event
+→ measurement input. Unknown evidence IDs never render as Qloo evidence.
 
-React + Vite + TypeScript · Node.js 22.19+ + Express + TypeScript · shared Zod contracts ·
-DeepSeek (`deepseek-flash`, OpenAI-compatible) · Qloo official MCP harness · MapLibre + MapTiler ·
-Turso/libSQL · Vitest + Playwright · Docker on Render Free · $0-cost ceiling (≤ $2 LLM/run).
+## Qloo integration
+
+| Capability | Zorq use | Evidence surfaced |
+|---|---|---|
+| `qloo_capabilities` (MCP startup) | credential/runtime check before a run | health + ledger rows |
+| Entity/place search | resolve admired places and site names to canonical IDs | brief autocomplete, provenance paths |
+| Tag search / resolution | never hardcode tag URNs; resolve per category | component tags in the pool |
+| Locality/heat (`urn:heatmap`, REST path) | where taste concentrates near the site | S1 map heat + anchor pins |
+| Place insights at site and city scale | local anchors; the two-scale read behind distinctiveness | DNA strip, distinctiveness readings |
+| Place → culture (place IDs as taste signals) | artists/films/brands around the anchors | Cultural DNA entities |
+| Culture → place (entities as signals) | candidate components with a defensible path | pool provenance paths |
+| Taste neighborhoods (entities as signals) | per-component neighborhoods used for the graph | edge receipts |
+| Second route on finalist edges | triangulation: confirmed / contested / thin | edge drawer + evidence grade |
+| Bridge / replace probes | repair weak edges; role-preserving alternatives | Challenge artifacts, Replace panel |
+| Explainability where returned | which entities influenced a result | evidence drawer detail |
+
+Why Qloo is indispensable: without it there is no measurement of which components *share an
+audience here* (the graph has nothing to draw), no local-vs-city contrast to resist the
+popularity trap, and no evidence path behind any candidate — so the Prior cannot honestly
+change. The LLM-only Before/After comparison in S5 makes that dependency inspectable per run.
 
 ## Run it
 
 **Prerequisites:** Node.js ≥ 22.19 + npm, Git, and Google Chrome (the E2E suite launches your
 installed system Chrome via Playwright's `channel: "chrome"` — it never downloads a browser).
 
-Install exactly as a fresh checkout would:
-
 ```bash
 npm ci
-```
-
-**Configuration.** Copy the placeholder contract and fill values *locally*:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-Required at start: `NODE_ENV` and `APP_BASE_URL`. The remaining variables in
-[`.env.example`](./.env.example) (Qloo / DeepSeek / Turso / MapTiler) are unused by the runtime
-so far. Never paste real values into commits, docs, issues, or screenshots; `.env` is git-ignored.
-
-**Production-style run** (this is also what the E2E suite executes):
-
-```bash
-npm run build
-npm start
-```
-
-Verify the health contract:
-
-```bash
-curl http://localhost:3000/healthz
-# → 200 {"status":"ok","service":"zorq","version":"…","checks":{…}}
-```
-
-With `NODE_ENV`/`APP_BASE_URL` absent the server still boots, and `/healthz` answers 503 with a
-typed error naming the missing variables — that degraded-boot behavior is the documented
-contract, not a crash.
-
-**Development mode** (two terminals):
-
-```bash
-npm run dev:server   # Express API (incl. /healthz) on http://localhost:3000 (tsx watch)
-npm run dev:web      # Vite dev server for the frontend shell on http://localhost:5173
-```
-
-The built SPA is served by `npm start` (production mode) only; in development the frontend
-shell lives on the Vite dev server. No API proxy is wired into Vite yet (front-end screens
-land in Phase 6).
-
-**Quality gates** (all must stay green):
-
-```bash
+cp .env.example .env   # fill NODE_ENV / APP_BASE_URL first; keys are server-side only
 npm run typecheck
 npm run lint
-npm test           # Vitest unit/integration
-npm run test:e2e   # Playwright smoke: builds, starts, tests against system Chrome
+npm test               # Vitest unit/integration suites
+npm run test:e2e       # builds the production bundle, starts it, drives the judge path
+npm run build
+npm start              # serves the built SPA + API on one origin
+curl http://localhost:3000/healthz
 ```
+
+`/` gives three preset briefs; create a run and the workspace streams the investigation over
+SSE. Creating a run without Qloo/DeepSeek keys answers a *typed* `DEPENDENCY_UNAVAILABLE`
+envelope — degraded behavior is state, not a crash. Real runs require the server-side keys
+(`QLOO_API_KEY`, `DEEPSEEK_API_KEY`; optional `TURSO_*` persistence, `VITE_MAPTILER_KEY`).
+
+Repositories detail: [`ARCHITECTURE.md`](./ARCHITECTURE.md) is the repository contract and
+[`HACKATHON_TRACKER.md`](./HACKATHON_TRACKER.md) tracks competition requirements and gates.
+
+## Screenshots
+
+Real product surfaces captured from the production build (`docs/screenshots/`):
+
+![S0 brief, 1440px](docs/screenshots/s0-brief-1440.png)
+
+![/method, 1440px](docs/screenshots/method-1440.png)
+
+Narrow (360px) variants sit beside them. Screens showing Qloo-derived measurements are captured
+from live runs with real keys and added at submission freeze — never from test fixtures, so the
+gallery cannot present manufactured data as evidence.
+
+## Deployment
+
+Render Free Docker web service (same origin for the React build + Express API + agent + Qloo
+MCP runtime). The reviewed contracts live in [`deployment/Dockerfile`](./deployment/Dockerfile)
+and [`deployment/render.yaml`](./deployment/render.yaml); the image is validated on Render at
+deploy time. The server listens on the platform-injected `PORT` when present, then `APP_BASE_URL`,
+then 3000. `GET /healthz` returns 200 when configured and a typed 503 naming any missing
+required variables otherwise; a ten-minute scheduled GitHub Actions ping keeps the free tier warm
+(see `.github/workflows/health-ping.yml`; set the repository variable `HEALTHZ_URL`).
 
 ## Limitations (honest, current)
 
-- No hosted demo URL yet — deployment lands in Phase 9 (`deployment/` holds the reviewed
-  Dockerfile + Render config; no image has been built, so there is nothing deployed today).
-- Qloo quota / rate-limit numbers are not yet published by the organizers; call budgets
+- The Qloo place catalog is not a census; small or informal venues can be missing.
+- Edges describe shared culture between audiences *within the measured pool* — never demand,
+  revenue or success probability.
+- Format footprints and hours profiles are `[Zorq heuristic]` planning ranges, labelled and
+  documented on `/method`.
+- Coherence and percentiles are relative to the measured pool; no ground truth exists for
+  "the right mix".
+- Qloo quota/rate-limit numbers are still unpublished by the organizers; call budgets
   (≤ 180 target, ≈ 200 ceiling, concurrency ≤ 8) are engineering defaults pending measurement.
-- Measured constraints: Qloo responses are 0.2–1.0 MB (field projection is mandatory), and the
-  affinity band is compressed (range 0.036 over 50 results) — deltas are normalized, never
-  presented as raw gaps.
-- Four capabilities the canonical MCP tools do not expose (entity search, heatmap, taste
-  neighborhoods, explainability) require the REST fallback path.
-- Docker is not available in the local dev environment; container builds are validated on Render.
+- Qloo responses are large (0.2–1.0 MB, field projection mandatory) and the raw affinity band is
+  compressed; deltas are normalized, never presented as raw gaps.
+- Docker is not available on this dev machine; container builds are validated on Render.
 
 ## Security notes
 
-- Qloo and DeepSeek keys live only in server-side environment variables; never in the browser
-  bundle, Git, logs, screenshots, or this README.
-- Qloo is never called from the browser.
-- Qloo response data is never stored in this public repository (official Qloo rule); only
-  aggregate statistics and parameter findings are recorded.
+- Qloo, DeepSeek, Turso and MapTiler credentials live only in server-side environment
+  variables; never in the browser bundle, Git history, logs, screenshots or this README.
+- Qloo is never called from the browser; Qloo and LLM output are treated as untrusted input and
+  validated at the boundary.
+- No Qloo responses are stored or committed; only Zorq-owned, sanitized run state is persisted
+  (`PERSIST_QLOO_DERIVED=false` by default).
+- Helmet, per-IP rate limiting, request IDs, and secret-redacted Pino logging are active.
 
 ## License
 

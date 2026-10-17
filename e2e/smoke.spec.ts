@@ -80,6 +80,22 @@ test("POST /api/runs answers 201 with a run or a typed dependency failure envelo
   }
 });
 
+test("GET /method serves the method reading page from GET /api/method", async ({ page, request }) => {
+  const apiResponse = await request.get("/api/method");
+  expect(apiResponse.status()).toBe(200);
+
+  const response = await page.goto("/method");
+  expect(response?.status()).toBe(200);
+
+  await expect(page.getByRole("heading", { level: 1, name: "How Zorq measures" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Measured by Qloo" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Known limits" })).toBeVisible();
+
+  const rendered = await page.locator("body").innerText();
+  expect(rendered).not.toContain("a later phase will build this screen");
+  expect(rendered).not.toContain("undefined");
+});
+
 test("unknown client route /run/does-not-exist still serves the SPA (SPA fallback)", async ({
   page
 }) => {
