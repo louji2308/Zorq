@@ -267,10 +267,10 @@ describe("W-8.3 Place Blueprint composition (unit)", () => {
     expect(blueprint.fitToSite.downshifts).toEqual([]);
 
     expect(blueprint.whatQlooChanged.kept.map((item) => item.member)).toEqual([
-      "comp-night",
-      "comp-anchor"
+      "Exemplar comp-night",
+      "Devoción"
     ]);
-    expect(blueprint.whatQlooChanged.added.map((item) => item.member)).toEqual(["comp-social"]);
+    expect(blueprint.whatQlooChanged.added.map((item) => item.member)).toEqual(["Exemplar comp-social"]);
     expect(blueprint.whatQlooChanged.removed.map((item) => item.member)).toEqual(["Vanishing Diner"]);
     expect(blueprint.whatQlooChanged.reformatted).toEqual([]);
 
@@ -289,7 +289,7 @@ describe("W-8.3 Place Blueprint composition (unit)", () => {
     expect(blueprint.revisionHistory[0]).toMatchObject({
       rev: 1,
       replacedMember: "comp-old",
-      newMember: "comp-anchor",
+      newMember: "Devoción",
       role: "Anchor",
       custom: false
     });
@@ -320,9 +320,9 @@ describe("W-8.3 Place Blueprint composition (unit)", () => {
       downshiftedFrom: "Music venue"
     });
 
-    expect(blueprint.whatQlooChanged.reformatted.map((item) => item.member)).toEqual(["comp-night"]);
-    expect(blueprint.whatQlooChanged.kept.map((item) => item.member)).toEqual(["comp-anchor"]);
-    expect(blueprint.whatQlooChanged.added.map((item) => item.member)).toEqual(["comp-social"]);
+    expect(blueprint.whatQlooChanged.reformatted.map((item) => item.member)).toEqual(["Exemplar comp-night"]);
+    expect(blueprint.whatQlooChanged.kept.map((item) => item.member)).toEqual(["Devoción"]);
+    expect(blueprint.whatQlooChanged.added.map((item) => item.member)).toEqual(["Exemplar comp-social"]);
     expect(blueprint.whatQlooChanged.removed.map((item) => item.member)).toEqual(["Vanishing Diner"]);
     expect(blueprint.fitToSite.footprint.withinUsable).toBe(true);
   });
@@ -383,7 +383,7 @@ describe("W-8.3 Place Blueprint composition (unit)", () => {
 
     const discovery = blueprint.compositionByRole.find((group) => group.role === "Discovery");
     expect(discovery?.members.map((member) => member.name)).toEqual(["Bridge Reading Room"]);
-    expect(blueprint.whatQlooChanged.added.map((item) => item.member)).toContain("comp-bridge");
+    expect(blueprint.whatQlooChanged.added.map((item) => item.member)).toContain("Bridge Reading Room");
     expect(blueprint.evidenceGrade.grade).toBe("B");
     expect(blueprint.evidenceGrade.reasons.join(" ")).toContain("state=failed");
   });
@@ -439,5 +439,113 @@ describe("W-8.3 Place Blueprint composition (unit)", () => {
       blueprintFingerprint({ ...state, brief: { ...BRIEF, objective: "A different objective" } })
     ).not.toBe(base);
     expect(blueprintFingerprint(blueprintState({ brief: { ...BRIEF, areaSqFt: 5000 } }))).not.toBe(base);
+  });
+
+  it("refuses an LLM narrative that states numbers the artifact owns, falling back to the deterministic narrative", async () => {
+    const numeric = fakeLlm([
+      {
+        content: JSON.stringify({
+          title: "Coffee Jazz Corner",
+          rationale: "Founded in 1996, the roastery anchors the corner [ev-a-site]."
+        })
+      }
+    ]);
+    const { ledger, blueprint } = await runCompose(blueprintState(), numeric.client);
+
+    expect(blueprint.narrativeSource).toBe("deterministic");
+    expect(labels(ledger)).toContain("blueprint.compose_fallback");
+    expect(labels(ledger)).not.toContain("blueprint.compose");
+    const fallback = ledger
+      .list()
+      .find((entry) => entry.event.label === "blueprint.compose_fallback");
+    expect(fallback?.event.summary).toContain("numeric content");
+  });
+
+  it("accepts an LLM narrative whose only digits sit inside kept evidence citations", async () => {
+    const cited = fakeLlm([
+      {
+        content: JSON.stringify({
+          title: "Coffee Jazz Corner",
+          rationale: "The site edge binds the anchor to the corner [ev-a-site2]."
+        })
+      }
+    ]);
+    const { ledger, blueprint } = await runCompose(blueprintState(), cited.client);
+
+    expect(blueprint.narrativeSource).toBe("llm");
+    expect(labels(ledger)).toContain("blueprint.compose");
+    expect(blueprint.rationale).toContain("[ev-a-site2]");
+  });
+
+  it("follows the ranked leader when a revision landed after the challenge report, and the report leader otherwise", async () => {
+    const reportLeaderAfter = {
+      members: ["comp-night", "comp-social"],
+      coherence: 0.4,
+      percentile: 40,
+      distinctivenessMean: 0.5,
+      weakestLink: { a: "comp-night", b: "comp-social", value: 0.3 }
+    };
+    const namesOf = (blueprint: Awaited<ReturnType<typeof composeBlueprint>>): string[] =>
+      blueprint.compositionByRole.flatMap((group) => group.members.map((member) => member.name));
+
+    const fresh = await runCompose(
+      blueprintState({ challengeReport: reportFixture({ leaderAfter: reportLeaderAfter }) })
+    );
+    expect(namesOf(fresh.blueprint)).not.toContain("Devoción");
+    expect(namesOf(fresh.blueprint)).toContain("Exemplar comp-night");
+
+    const stale = await runCompose(
+      blueprintState({
+        challengeReport: reportFixture({ leaderAfter: reportLeaderAfter }),
+        revisions: [
+          {
+            rev: 1,
+            replacedMember: "comp-anchor",
+            newMember: "comp-night",
+            role: "Anchor",
+            membersBefore: LEADER,
+            membersAfter: ["comp-night", "comp-social"],
+            coherenceBefore: 0.52,
+            coherenceAfter: 0.4,
+            percentileBefore: 72,
+            percentileAfter: 40,
+            custom: false,
+            at: Date.parse("2026-10-08T12:10:00.000Z")
+          }
+        ]
+      })
+    );
+    expect(stale.blueprint.revisionHistory[0]).toMatchObject({
+      replacedMember: "Devoción",
+      newMember: "Exemplar comp-night"
+    });
+    expect(namesOf(stale.blueprint)).toContain("Devoción");
+    expect(namesOf(stale.blueprint)).toContain("Exemplar comp-social");
+  });
+
+  it("keeps a constraint drop visible on a feasible fit as a risk and a dropped member", async () => {
+    const club = makeComponent({ id: "comp-club", role: "Night", tags: ["nightclub"] });
+    const state = blueprintState({
+      brief: { ...BRIEF, constraints: ["active after 10 PM restricted"], areaSqFt: 6000 },
+      candidatePool: [...POOL, club],
+      challengeReport: reportFixture({
+        leaderAfter: {
+          members: ["comp-club", "comp-anchor", "comp-social"],
+          coherence: 0.45,
+          percentile: 60,
+          distinctivenessMean: 0.55,
+          weakestLink: { a: "comp-anchor", b: "comp-social", value: 0.35 }
+        }
+      })
+    });
+    const { blueprint } = await runCompose(state);
+
+    expect(blueprint.fitToSite.footprint.withinUsable).toBe(true);
+    const dropRisks = blueprint.risks.filter((risk) => risk.kind === "constraint-conflict");
+    expect(dropRisks.length).toBeGreaterThanOrEqual(1);
+    const night = blueprint.compositionByRole.find((group) => group.role === "Night")!;
+    expect(night.members[0]?.name).toBe("Exemplar comp-club");
+    expect(night.members[0]?.constraintDropped).toBeTruthy();
+    expect(blueprintResponseSchema.safeParse({ blueprint }).success).toBe(true);
   });
 });

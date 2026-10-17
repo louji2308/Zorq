@@ -311,7 +311,8 @@ describe("applyReplacement candidate path", () => {
       coherenceAfter: 0.68,
       percentileBefore: 88.2,
       percentileAfter: 71.6,
-      custom: false
+      custom: false,
+      at: TEST_NOW
     });
 
     const stress = outcome.state.stressReport as {
@@ -414,7 +415,8 @@ describe("applyReplacement candidate path", () => {
       coherenceAfter: 0.58,
       percentileBefore: 60.0,
       percentileAfter: 50.0,
-      custom: false
+      custom: false,
+      at: TEST_NOW
     });
     expect(outcome.delta.coherence).toBeCloseTo(0.58 - 0.62, 10);
     expect(outcome.delta.distinctiveness).toBeCloseTo(0.5 - 0.57, 10);

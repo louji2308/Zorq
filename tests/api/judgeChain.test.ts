@@ -271,10 +271,8 @@ describe("Judge chain over real HTTP (scripted LLM + fake gateway)", () => {
         new Set(["ablation", "substitution", "bridge", "catchment", "rival"])
       );
       expect(report.attacks.every((attack) => attack.detail.length > 0)).toBe(true);
-      expect(report.verdict === "Survived" || report.verdict === "Revised" || report.verdict === "Replaced").toBe(
-        true
-      );
-      expect(report.gradeCap === "A" || report.gradeCap === "B").toBe(true);
+      expect(report.verdict).toBe("Revised");
+      expect(report.gradeCap).toBe("A");
       expect(report.attacks.map((attack) => attack.status)).toEqual([
         "measured",
         "skipped",

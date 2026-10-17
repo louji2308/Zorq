@@ -530,7 +530,7 @@ describe("runChallenge verdict and mutation loop", () => {
       "rival"
     ]);
     expect(report.reason).toBe(
-      "The leader held against all five attacks. No member could be removed without cost. One member could be substituted without loss, so nothing was changed."
+      "The leader held against 4 measured attacks, 1 skipped. No member could be removed without cost. One member could be substituted without loss, so nothing was changed."
     );
     expect(report.leaderBefore).toEqual(report.leaderAfter);
     expect(report.leaderBefore.members).toEqual(["anchor", "cinema", "cafe"]);
@@ -616,7 +616,9 @@ describe("runChallenge verdict and mutation loop", () => {
     expect(report.leaderAfter.distinctivenessMean).toBe(1);
     expect(report.leaderAfter.weakestLink).toEqual({ a: "anchor", b: "music", value: 0.57 });
 
-    expect(report.reason).toContain("2 mutations applied: 1·swapped cinema for music; 2·dropped cafe.");
+    expect(report.reason).toContain(
+      "2 mutations applied: 1·swapped Exemplar cinema for Exemplar music; 2·dropped Exemplar cafe."
+    );
     expect(report.reason).toContain("+0.0500 to 0.5700");
 
     const finalAttacks = report.attacks;
@@ -671,7 +673,7 @@ describe("runChallenge verdict and mutation loop", () => {
     expect(report.leaderAfter.percentile).toBe(100);
     expect(report.leaderAfter.weakestLink).toEqual({ a: "cafe", b: "cinema", value: 0.6 });
 
-    expect(report.reason).toContain("1 mutation applied: 1·dropped anchor.");
+    expect(report.reason).toContain("1 mutation applied: 1·dropped Exemplar anchor.");
     expect(report.reason).toContain("+0.0667 to 0.6000");
 
     expect(attackOf(report, "ablation").status).toBe("skipped");
@@ -696,6 +698,9 @@ describe("runChallenge bridge probe honesty", () => {
 
     expect(report.verdict).toBe("Survived");
     expect(report.gradeCap).toBe("B");
+    expect(report.reason).not.toContain("all five attacks");
+    expect(report.reason).toMatch(/The leader held against \d+ measured attacks/);
+    expect(report.reason).toContain("not completed");
     const bridge = attackOf(report, "bridge");
     expect(bridge.status).toBe("not completed");
     expect(bridge.evidenceId).toBeUndefined();
@@ -766,9 +771,9 @@ describe("runChallenge bridge insertion and outright replacement", () => {
     expect(report.leaderAfter.members).toEqual(["social-b", "disc-b", "night"]);
     expect(report.leaderAfter.coherence).toBeCloseTo(0.8666666666666667, 10);
 
-    expect(report.reason).toContain("Replaced by social-b + disc-b + night.");
+    expect(report.reason).toContain("Replaced by Exemplar social-b + Exemplar disc-b + Exemplar night.");
     expect(report.reason).toContain(
-      "2 mutations applied: 1·swapped social-a for social-b; 2·swapped disc-a for disc-b."
+      "2 mutations applied: 1·swapped Exemplar social-a for Exemplar social-b; 2·swapped Exemplar disc-a for Exemplar disc-b."
     );
 
     expect(attackOf(report, "rival").summary).toContain("not a family entry");
@@ -800,8 +805,8 @@ describe("runChallenge bridge insertion and outright replacement", () => {
     expect(report.leaderAfter.members).toEqual(["cinema", "cafe", bridgeMemberIn]);
     expect(report.leaderAfter.coherence).toBeCloseTo(1, 10);
     expect(report.leaderAfter.weakestLink).toEqual({ a: "cafe", b: "cinema", value: 1 });
-    expect(report.reason).toContain("1·bridged comp-bridge-");
-    expect(report.reason).toContain("2·dropped anchor");
+    expect(report.reason).toContain("1·bridged Listening Bar beside the weakest link");
+    expect(report.reason).toContain("2·dropped Exemplar anchor");
 
     expect(outcome.evidence).toHaveLength(4);
     expect(attackOf(report, "bridge").status).toBe("skipped");

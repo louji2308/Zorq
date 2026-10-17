@@ -175,9 +175,7 @@ describe("buildS4Model", () => {
     );
     expect(model?.verdictSquare).toBe("crossed");
     expect(model?.rivalLabel).toBe("vinyl, gallery");
-    expect(model?.verdictSentence).toBe(
-      "Replaced by vinyl, gallery. the rival outranked the leader on coherence"
-    );
+    expect(model?.verdictSentence).toBe("the rival outranked the leader on coherence");
   });
 
   it("attacks render in spec order with circles mapped from status", () => {

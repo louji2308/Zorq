@@ -52,8 +52,8 @@ describe("S4 challenge over real HTTP (scripted LLM + fake gateway)", () => {
         memberIn: null
       });
       expect(report.mutations[1]!.coherenceAfter).toBeCloseTo(0.14652787121143274, 10);
-      expect(report.reason).toContain("2 mutations applied: 1·dropped comp-court-tree; 2·dropped comp-clay.");
-      expect(report.reason).toContain("A further drop comp-blue-note (Δ +0.0860) remained at the two-round stop.");
+      expect(report.reason).toContain("2 mutations applied: 1·dropped Court Tree Roasters; 2·dropped Clay Collective.");
+      expect(report.reason).toContain("A further drop Blue Note Corner (Δ +0.0860) remained at the two-round stop.");
       expect(report.leaderAfter.members).toEqual(["comp-blue-note", "comp-rooftop", "comp-sunset-vinyl"]);
       expect(report.leaderAfter.coherence).toBeCloseTo(0.14652787121143274, 10);
       const bridge = report.attacks.find((attack) => attack.kind === "bridge");
