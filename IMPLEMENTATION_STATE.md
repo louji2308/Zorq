@@ -7,30 +7,31 @@
 
 ## Current Phase
 
-**PHASE 8 — S4/S5: Challenge, Constraint Fit & Blueprint**. Status: **IN PROGRESS —
-boundary reconstruction COMPLETE 2026-10-15; contract written (see `PHASE 8
-CONTRACT`); orchestrator-direct implementation in progress — W-8.1, W-8.2a, W-8.2b,
-W-8.3, W-8.4, W-8.5, W-8.6, and exit-gate e2e (commit `0f3620a`) committed; next =
-fixture-browser walk + independent review + clause map** (the API-level full chain is
-already proven — see W-8.6; the S4/S5 browser paths are now covered — see the
-exit-gate e2e entry under Verified Tests). Phase 7 closed 2026-10-15
-(exit-gate clause map PASSED, see `Phase 7 Exit-Gate Status`; close-out commits
-`b1f276e`, `0d9344b`, `1acb896`, `94dade1`). Phase 7 shipped: W-7.1 `99b53bd`,
-W-7.2 `7180387`, W-7.3 `f8717d7`, W-7.4 `3591f75`, W-7.5 `bd1cb20`, exit-gate work
-`b1f276e`/`0d9344b`/`1acb896`/`94dade1` (evidence slot + names + typed weakest-link +
-weakest-line success sheet + judge pipeline/e2e + docs close).
-Phase 6 remains OPEN with all build work committed (`579b23e`…`64bba88`); its exit gate
-waits only on the B-02 DeepSeek live click-through (user-side payment) — recorded under
-Deviations.
+**PHASE 8 — S4/S5: Challenge, Constraint Fit & Blueprint.** Status: **CLOSED
+2026-10-17 — exit gate PASSED** on the user-approved fixture judge path (clause
+map in `Phase 8 Exit-Gate Status` below). Landed: W-8.1 `0c8ba6f`, W-8.2a
+`f786607`, W-8.2b `6903c25`, W-8.3 `ff54a0d`, W-8.4 `99510fc`, W-8.5 `424cf76`,
+W-8.6 `cce7b87`, exit-gate e2e `0f3620a` + `d4edc90`, compare-modal fix
+`8d71f49`, independent-review fix wave `90bcf13` (fix) + `f8b2172` (test), plus
+docs commits. The one deferred clause — full judge path **under real services** —
+waits on B-02 (user-side DeepSeek top-up) and runs as the first live action of
+Phase 9; recorded in the clause map, not hidden.
+**PHASE 9 — Full-System Integration, Deployment & Judge Readiness is next**
+(Plan 819+: landing→preset→…→share full path, Render Docker deploy, CI, /method
+content, judge readiness). Parallel user-side: top up DeepSeek (B-02), Turso
+(B-06). Phase 6 remains OPEN on B-02 only. Deadline Oct 30 2026 23:45 EDT;
+internal freeze Oct 28.
 
 ## Current Objective
 
-Implement Phase 8 under the contract below: deterministic constraint/format engine →
-S4 challenge engine + S5 blueprint/Without-Qloo surfaces → S4/S5 UI → full-gate
-verification of the judge path Challenge → constraint fit → Place Blueprint →
-Without-Qloo comparison, honest under real services. Orchestrator-direct (spawn
-channel 5/5 cancelled); parallel user-side: top up DeepSeek (B-02) to close Phase 6's
-last two boxes. Deadline Oct 30 2026 23:45 EDT; internal freeze Oct 28.
+Open Phase 9 under the contract written at its boundary: prove the FULL locked
+path end-to-end (Landing → preset → Prior → S1 → S2 → S3 → S4 → S5 →
+Without-Qloo → Share/Print) on a real deployment, then ship judge readiness —
+Render Docker deploy, CI on push, `/method` content page (formulas, editable
+heuristics, limits), and the one live-services judge pass gated on B-02.
+Deviations to carry: B-09 SSE history gap, B-10 GET-only evidence, /method route,
+deferred review polish B-11, S5 in-place Replace (D-8.16). Deadline Oct 30 2026
+23:45 EDT; internal freeze Oct 28.
 
 ### PHASE 8 CONTRACT (WRITTEN 2026-10-15 — before implementation; orchestrator-direct)
 
@@ -829,7 +830,28 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 
 ## Active Work
 
-- **PHASE 8 IN PROGRESS (contract `c81bfbb`) — W-8.1 DONE (`0c8ba6f`); W-8.2a DONE
+- **PHASE 8 CLOSED 2026-10-17 — exit gate PASSED** (contract `c81bfbb`; all
+  workers committed; close-out `8d71f49` compare-modal fix, `d4edc90` e2e
+  assertions, `90bcf13` review-fix wave, `f8b2172` test pins). The remaining
+  exit work completed this session: **independent adversarial review** (separate
+  general-agent, read-only, range `c81bfbb..HEAD` → 15 findings, 6 HIGH / 5 MED /
+  4 LOW; all HIGH verified against source by the orchestrator before any edit),
+  the **fix wave** (commits `90bcf13` + `f8b2172`), and a re-run
+  **fixture-browser walk** on production dist proving: S4 verdict reason + attack
+  details + leader rows show **display names, zero `comp-*` ids**
+  (`s4ShowsNoComponentIds=true`), S5 fit line reads `not measured (no floor area
+  supplied)` for the area-less judge fixture, **two constraint drops visible**
+  with engine reasons, compare modal shows only frozen-Prior members, share view
+  read-only, **zero console/page errors**. Gates at sign-off: typecheck 0, lint 0,
+  **746 pass / 5 gated-live skips** (742 + 4 new review-coverage tests), Playwright
+  **10/10**, build PASS, `git diff --check` clean, diff secret scan clean.
+  Six findings + the `shift-scale` operator gap deferred to Phase 9 as B-11 with
+  rationale (#8 rounds history, #9 bridge evidence provenance, #10 deep challenge
+  block schema, #11 `state.evidence` dead field, #13 downshift ordering in copy,
+  #15 fallback positional citations, #16 `Shift-scale` ships only as the
+  catchment attack re-measure).
+  See "Phase 8 Exit-Gate Status" below for the clause map.
+- **PHASE 8 BUILD RECORD (contract `c81bfbb`) — W-8.1 DONE (`0c8ba6f`); W-8.2a DONE
   (`f786607`); W-8.2b DONE (`6903c25`); W-8.3 DONE (`ff54a0d`); W-8.4 DONE
   (`99510fc`); W-8.5 DONE (`424cf76`); W-8.6 DONE (`cce7b87`). Exit-gate e2e DONE
   (`0f3620a`).** The exit-gate e2e added browser proof for the two Phase 8 surfaces:
@@ -1028,6 +1050,8 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 | W-8.3 | S5 evidence-bound Place Blueprint (server + share route) | NEW: `src/server/orchestrator/blueprint.ts` (~740), `tests/orchestrator/blueprint.test.ts` (9), `tests/api/blueprint.test.ts` (4); EDIT: `src/shared/{routes,run}.ts` (typed blueprint contract; `challengeMutationSchema` + optional `component`; `componentDisplayName` helper), `src/server/persistence/{index,memoryStore,store,tursoStore}.ts` (BlueprintSnapshot + `blueprint_snapshots` table + share index), `src/server/orchestrator/{orchestrator,types,measure,challenge}.ts` (`buildBlueprint` w/ share fast-path + fingerprint cache; `extractPriorMemberEntries` export; `applyCandidate` embeds bridge component), `src/server/routes.ts` (GET blueprint handler), `tests/{routes,support/judgePipeline}.test.ts` (fixtures + `extraLlmResponses`) | **DONE 2026-10-15 — committed `ff54a0d`.** typecheck 0, lint 0, build PASS; **695 pass / 5 skips** (+13: 9 unit + 4 HTTP). Mechanism: guards (brief/prior/pool/compositions/leader-in-pool) → leader = `challengeReport.leaderAfter ?? ranked[0]` → evidence index = state vocabulary **∩ stored evidence records** (unknown IDs can never render) → fit from `fitConstraints` (footprint/hours/downshifts) → receipts ≤3 (path ≤300 + top-2 shared-entities by value) → role groups in `poolComponentRoles` order → What Qloo changed via prior-member name/id/exemplar matching (downshift → reformatted) → risks (weakest edge, thin component, triangulation non-confirmed, constraint conflict; ≤20) → grade = worst-of(challengeReport.gradeCap, computed engine grade) → deterministic narrative (title/rationale + first-3 citation IDs) or one `blueprint:compose` LLM turn (fence-strip → zod parse → **strip ALL bracketed tokens not in the stored-evidence vocabulary**, zero kept → honest fallback with reason) → `blueprintSchema.parse` → share snapshot (opaque 24-byte token, 30-day TTL, sha256 fingerprint over state excluding status/phase → cache-hit skips LLM; share fast-path 404 unknown / 410 expired; expired non-share path recomposes reusing the stored token). `challengeMutationSchema.component` lets a bridge member resolve by name when the bridge was never persisted to the pool (D-8.14). Decisions D-8.10…D-8.14 recorded. |
 | W-8.4 | Without-Qloo polish on the frozen Prior | EDIT: `src/shared/run.ts` (`priorPolishTextSchema` + additive optional `priorSchema.polish`), `src/server/agent/prior.ts` (prompt demands the `polish` paragraph; `priorDraftSchema.polish` `z.unknown().optional()`; `normalizePolish` best-effort extraction → Compute `prior.polish_unavailable` on present-but-invalid), `tests/support/judgePipeline.ts` (`JUDGE_PRIOR` gains a polish paragraph), `tests/{agent/prior,api/runs}.test.ts` (+7 tests) | **DONE 2026-10-15 — committed `99510fc`.** typecheck 0, lint 0, build PASS; **702 pass / 5 gated-live skips** (+7: 5 unit + 2 HTTP). Polish rides the Prior's own single completion and lives INSIDE the frozen Prior (D-8.15): zero `generatePrior` signature ripple, deep-freeze covers it, no fixture call-queue displacement, no new route (11-route surface locked). Honest degradation chain: valid → `prior.polish` carried (POST 201 + GET round-trip proven); present-but-invalid → dropped + fixed-summary `prior.polish_unavailable` ledger event, Prior unaffected; absent → field absent with NO event (old fixtures' ledger counts unchanged) so W-8.5's modal can honestly say "Prior alone". |
 | W-8.5 | S4/S5 UI: run tabs, challenge view, Blueprint document, Without-Qloo compare | EDIT: `src/web/lib/api.ts` (`challengeRun` + `getBlueprint`, zod-validated), `src/web/routes/RunRoute.tsx` (five-view tab bar with ref-measured sliding underline; challenge POST action applies response state then best-effort evidence refetch; blueprint view via `.s1.is-reading` single-column grid, map/DNA strip hidden; Compositions/Connections tabs disabled with honest titles until measured; PriorCard shown on the investigate view), `src/web/routes/BlueprintRoute.tsx` (read-only share view hydrating the run, no tabs), `src/web/screens/s1/s1.css` (tab styles + `.s1.is-reading` grid-area variant), `tests/web/api.test.ts` (+7); NEW: `src/web/screens/s4/{s4Model.ts,ChallengePanel.tsx,s4.css}`, `src/web/screens/s5/{s5Model.ts,BlueprintPanel.tsx,CompareModal.tsx,s5.css}`, `tests/web/{s4Model,s5Model}.test.ts` | **DONE 2026-10-16 - committed `424cf76`.** typecheck 0, lint 0, build PASS; **741 pass / 5 gated-live skips** (+39: 12 s4 + 20 s5 + 7 HTTP). `buildS4Model` is a pure projection of `run.challengeReport` (no report → honest pre-verdict "Can the leader be broken?"; gate mirrors `guardMutationState` + the ranked guard with the exact refusal copy; Replaced sentence names `verdictRival`; attacks sorted to spec order; circles measured→filled / not completed→crossed / skipped→empty; leader rows strike swaps with a replacement, strike drops, add bridge inserts). `buildS5Model` never recomputes numbers (AGENTS §13): receipts-only citation superscripts (unknown `[id]` tokens dropped client-side, mirroring D-8.11), globally numbered receipts, footprint fraction vs brief area, overnight hours wrap, slope pairs from the four diff arrays, compareState 3-way from diffs only (kept ∧ untouched → neutral; all-empty → honest no-prior), polish from `run.prior.polish` (null → honest "Prior alone"), revision sentences with both coherence %. `BlueprintPanel` owns the fetch with loading / unknown-run / expired ("This snapshot has expired. Re-run the same brief." + new-run link) / error states plus Copy as Markdown / Print / Share; `CompareModal` renders prior vs final with added+reformatted tagged. Deferrals recorded in D-8.16 (S5 row-level Replace, S1/S2 Challenge CTAs). |
+| W-8.6 | S4/S5 full-chain contract test + judge-fixture label queue | NEW: `tests/orchestrator/judgeChain.test.ts`; EDIT: `tests/support/judgePipeline.ts`, `tests/agent/support/fakes.ts` (queued `fakeLlm` responses by label, D-8.17) | **DONE 2026-10-16 — committed `cce7b87`.** Proves challenge → stressReport → blueprint → without-Qloo as one deterministic chain on the fixture pipeline (742 pass / 5 skips at the time); scripted LLM at the label boundary + fake gateway at the transport boundary only — production code untouched. Design note D-8.17 (label queue) recorded with rationale. |
+| W-8.7 | Exit-gate e2e, independent review + fix wave | NEW: `e2e/judge-flow.spec.ts` (`0f3620a` + `d4edc90`); EDIT: `src/web/screens/s5/CompareModal.tsx` (`8d71f49`), review-fix wave `90bcf13` (fix) + `f8b2172` (test) across `challenge.ts`, `blueprint.ts`, the blueprint route surface, `s4Model`/`ChallengePanel`, `s5Model`/`BlueprintPanel`, `run.ts`/`routes.ts` schemas | **DONE 2026-10-17 — commits `0f3620a`, `d4edc90`, `8d71f49`, `90bcf13`, `f8b2172`.** 10/10 Playwright; independent adversarial review of `c81bfbb..f8b2172` (15 findings, all triaged, D-8.23); browser walk `tmp/phase8-walk.json` zero console errors; gates 746 pass / 5 skips, build PASS, diff secret scan 0 hits. Scope: judge-facing prose id→name, revision `at`, drops-always + tri-state fit, numeric-prose guard, stale-leader fallback, attack-detail render. |
 
 **Orchestrator integration review (AGENTS §17):** both diffs inspected; W-1.1 touched only `ARCHITECTURE.md`;
 W-1.2 touched only temp-dir files (repo `git status` shows no spike artifacts); key never echoed; worker claims
@@ -1048,6 +1072,75 @@ returned the pre-persist Prior object (unfrozen, separate object from the persis
 (`62f29af`).
 
 ## Verified Tests / Evidence
+
+### Phase 8 — independent review, fix wave, and browser walk (2026-10-17, commits `90bcf13` + `f8b2172`)
+
+- **Independent review (AGENTS §17):** a separate general agent (read-only,
+  authored none of the code) attacked the Phase 8 diff range `c81bfbb..HEAD` and
+  returned **15 findings — 6 HIGH, 5 MEDIUM, 4 LOW**. Every HIGH was verified
+  against source by the orchestrator before edits: #1 Survived reason claimed
+  "all five attacks" even with a skipped/failed probe (`challenge.ts` buildReason);
+  #2 `whatQlooChanged` mixed raw ids (kept/reformatted/added) with names (removed);
+  #3 no floor area still rendered `withinUsable: true`; #4 fit drops gated behind
+  `!fit.feasible` so a feasible-but-constrained fit hid its drops, and dropped
+  members rendered with no explanation; #5 compose LLM received numeric truth
+  (`challengeReason`, `fit.reasons`) with no digit validation; #6
+  `report.leaderAfter` preferred unconditionally — a replace AFTER the challenge
+  left the blueprint showing the pre-replace leader (replace.ts never touches
+  `challengeReport`). MED/LOW confirmed: #7 double "Replaced by" + ids, #8a
+  `attack.detail` never rendered, #10a grade-cap-B reason absent when cap not
+  binding, #12 deterministicNarrative ids + "After the survived challenge" phrasing,
+  #14 tautological verdict/gradeCap asserts in judgeChain.
+- **Fix wave (`90bcf13`, 11 files, +214/−64):** `componentDisplayName` resolution
+  threaded through challenge reasons/summaries/attack details/rival flips
+  (`AttackContext.nameOf`), blueprint diff entries, deterministic narrative,
+  revision history, and S4 leader rows/rival label — **ids stay in data fields**
+  (keys, `memberId`, `evidenceIds`); `runRevisionSchema` gained optional `at` and
+  replace stamps it, so the blueprint falls back to `ranked[0]` when a revision
+  postdates the report (F6); fit drops surfaced on every fit with per-member
+  `constraintDropped` risk text + `constraint-conflict` risks (F4); `withinUsable`
+  became `boolean | null` with honest "not measured (no floor area supplied)" copy
+  in panel + Markdown (F3); `hasNumericProse()` rejects LLM title/rationale digits
+  outside kept `[evidence-id]` citations → deterministic fallback +
+  `blueprint.compose_fallback` (F5); grade-cap-B reason now emitted whenever cap
+  B binds regardless of engine grade (F10a); `ChallengePanel` renders the
+  `attack.detail` line (F8a) with `.s4-attack-detail` styling. **New this
+  clause-map pass:** the Plan's `Shift-scale` mutation operator is confirmed
+  implemented only as the catchment attack re-measure — recorded as B-11 #16
+  instead of being claimed (see the map's Mutation block).
+- **Test pins (`f8b2172`, 6 files, +137/−26):** 11 expectations corrected to the
+  review-corrected behavior (display-name reason strings; honest
+  "4 measured attacks, 1 skipped" lead — the old exact "all five" pin was itself
+  the false claim; revision `at: TEST_NOW`; S4 verdictSentence = server reason
+  verbatim; judgeChain pins `verdict "Revised"` + `gradeCap "A"` instead of
+  membership tautologies) + **4 new tests**: LLM numeric prose rejected (fallback
+  + ledger reason), digits inside kept citations accepted, stale-vs-fresh leader
+  selection both directions, feasible-fit drops surfaced (risks +
+  `constraintDropped` + schema-valid). Plus F1 honesty asserts on the
+  bridge-outage reason (`not.toContain("all five attacks")`, measured-count
+  regex, contains
+  "not completed").
+- **Gates re-run after the wave:** typecheck 0 (dual tsconfig), lint 0, Vitest
+  **746 pass / 5 gated-live skips**, Playwright **10/10** (judge-flow + smoke
+  against fresh dist), **build PASS**, `git diff --check` clean (exit 0), diff
+  secret scan 0 hits. One post-wave fallout caught by the full suite
+  (`tests/api/challenge.test.ts` pinned id prose) and corrected to display names —
+  full suite green before commit.
+- **Browser walk (production dist, `tmp/phase8-walk.ts`, fixture judge pipeline):**
+  server + Chromium in one process; findings in `tmp/phase8-walk.json`
+  (UTF-16 via PowerShell redirect), screenshots `tmp/phase8-01…06.png`.
+  Verified live: pre-verdict question banner; after challenge → verdict `Revised`,
+  reason = `2 mutations applied: 1·dropped Court Tree Roasters; 2·dropped Clay
+  Collective…` (names, no ids); five attack rows with **rendered detail lines**
+  (`removing Blue Note Corner is the least costly cut…`,
+  `…leadership moves to Blue Note Corner + Clay Collective + …`) and
+  `s4ShowsNoComponentIds=true`; leader rows show names + REMOVED strikes; S5
+  title `The Williamsburg corner plan` + `LLM` pill + honest grade `B`; fit line
+  `not measured (no floor area supplied)`; **2 constraint-drop rows visible**
+  (`no format of Music venue satisfies the site constraints`, same for Bar);
+  compare modal left column = frozen-Prior names only; share view read-only in a
+  fresh context; invented citation absent; no `undefined` anywhere;
+  `consoleErrors=[]`, `pageErrors=[]`.
 
 ### Phase 8 — exit-gate e2e: S4 + S5 browser coverage (2026-10-16, commit `0f3620a`)
 
@@ -1743,6 +1836,12 @@ with both mini-challenge attack rows after a real in-browser replace.
 | D-8.14 | **A challenge bridge mutation persists its inserted `PoolComponent` inside `ChallengeMutation.component` (optional field on `challengeMutationSchema`); `applyCandidate` embeds the component only when `memberIn` is NOT already in the stored pool (bridge-only — swaps/drops resolve normally). The pool/graph are deliberately NOT mutated by challenge; a later replace re-derives from the real pool.** | The bridge component is measured on a `ScratchState` that must never leak into persisted pool/graph (W-8.2b invariant), yet the blueprint must resolve a bridge member's role/format/receipts by name after the run — embedding the component on the mutation is the smallest additive schema change that carries the identity without reopening the pool question. Replacing a bridge member later (it is not in the pool) is a **known limitation deferred** to the replace/blueprint integration pass. | Yes — if bridge members must become first-class pool entries, move them into the pool at mutation time and re-run the fingerprint. |
 | D-8.15 | **Without-Qloo polish rides the Prior's own single completion and lives INSIDE the frozen Prior as an additive optional `priorSchema.polish` (`priorPolishTextSchema` = trimmed 1–1200 chars). The prior prompt now also demands a standalone `polish` paragraph (no numbers, no invented entities, no evidence claims); `priorDraftSchema.polish` is `z.unknown().optional()` so a bad polish can never fail the Prior. Extraction: valid → carried; present-but-invalid → dropped with a fixed-summary Compute ledger `prior.polish_unavailable` (never raw model text); absent → field absent with NO ledger event. No dedicated without-Qloo route (11-route API surface locked) — the compare modal is a client projection over `run.prior` + blueprint (`compositionByRole`, `whatQlooChanged`), with confident-empty = kept covers all prior members AND added/removed/reformatted empty; modal rendering lands W-8.5.** | The Phase 8 contract places polish "during prior generation with budget accounting" — riding the existing completion satisfies that literally at zero extra budget/queue pressure and zero fixture-call-queue displacement (≈15 positional `fakeLlm` fixtures would cascade if a second call were inserted). Storing polish on `priorSchema` means it flows through every existing persist/SSE/read path untouched and is covered by the Prior's write-once deep-freeze, while the unknown-typed draft extraction preserves the invariant that the Prior itself never fails for a cosmetic field. Absence-without-event keeps pre-W-8.4 ledger counts unchanged — the honest signal is the field's absence ("the left column honestly shows Prior alone and says so"); a 12th route would violate ARCHITECTURE §3. | Yes — revisit only if a higher-order source demands a separate polish generation call or a dedicated endpoint. |
 | D-8.16 | **S4 renders in the right 480px ledger column as a vertical stack and S5 as a full-width reading screen via a `.s1.is-reading` grid-area variant (no map / no DNA strip); the five-view tab bar lives in the run top bar with a ref-measured sliding underline, and Compositions/Connections tabs are honestly disabled until measured; S5 member rows carry NO Replace button (Replace stays reachable from Compositions/Connections); S1/S2 docked "Challenge" CTAs are deferred (the Challenge tab is the single trigger); citation superscripts map ONLY to stored receipts — an unknown `[id]` token is dropped client-side; compare-modal changed tags mark added+reformatted names only (kept members did not change).** | Final Design §7.4 places S4 on the right of the map; §7.5/§6.4 give S5 a wide-margin reading layout and the five tabs. A second Replace entry on S5 would duplicate the S2/S3 owner (existing-file-first) while S5 is a read artifact; receipts-only superscripts preserve the AGENTS §13 "unknown evidence IDs never render as confirmed" invariant at the client boundary, mirroring the D-8.11 server strip; changed=added+reformatted matches the server's What Qloo changed semantics. | Yes — a later design pass can add S5 in-place Replace or S1/S2 Challenge CTAs; the receipts-only citation rule and diff-derived compare states are not. |
+| D-8.18 | **Without-Qloo compare modal left column lists ONLY frozen-Prior composition members (resolved through `extractPriorMemberEntries` / the prior's own member list), never candidatePool members; right column keeps server diff arrays.** | Review of the D-8.16-era modal (fixed `8d71f49`): the left column was rendering pool members, so "what the agent would have recommended with no cultural evidence" showed Qloo-derived pool entities — manufactured divergence against Plan 805 ("Do not manufacture divergence") and PS 227 (left = frozen Prior + polish). The Prior is the only pool-free artifact, so it is the only honest left column. E2E pinned: left column contains `Devoción`, not thesis/members scaffolding. | No (invariant — the compare control must stay pool-free). |
+| D-8.19 | **Every judge-facing prose surface resolves member ids through `componentDisplayName` (pool exemplars + `ChallengeMutation.component` fallback): challenge reason/stop-note, mutation summaries, attack details incl. ablation remainder + rival flip lists (`AttackContext.nameOf`), blueprint `whatQlooChanged` kept/reformatted/added, revision history, deterministic narrative, S4 leader rows/rival label; S4 `verdictSentence` is now the server-authored `report.reason` verbatim (client prepend removed). Data fields (keys, `memberId`, `evidenceIds`, `membersAfter`) keep raw ids.** | Independent-review HIGHs #1/#2/#7/#12 + walk evidence (`phase8-03-s4-post.png` showed `comp-*` ids in the verdict sentence). One display-name rule already had a canonical owner (`componentDisplayName`, D-8.12) — extending it beats forking per-surface naming; ids remain in data so the API contract and receipt links are untouched; server owns the sentence so reason prose cannot double-render. | Yes — revisit only if a display-name surface needs different resolution; the id-in-data rule is not. |
+| D-8.20 | **`runRevisionSchema` gains optional `at` (epoch ms, stamped by replace via its `now` clock); blueprint leader selection = `challengeReport.leaderAfter` UNLESS any revision has `at > Date.parse(report.generatedAt)`, in which case `ranked[0]` wins; default fixture revisions without `at` stay fresh (NaN comparison = false).** | Review HIGH #6: replace never touches `challengeReport`, so a post-challenge replace left the blueprint rendering the pre-replace leader with a contradictory revision row below it (silent stale state beats authoritative state). Timestamp is the smallest additive signal that distinguishes "report is current" from "report predates a revision"; optional field keeps old persisted runs parseable; falling back to `ranked[0]` uses the engine's current truth rather than guessing a merge. Both directions unit-tested (fresh report leader vs stale ranked leader). | Yes — if replace ever writes `leaderAfter` directly, the fallback can retire; the stale-detection rule itself is an invariant. |
+| D-8.21 | **Fit honesty: (a) `fit.drops` are surfaced on EVERY fit, not only infeasible ones — each dropped composition member carries `constraintDropped` (engine reason) in the blueprint member row + a `constraint-conflict` risk; (b) `withinUsable` becomes `boolean \| null` — `null` whenever `areaSqFt` is absent, rendered as "not measured (no floor area supplied)" in the panel and Markdown (no "Not recorded of Not recorded" compound).** | Review HIGHs #3/#4: `fit.feasible` defaults true when no area exists (fit.ts `withinFootprint = usableSqFt === null \|\| …`) so the blueprint claimed "within usable area" for an unmeasured footprint — a positive claim over missing data (AGENTS §13); drops were gated behind `!fit.feasible`, so a feasible fit constrained by hours/noise hid the very members it excluded while rendering them bare (no format, no reason). Tri-state + always-surface matches fit.ts's own honest `not measured` reason text. Unit tests: area-less brief → `null`; 6000 sqft + nightclub constraint → feasible true AND drop risk + `constraintDropped` visible. | Yes — tri-state and drops-always are honesty floors, not styling choices. |
+| D-8.22 | **`blueprint:compose` narrative guard: after citation-strip, `hasNumericProse(title) \|\| hasNumericProse(rationale)` (digits outside `[evidence-id]` brackets, after stripping citations) → honest failure "the narrative stated numeric content the artifact owns" → existing deterministic fallback + `blueprint.compose_fallback` ledger event (single attempt, no retry). Digits inside kept citations (`[ev-a-site2]`) are allowed.** | Review HIGH #5: the compose prompt already forbade numbers and the system prompt carries no numeric truth, but nothing *enforced* it — an LLM could still author "holds 3 anchors" and the blueprint would ship it as rationale next to deterministic measurements, blurring the AGENTS §13 intelligence boundary. Cheap deterministic check beats prompt faith; reusing the D-8.11 fallback path adds zero new failure modes. Both directions tested (1996-in-prose → fallback; digit only inside citation → llm source). | Yes — can widen to reject percent-shaped prose later; removing the guard is not. |
+| D-8.23 | **Phase 8 gate disposition: fixture judge path closes Phase 8 NOW (user approval "Yeah approved continue"); the one live-services clause runs as Phase 9's first live action once B-02 clears. Of the 15 review findings, 9 accepted-and-fixed (#1–#8a, #10a, #12, #14 family incl. #7/#12 across surfaces), 6 deferred as B-11 (#8 rounds persistence, #9 bridge evidence provenance, #10 deep challenge block absent from share, #11 `state.evidence` dead field, #13 downshift ordering in copy, #15 fallback positional citations), plus the clause-map-found `Shift-scale` operator gap (#16: catchment re-measure only, challenge.ts:83) making B-11 carry 7 items, with rationale: each is judge-visible polish, state hygiene, or a bounded operator gap — none falsifies evidence, numeric truth, or the protected loop.** | User explicitly approved closing on fixtures while B-02 (DeepSeek balance) is user-side; the fixture pipeline exercises the same server/UI code the live path uses (scripted LLM + fake gateway at the transport boundary only). Deferring low-severity findings with rationale beats either silently dropping them (AGENTS §20) or blocking the freeze-adjacent schedule (B-07) on polish. | Yes — B-11 items are Phase 9 backlog; reopen any finding if judge feedback touches it. |
 
 ## Deviations from contract
 
@@ -1833,41 +1932,196 @@ with both mini-challenge attack rows after a real in-browser replace.
 | B-07 | Medium | Deadline Oct 30 2026 23:45 EDT; internal freeze Oct 28. **21 days from today.** | Schedule pressure; see `HACKATHON_TRACKER.md`. Phase 5 closed on time with buffer remaining. | Orchestrator |
 | B-08 | Medium | Qloo `qloo mcp` needs Node 22.19+ and a long-lived backend; serverless unsupported. | Constrains hosting to Render Free (locked). | Locked, no action |
 | B-09 | Medium | **FD 684 vs locked SSE contract (escalated 2026-10-15):** "See the lookups → matching ledger rows" cannot survive a fresh reload under state-only SSE; the drawer chain is complete within a live session. | Judge-visible gap only on reload; links stay honest. Needs spec-owner decision: FD amendment vs SSE history replay vs client replay route. | User / spec owner |
-| B-10 | Low | **GET-only evidence projection:** only `GET /api/runs/:id` injects evidence; SSE/replace/stop responses carry RunState without it. Client evidence slot + terminal refetch bridge the gap (`b1f276e`). | Server-side unification deferred; Phase 8 challenge/blueprint surfaces should not add more state-only projections. | Orchestrator (Phase 8 pre-work) |
+| B-10 | Low | **GET-only evidence projection:** only `GET /api/runs/:id` injects evidence; SSE/replace/stop responses carry RunState without it. Client evidence slot + terminal refetch bridge the gap (`b1f276e`). | Server-side unification deferred; Phase 8 challenge/blueprint surfaces did NOT add more state-only projections (challenge/blueprint responses stay report/blueprint-shaped; D-8.7 posture held). | Orchestrator (Phase 9) |
+| B-11 | Low | **Phase 8 deferred review polish** (from the 15-finding independent review, D-8.23): #8 rounds history not persisted per report (detail lines now render, `rounds` exists, but full per-round mutation history is not modeled); #9 bridge evidence provenance not attached to the blueprint's bridge-member receipts; #10 deep challenge block (full report) absent from the standalone share blueprint — share shows the composed artifact only; #11 `state.evidence` field is dead code alongside the projecting GET; #13 format-downshift ordering in fit copy vs spec's "downshift before dropping a role when practical"; #15 deterministic-fallback rationale cites positional indices without per-citation attribution; #16 mutation operator `Shift-scale` from the Plan's operator list exists only as the catchment attack's city-scale re-measure (challenge.ts:83 union = swap/drop/bridge), never as a mutation candidate producer. | None falsifies evidence, numeric truth, or the protected loop (verified during triage); each is judge-visible polish, state hygiene, or a bounded operator gap. Backlog for Phase 9 alongside `/method`. | Orchestrator (Phase 9) |
 
 ## Last Verified Commit
 
-`0f3620a` — *test: cover S4 challenge and S5 blueprint end to end.*
-Preceded by `7893e56` (docs: W-8.6 + D-8.17), `cce7b87` (test: script the judge
-fixture turns by label), `424cf76` (feat: S4 challenge view, S5 blueprint,
-Without-Qloo compare), `f02f6b9` (docs: W-8.4 + D-8.15), `99510fc` (W-8.4
-Without-Qloo polish), `02093c5` (docs: W-8.3 + D-8.10…D-8.14), `ff54a0d` (W-8.3
-Place Blueprint + share snapshots), `b938cbe` (docs: W-8.2b), `6903c25` (W-8.2b
-bridge insertion + rebuild chain), `f3f90a4` (docs: W-8.1 + W-8.2a), `f786607`
-(W-8.2a challenge engine), `0c8ba6f` (W-8.1 format library + constraint-fit engine),
+`f8b2172` — *test: pin display-name prose, honest fit states, and the narrative
+numeric guard.* Preceded by `90bcf13` (fix: speak member names and honest fit
+states across the judge-facing blueprint — the independent-review fix wave),
+`d4edc90` (test: e2e challenge order + compare members), `8d71f49` (fix: compare
+modal shows only frozen Prior members), `656f53d`/`0f3620a` (e2e evidence docs),
+`7893e56` (docs: W-8.6 + D-8.17), `cce7b87`, `424cf76`, `f02f6b9`/`99510fc`,
+`02093c5`/`ff54a0d`, `b938cbe`/`6903c25`, `f3f90a4`/`f786607`/`0c8ba6f`,
 `c81bfbb` (Phase 8 contract).
-Gates green on the tree at sign-off: typecheck 0, lint 0, **742 pass / 5 gated-live
-skips**, **Playwright 10 pass** (6 judge-flow + 4 smoke), **build PASS**;
-`git diff --check` clean, diff secret scan clean (one `shareToken` local-name hit, no
-key material). **No production source changed in this commit** — the diff is confined
-to `e2e/judge-flow.spec.ts` (+128/−3). Remaining exit-gate work: fixture-browser walk,
-independent review, and the clause map (this docs commit records the e2e evidence).
-Push target: **https://github.com/louji2308/zorq** (`main`, PUBLIC, MIT; push on
-explicit user request).
+Gates green on the tree at sign-off: typecheck 0, lint 0, **746 pass / 5
+gated-live skips**, **Playwright 10/10**, **build PASS**; `git diff --check`
+exit 0, diff secret scan 0 hits; fixture-browser walk green
+(`tmp/phase8-walk.json`, `s4ShowsNoComponentIds=true`, zero console/page errors).
+Pushed: `d4edc90..f8b2172 main -> main` on
+**https://github.com/louji2308/zorq** (repo-moved redirect informational only).
+Next: Phase 9 contract at the boundary; clause map + closure recorded below.
 
 ## Next Highest-Value Action
 
-**Fixture-browser walk (chrome-devtools) over the S4/S5 surfaces, then the independent
-review and the clause map.** The browser proof landed at `0f3620a` (S4 five attacks +
-agent-order banner; S5 LLM title, receipts, invented citation omitted, Without-Qloo
-compare modal, read-only share route in a fresh context). A first full-suite run
-observed a failure in the pre-existing `S3 replacement records R1` test that passed in
-isolation and on the immediate re-run; recorded as order-dependent observation, not
-diagnosed. Remaining for the gate: fixture-browser walk (S4 right column, S5 reading
-screen, compare modal, tab underline), independent review of the Phase 8 diffs
-(fallback: recorded self-review), then the clause-by-clause proof map vs Plan 734–808
-closes the phase. Parallel user-side: **top up DeepSeek (B-02)** → one real browser
-judge pass. Deadline: Oct 30 2026, internal freeze Oct 28.
+**Write the Phase 9 contract at the boundary (read all seven ProjectSpec sources
+fresh), then execute Phase 9's full-path proof:** one scripted fixture run walked
+Landing → preset → Prior → S1 → S2 → S3 → S4 → S5 → Without-Qloo → Share/Print
+in a browser on production dist (extending `tmp/phase8-walk.ts` past S4/S5), then
+the deployment/CI/`/method` work of Plan 819+. Highest-value live action once
+user-side B-02 clears: one real-services judge pass (real DeepSeek + real Qloo
+end-to-end) — closes Phase 6's live clause and Phase 8's deferred live clause in
+one run. Carry into the Phase 9 contract: B-09, B-10, B-11, /method route,
+D-8.16 (S5 in-place Replace), deadline Oct 30 2026 / internal freeze Oct 28.
+
+## Phase 8 Exit-Gate Status (PASSED 2026-10-17 — fixture judge path per user approval D-8.23; live-services clause deferred to Phase 9 / B-02)
+
+Gate text (Plan 809): *"A complete run produces a professional Blueprint
+understandable without watching the agent work."*
+Contract exit gate (this file, line 169): *"full judge path honest under real
+services; clause map vs Plan 734–808 + ProductSpec S4/S5 + Final Design 7.4–7.5;
+every worker diff reviewed; no fake production behavior."*
+
+Evidence: W-8.1 `0c8ba6f`, W-8.2a `f786607`, W-8.2b `6903c25`, W-8.3 `ff54a0d`,
+W-8.4 `99510fc`, W-8.5 `424cf76`, W-8.6 `cce7b87`, exit-gate e2e `0f3620a` +
+`d4edc90`, compare-modal `8d71f49`, review fix wave `90bcf13` (fix) + `f8b2172`
+(test). Gates at sign-off: typecheck 0, lint 0, **746 pass / 5 gated-live
+skips**, **Playwright 10/10**, build PASS, `git diff --check` exit 0, diff secret
+scan 0 hits, fixture-browser walk `tmp/phase8-walk.json` with **zero console/page
+errors** (6 screenshots `tmp/phase8-01…06.png`). Proof basis: fixture judge
+pipeline — scripted LLM at the label boundary + fake gateway at the transport
+boundary only; server, engine, and UI code are the production paths
+(D-8.17/D-8.23). Every worker diff inspected against its contract; the full
+range additionally received an independent adversarial review (15 findings,
+all triaged — D-8.23).
+
+**S4 Challenge (Plan 738–754):**
+- [x] **agent chooses attack order from current diagnostics** — bounded LLM
+  turn with deterministic fallback (D-8.6); walk `bannerMeta = "3 stress rounds ·
+  2 mutations · attack order chosen by the agent"` + `expectedAttackOrder`
+  recorded; e2e agent-order banner assert.
+- [x] **five attack families present** — walk `attackNames` = ablation `Remove a
+  member`, substitution `Substitute a member`, bridge insertion `Bridge the
+  weakest link`, catchment shift `Shift the catchment`, rival composition sweep
+  `Check the rival` (5/5); W-8.2a unit matrix.
+- [x] **Qloo spend where it changes decisions** — one connecting category per
+  challenge (walk attack detail); catchment re-reads stored city neighborhoods at
+  zero extra call count (D-8.2); per-run budget hard-fails honestly (unit).
+- [x] **verdict ∈ {Survived, Revised, Replaced}** — `resolveVerdict` unit covers
+  all three; Replaced chain via fixture D (`6903c25`); walk observed `Revised`.
+- [x] **failed probe stays visible and can cap evidence quality** —
+  bridge-outage test: row `not completed` rendered, `gradeCap B`, F1 honesty
+  asserts (`not.toContain("all five attacks")`, `toMatch(/held against \d+
+  measured attacks/)`, `toContain("not completed")`); cross-circle row class
+  unit-proven (`is-measured`/`is-skipped` — walk rows
+  `[measured, skipped, skipped, measured, measured]`). Judge fixture itself has
+  no failed probe — that exact path is unit-level proven, not walked.
+- [x] **verdict banner always states a reason (FD 618)** — walk `verdictReason`
+  = server reason verbatim with display names, `Δ +0.0860` deltas, stop note;
+  `attack.detail` sentence per row rendered (`.s4-attack-detail`, F8a).
+- [x] **running indicator (PS 211)** — challenge is synchronous (D-8.7): CTA
+  disabled while `challenging` + `aria-live` status region; per-row spinners
+  need streaming we deliberately do not have.
+- [x] **CTA "Open blueprint" (PS 213 / FD 621)** — `.s4-primary` renders with a
+  verdict.
+- [x] **leader-as-drawn legible with strikes (FD 618)** — walk `leaderRowTexts`
+  incl. `Clay Collective\nREMOVED`; names, zero `comp-*` ids
+  (`s4ShowsNoComponentIds = True`).
+
+**Mutation (Plan 755–764):**
+- [x] **operators Bridge / Swap / Drop** — `mutation.operator ∈ {swap, drop,
+  bridge}` (challenge.ts:83); verdictReason shows two real drops applied.
+- [ ] **operator `Shift-scale`** — catchment shift ships as an *attack*
+  (city-scale re-measure + Δ, walk detail `Δ -0.0035`) per contract line 90–91
+  ("shift-scale: heatmap/city-baseline re-read"), but **no mutation candidate
+  emits `shift-scale`** — honest gap against the Plan's operator list; recorded
+  in B-11 #16 for Phase 9, not silently claimed.
+- [x] **max two mutation rounds** — banner `2 mutations` at stop; stop-at-two
+  unit tests.
+- [x] **stop rule + best defensible state (764)** — leader-survives + ε
+  (1e-6) stop-note unit tests; `A further drop … remained at the two-round
+  stop` (walk).
+
+**Constraint engine (Plan 766–778):**
+- [x] **format library + footprint ≤85%** — `formats.ts`/`fit.ts` W-8.1 tests;
+  `withinFootprint = usableSqFt === null || sum ≤ 0.85·usable`.
+- [x] **hours/noise constraints** — constraint chips from brief + fit reasons;
+  walk `droppedRows` = `no format of Music venue satisfies the site constraints`,
+  `no format of Bar satisfies the site constraints` rendered with reason on the
+  member rows (D-8.21).
+- [x] **downshift before dropping; role preserved** — asserted verbatim in
+  formats tests: `Cinema becomes micro-screening. Role preserved: Anchor.`
+- [x] **honest unmeasured fit** — area-less brief → `withinUsable: null` → walk
+  `fitLine = not measured (no floor area supplied)` (D-8.21).
+- [ ] **heuristics documented/editable in `/method` (778)** — deferred to Phase 9
+  (contract NON-GOALS, line 150): `.s5-method-link` routes `/method` (walk
+  `methodHref`), every heuristic export still carries `[Zorq heuristic]`; page
+  content is Phase 9.
+
+**S5 Blueprint — the 15 artifacts (Plan 780–795):**
+- [x] 1 title — walk `The Williamsburg corner plan` + `LLM` source pill.
+- [x] 2 rationale — walk: 1 superscript, cited receipt resolves, invented
+  citation absent (`inventedCitationVisible = False`), numeric guard (D-8.22).
+- [x] 3 role-based composition — role-grouped member rows (`.s5-member-role`).
+- [x] 4 evidence receipts — walk `receiptCount = 9` in the margin column.
+- [x] 5 site fit — `.s5-fit` block with honest null line.
+- [x] 6 hours/noise fit — per-member hours bars + constraint chips (dropped
+  reasons above).
+- [x] 7 What Qloo changed — walk `diffSentence = Qloo kept 1, reformatted 0,
+  removed 4, and added 2.` (names, not ids — D-8.19).
+- [x] 8 risks — four kinds incl. new `constraint-conflict`
+  (`blueprintRiskKinds`, routes.ts:119) + feasible-fit test.
+- [x] 9 weak links — `weakest-edge` risk + `buildWeakestLine` chain (Phase 7
+  owner reused).
+- [x] 10 evidence grade — walk `Evidence grade B`; grade-cap-B reason emitted
+  when cap binds (F10a test).
+- [x] 11 revision history — `revisionHistory` unit; revisions stamped `at`
+  (D-8.20) so stale leaders cannot render.
+- [x] 12 method link — walk `methodHref = /method`.
+- [x] 13 share — `shareTokenLen = 24`; read-only walk in a fresh context
+  (`shareTabCount = 0`, `shareChallengeBtn = 0`).
+- [x] 14 Copy as Markdown — `s5Model` markdown tests (incl. honest Footprint
+  line).
+- [x] 15 print/save PDF — real `@media print` stylesheet (landscape sheet,
+  actions/modal hidden); W-8.5.
+- [ ] **member-card Replace button (PS 221 / FD 660)** — deferred by recorded
+  D-8.16: S2/S3 own Replace; S5 stays a read artifact. Deviation, not a gap.
+
+**Without-Qloo (Plan 796–805 / PS 227):**
+- [x] **Frozen Prior + LLM-only polish vs Final, diff highlighted** — walk modal:
+  heading `WITHOUT QLOO` context, `comparePolish = 1`, right column from server
+  diff arrays.
+- [x] **do not manufacture divergence (805)** — D-8.18 fix `8d71f49`: left
+  column = frozen-Prior members only (walk `priorColumnNames` = 5 names incl.
+  `Devoción`, zero pool scaffolding); e2e left-column pin.
+- [x] **confident-empty case ("evidence changed nothing")** — neutral compare
+  state unit-tested (s5Model derives only from diff arrays).
+
+**Shareable Blueprint (Plan 806–807):**
+- [x] **`/run/:id/blueprint` stands alone** — walk: `shareTitle` renders,
+  zero tabs, zero challenge controls, zero `undefined` in body.
+
+**Exit gate (Plan 809):**
+- [x] **professional Blueprint understandable without watching the agent work** —
+  walk screenshots 01–06: every claim on S4/S5 carries its reason, delta,
+  receipt, risk, or grade inside the artifact; no console errors.
+
+**ProductSpec S4/S5 (209–237) & Final Design 7.4–7.5 extras:**
+- [x] FD 658 title block — `.s5-titleblock` renders all eight fields (Project /
+  Site / Area / Constraints / Grade / Revision / Date / Run, source-verified).
+- [x] FD verdict square solid/half-hatched/crossed — `verdictSquare` unit test.
+- [x] PS 232 stored blueprint (final state + diff + readings) — blueprint
+  snapshot response + ledger receipts.
+- [ ] FD 7.5 receipt **colour thumbnails** — not built (text receipts + pills);
+  FD's "one place colour appears" is polish-only, honesty unaffected.
+- [ ] FD 7.5 hours **hatched forbidden band** — not built (bars + chips + rule
+  line); visual polish only.
+- [x] PS 234 /method content clause — **Phase 9 by contract** (line 150/60);
+  stub route + heuristic markers already in place.
+
+**Contract acceptance (lines 157–161):** all met on the fixture path —
+typecheck 0, lint 0, unit green, build PASS, e2e covers challenge → blueprint →
+without-Qloo, secret scan 0 hits, browser walk with zero console errors, honest
+refusal paths (busy run / exhausted budget / unmeasurable) unit-tested.
+No fake production behavior: fakes exist only at the scripted-LLM label and fake
+transport boundaries, isolated from production execution (AGENTS §12).
+
+**Honest deferrals carried forward:** live-services judge pass (→ B-02, first
+live action of Phase 9 — the one unfinished contract clause); `/method` content
+(Phase 9); S5 in-place Replace (D-8.16); six review findings + `shift-scale`
+operator (B-11); FD thumbnail/hatch polish (this list). None falsifies evidence,
+numeric truth, or the protected loop.
 
 ## Phase 7 Exit-Gate Status (PASSED 2026-10-15 — one escalated deviation, B-09)
 
