@@ -2106,10 +2106,13 @@ with both mini-challenge attack rows after a real in-browser replace.
 
 ## Last Verified Commit
 
-`1d716f6` — *build: inline the public MapTiler key into the deployed web bundle* (2026-10-18;
-deployed live as `dep-dba2ia72d8hs73div25g` at https://zorq-12dk.onrender.com — see the Phase 9
-continuation for the deploy evidence). Preceded in Phase 9 by `85a320e`, `cc87661`, `71856a0`,
-`c98cc89`, `c1b59ac`.
+`903201c` — *feat: add one-command Render deploy automation* (2026-10-18; `deployment/render-deploy.mjs`
++ `npm run deploy` / `npm run deploy:verify`; `--selftest` PASS, lint 0, typecheck 0; the command
+drove deploy `dep-dbaf6orbc2fs73b5vj00` of `e5219f6` → **live**; see the deploy-automation
+continuation below). Preceded in Phase 9 by `e5219f6` (docs: live URL), `3179734` (docs: deploy +
+B-02), `1d716f6` (*build: inline the public MapTiler key into the deployed web bundle*, 2026-10-18;
+first live deploy `dep-dba2ia72d8hs73div25g` at https://zorq-12dk.onrender.com), then `85a320e`,
+`cc87661`, `71856a0`, `c98cc89`, `c1b59ac`.
 **Phase 8 sign-off (historical):** `f8b2172` — *test: pin display-name prose, honest fit states, and the narrative
 numeric guard.* Preceded by `90bcf13` (fix: speak member names and honest fit
 states across the judge-facing blueprint — the independent-review fix wave),
@@ -2134,7 +2137,9 @@ Prior. This one action unblocks: the deployed-leg run-persistence write (W-9.6),
 receipts (W-9.7), the README URL pin + real gallery screenshots (W-9.5), and Phase 6's live
 clause. Once funded: one real-services judge pass end-to-end → record receipts → pin
 **https://zorq-12dk.onrender.com** → capture real-run screenshots → close the Phase 9 exit-gate
-clause map. The deploy itself is DONE (`1d716f6`; deploy `dep-dba2ia72d8hs73div25g`, live).
+clause map. The deploy itself is DONE and now reproducible as one command — `npm run deploy`
+(`deployment/render-deploy.mjs`, `903201c`; last live deploy `dep-dbaf6orbc2fs73b5vj00` of
+`e5219f6`).
 
 ## Phase 8 Exit-Gate Status (PASSED 2026-10-17 — fixture judge path per user approval D-8.23; live-services clause deferred to Phase 9 / B-02)
 
@@ -2742,3 +2747,40 @@ verified) · W-9.3 ✅ armed · W-9.4 ✅ · W-9.5 ~85% (URL pin + gallery pendi
 W-9.6 ✅ local leg / ◑ deployed leg (run-persistence write blocked by B-02) · W-9.7 ⬜ blocked on
 B-02. Next (user-side): top up DeepSeek → one real-services judge pass → receipts → URL pin +
 real gallery → exit-gate clause map.
+
+### Phase 9 continuation (2026-10-18 — one-command Render deploy automation + post-deploy re-verify)
+
+**One-command deploy automation (`903201c`, decision D-9.19).** `deployment/render-deploy.mjs`
+now owns the entire Render operation the manual REST flow (D-9.18) performed, so no ad-hoc API
+calls are needed to deploy or verify. It: loads the 12-key env contract from the git-ignored
+`.env`; resolves the service by name via `GET /v1/services`; replaces env vars via
+`PUT /v1/services/:id/env-vars` (with `APP_BASE_URL` = the service URL and `NODE_ENV=production`
+**derived, never read from `.env`**); triggers a deploy via `POST /v1/services/:id/deploys`; polls
+`GET /v1/services/:id/deploys/:id` to a terminal status; then smokes `/healthz` + `/` on the public
+URL. Secret policy holds (AGENTS §24): only masked key summaries are printed — no value, no key.
+Ops entry points: `npm run deploy` (full), `npm run deploy:verify` (`--no-deploy`, env sync + smoke
+only), `node deployment/render-deploy.mjs --selftest` (pure-helper assertions, no network).
+
+**Observed evidence (exit codes / bodies observed, not assumed):**
+- `node deployment/render-deploy.mjs --selftest` → `selftest: PASS` (exit 0).
+- `npm run lint` → 0; `npm run typecheck` (dual tsconfig) → 0; `node --check` → 0.
+- Full command run: `env: replaced 12 variables` (masked: `QLOO_API_KEY`, `DEEPSEEK_API_KEY`,
+  `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `APP_BASE_URL`, `NODE_ENV=production`, `LLM_BUDGET_USD`,
+  `MAX_QLOO_CALLS`, `QLOO_CONCURRENCY`, `QLOO_CACHE_TTL_SEC`, `PERSIST_QLOO_DERIVED`,
+  `VITE_MAPTILER_KEY`) → deploy `dep-dbaf6orbc2fs73b5vj00` (commit `e5219f6`):
+  `build_in_progress` → `update_in_progress` → **live**; smoke `GET /healthz` → **200**
+  `{"status":"ok","service":"zorq","version":"0.1.0","checks":{"config":"ok","staticBuild":"ok"}}`,
+  `GET /` → **200**; `RESULT: OK` (exit 0).
+- Auto-deploy from the docs push `e5219f6` also landed live: `dep-dbaf4arrjlhs73ci0d6g` → **live**.
+
+**Decision D-9.19:** the Render deploy is now a single reproducible command
+(`deployment/render-deploy.mjs`; `npm run deploy`) driving the REST API chosen in D-9.18. It is
+idempotent: re-running re-syncs the identical 12 env keys and re-deploys the current commit, while
+`--no-deploy` verifies the live service without a redeploy. `npm run deploy` and `npm run deploy:verify`
+are added to `package.json`.
+
+**Worker status now:** W-9.1 ✅ · W-9.2 ✅ deployed + **one-command automation** · W-9.3 ✅ armed ·
+W-9.4 ✅ · W-9.5 ~85% (URL pin + gallery pending a live run) · W-9.6 ✅ local leg / ◑ deployed leg
+(run-persistence write blocked by B-02) · W-9.7 ⬜ blocked on B-02. **B-02 remains the single
+critical-path unblock** — at `$0.00` no run can generate a Prior, so W-9.6 deployed-leg write,
+W-9.7 live A/B, and the W-9.5 URL pin + real gallery all wait on the user's DeepSeek top-up.
