@@ -20,10 +20,10 @@
 
 | # | Requirement | Status | Evidence needed |
 |---|---|---|---|
-| R1 | Functional demo app, usable end-to-end | ❌ not started | live URL |
+| R1 | Functional demo app, usable end-to-end | ⚠️ deployed 2026-10-18 at https://zorq-12dk.onrender.com (`/healthz` 200); live end-to-end run proof pending DeepSeek balance (B-02) | live URL |
 | R2 | Public code repository (GitHub/GitLab/Bitbucket) with source + run instructions | ✅ repo PUBLIC at https://github.com/louji2308/zorq with real source + verified run instructions in `README.md` (fresh clone → `npm ci` → gates → `npm start` → `/healthz` 200 proven 2026-10-06, Phase 2) | repo URL |
 | R3 | Text description of what it does + what makes it Qloo-powered | ❌ not started | Devpost field |
-| R4 | External hosting / fully published, free to test, no login | ❌ not started | live URL |
+| R4 | External hosting / fully published, free to test, no login | ⚠️ hosted on Render Free at https://zorq-12dk.onrender.com, no login, publicly reachable; live end-to-end proof pending (B-02) | live URL |
 | R5 | Open-source license visible in repo + repo About | ✅ `LICENSE` (MIT) at root; GitHub reports `licenseInfo: mit`; About description set | `LICENSE` (MIT locked) |
 | R6 | Qloo integration actually used | ❌ not started | Gate A |
 | R7 | Truthful project start date | ⚠️ pending | enter Oct 6, 2026 (do not backdate) |

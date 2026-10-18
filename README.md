@@ -19,9 +19,9 @@ that the evidence confirmed the first guess.
 Submission candidate for the [Qloo Agentic Hackathon 2026](https://qloo.devpost.com/)
 (project started 2026-10-06). Phases 1–8 of the
 [implementation plan](./ProjectSpec/IMPLEMENTATION_PLAN.md) are built and verified.
-Phase 9 (deployment & judge readiness) is in progress; the live URL is pinned here at freeze:
-**Live demo: https://\<zorq service URL\>.onrender.com** *(added at deploy time — no live URL yet
-in this checkout.)*
+Phase 9 (deployment & judge readiness) is in progress. The service is deployed and live:
+**Live demo: <https://zorq-12dk.onrender.com>** (`/healthz` returns 200; the Docker image is built
+on Render at deploy time).
 
 | Surface | State |
 |---|---|
