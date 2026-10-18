@@ -18,52 +18,59 @@
 
 ## 2. Hard submission requirements (OFFICIAL) — pass/fail
 
+> Reviewed and corrected 2026-10-18 against the built system (this section was frozen at Phase 3).
+> Legend: ✅ satisfied · 🟡 draft/partial ready · ⚠️ blocked only by B-02 (user-side DeepSeek top-up) · ❌ not started.
+
 | # | Requirement | Status | Evidence needed |
 |---|---|---|---|
-| R1 | Functional demo app, usable end-to-end | ⚠️ deployed 2026-10-18 at https://zorq-12dk.onrender.com (`/healthz` 200); live end-to-end run proof pending DeepSeek balance (B-02) | live URL |
-| R2 | Public code repository (GitHub/GitLab/Bitbucket) with source + run instructions | ✅ repo PUBLIC at https://github.com/louji2308/zorq with real source + verified run instructions in `README.md` (fresh clone → `npm ci` → gates → `npm start` → `/healthz` 200 proven 2026-10-06, Phase 2) | repo URL |
-| R3 | Text description of what it does + what makes it Qloo-powered | ❌ not started | Devpost field |
+| R1 | Functional demo app, usable end-to-end | ⚠️ deployed 2026-10-18 at https://zorq-12dk.onrender.com (`/healthz` 200); full live run proof pending DeepSeek balance (B-02) | live URL |
+| R2 | Public code repository (GitHub/GitLab/Bitbucket) with source + run instructions | ✅ repo PUBLIC at https://github.com/louji2308/zorq with real source + verified run instructions in `README.md` (fresh clone → `npm ci` → gates → `npm start` → `/healthz` 200, Phase 2) | repo URL |
+| R3 | Text description of what it does + what makes it Qloo-powered | 🟡 **draft ready** — `docs/devpost-description.md` (hook · problem · why existing AI fails · what Zorq does · why Qloo matters · what the agent does · proof of difference · technical · trust/limitations · impact, per Hackathon_details §30). Paste into the Devpost field before submit. | Devpost field |
 | R4 | External hosting / fully published, free to test, no login | ⚠️ hosted on Render Free at https://zorq-12dk.onrender.com, no login, publicly reachable; live end-to-end proof pending (B-02) | live URL |
 | R5 | Open-source license visible in repo + repo About | ✅ `LICENSE` (MIT) at root; GitHub reports `licenseInfo: mit`; About description set | `LICENSE` (MIT locked) |
-| R6 | Qloo integration actually used | ❌ not started | Gate A |
-| R7 | Truthful project start date | ⚠️ pending | enter Oct 6, 2026 (do not backdate) |
-| R8 | All Devpost custom fields answered | ⚠️ pending | submission-day checklist |
+| R6 | Qloo integration actually used | ✅ Gate A passed (MCP + REST live); multi-stage gateway (capabilities, entity/tag resolution, locality/heat, place→culture, culture→place, neighborhoods, triangulation, bridge/replace) wired through the run. See README "Qloo integration" + `docs/phase10-red-team.md` §10.2/§10.4. | Gate A |
+| R7 | Truthful project start date | 🟡 value ready: **Oct 6, 2026** (do not backdate) — entered at submission | Devpost field |
+| R8 | All Devpost custom fields answered | 🟡 checklist ready (§10) — completed at submission | submission-day checklist |
 
 **Explicitly NOT required:** demo video, ZIP file. (Video = optional judge-acceleration asset only.)
 
 ## 3. Stage One viability gate (pass/fail before scored judging)
 
-- [ ] Reasonably fits the theme (agentic tool using Qloo).
-- [ ] Reasonably applies the required APIs/SDKs (Qloo).
-- Risk if collapsed into `LLM → Qloo → recommendations` = disqualification-adjacent failure.
+- [x] Reasonably fits the theme (agentic tool using Qloo) — autonomous cultural-composition agent; Qloo is the measurement substrate.
+- [x] Reasonably applies the required APIs/SDKs (Qloo) — MCP primary + REST fallback, live.
+- Risk if collapsed into `LLM → Qloo → recommendations` = disqualification-adjacent failure → **closed structurally**: Zorq code owns every number, and the Prior→Final diff + Without-Qloo comparison make the Qloo dependency inspectable per run (see `docs/qloo-removal-proof.md`).
 
-## 4. Judging dimensions (equal weight — build against all four)
+## 4. Judging dimensions (equal weight — all four targeted)
 
 | Dimension | Target evidence | Status |
 |---|---|---|
-| Technological Implementation | deep multi-stage Qloo usage, guarded gateway, visible call trace, resilient code | 🟡 guarded gateway + live call trace + honest outage handling landed (Phase 3); deep multi-stage usage arrives with engine/challenge |
-| Design | complete self-teaching product, no video/narration required | ❌ |
-| Potential Impact | real placemaking/tenant-mix workflow, named buyer, board-readable Blueprint | ❌ |
-| Quality of Idea | composition-not-recommendation abstraction; Prior→Final; self-challenge | ❌ concept locked |
+| Technological Implementation | deep multi-stage Qloo usage, guarded gateway, visible call trace, resilient code | ✅ Phases 3–8: MCP+REST gateway, per-run budget/concurrency, live ledger trace, outage → honest partial |
+| Design | complete self-teaching product, no video/narration required | ✅ S0–S5 + `/method`; evidence drawer; teaches itself |
+| Potential Impact | real placemaking/tenant-mix workflow, named buyer, board-readable Blueprint | ✅ evidence-bound Place Blueprint + share/print |
+| Quality of Idea | composition-not-recommendation abstraction; Prior→Final; self-challenge | ✅ built + judge-path tested |
 
 ## 5. Mandatory product invariants (judge-proof acceptance criteria)
 
+> Reviewed and corrected 2026-10-18 (this section was frozen at Phase 3). Phases 4–8 built the
+> measurement, composition, challenge, blueprint and correction paths; the only open rows are the
+> live-service proofs (B-02).
+
 | # | Invariant | Status |
 |---|---|---|
-| P1 | Prior Lock is write-once, generated before any Qloo call | ✅ proven (structural: `prior.ts` has zero Qloo imports; write-once conflict + deep-freeze tests; live exit-gate ordering) |
-| P2 | Qloo changes the result **or** honestly confirms it (control case; never manufacture divergence) | ❌ |
-| P3 | Every `[Qloo]` claim → evidence ID → ledger event → measurement input | 🟡 ledger event + evidence record + provenance linked live (Phase 3); claim→measurement input is Phase 4/5 |
-| P4 | Every numeric metric deterministic and reproducible (LLM authors no numbers) | ❌ (budget/gateway arithmetic deterministic; product metrics = Phase 4) |
-| P5 | Agent decisions are observation-dependent, not a fixed script | 🟡 architecture proven (observation→diagnosis→tool loop, turn/budget caps deterministic); real-LLM adaptive run pending DeepSeek balance (`LIVE_DEEPSEEK=1` ready) |
-| P6 | Output is a **set** with measured inter-component relationships (graph, not list) | ❌ |
-| P7 | Graph edges have receipts: shared entities, route, triangulation, status | ❌ |
-| P8 | Challenge the Plan is real → `Survived / Revised / Replaced` | ❌ |
-| P9 | Constraints change format, not evidence (`Cinema → Micro-screening; role preserved: Anchor`) | ❌ |
-| P10 | Uncertainty visible: measured / confirmed / contested / thin / not measured / incomplete / unavailable | ❌ |
-| P11 | Place Blueprint stands alone as a decision artifact | ❌ |
-| P12 | Qloo-removal test: without Qloo the app is materially weaker | ❌ |
-| P13 | Fresh-clone reproducibility (README sufficient from clean checkout) | ❌ |
-| P14 | Live, externally hosted, free, no account, usable through Nov 16 | ❌ |
+| P1 | Prior Lock is write-once, generated before any Qloo call | ✅ proven (structural: `prior.ts` has zero Qloo imports; write-once conflict + deep-freeze tests; live ordering) |
+| P2 | Qloo changes the result **or** honestly confirms it (control case; never manufacture divergence) | ✅ mechanism built + judge-path tested (S5 Without-Qloo compare, confident-empty case); full live A/B record pending B-02 → `docs/qloo-removal-proof.md` |
+| P3 | Every `[Qloo]` claim → evidence ID → ledger event → measurement input | ✅ Phase 7 evidence drawer traces claim → evidence ID → ledger → measurement route; unknown IDs never render |
+| P4 | Every numeric metric deterministic and reproducible (LLM authors no numbers) | ✅ Phase 4/6: byte-identical replay proven (`tests/engine/exitGate.test.ts:284`); engine has no `Math.random`/`Date.now` |
+| P5 | Agent decisions are observation-dependent, not a fixed script | ✅ architecture + bounded controller proven; real-LLM adaptive run pending B-02 |
+| P6 | Output is a **set** with measured inter-component relationships (graph, not list) | ✅ Phase 7 semantic composition graph |
+| P7 | Graph edges have receipts: shared entities, route, triangulation, status | ✅ Phase 7 edge drawer (entities, route, triangulation classification, status) |
+| P8 | Challenge the Plan is real → `Survived / Revised / Replaced` | ✅ Phase 8 challenge engine + five attacks + verdicts (unit + e2e) |
+| P9 | Constraints change format, not evidence (`Cinema → Micro-screening; role preserved: Anchor`) | ✅ Phase 8 format library + `fitConstraints` downshift/drop with role preservation |
+| P10 | Uncertainty visible: measured / confirmed / contested / thin / not measured / incomplete / unavailable | ✅ Phase 7/8 evidence-state vocabulary rendered honestly |
+| P11 | Place Blueprint stands alone as a decision artifact | ✅ Phase 8 Blueprint + share/print snapshot |
+| P12 | Qloo-removal test: without Qloo the app is materially weaker | ✅ mechanism + honest control built; live A/B record pending B-02 |
+| P13 | Fresh-clone reproducibility (README sufficient from clean checkout) | ✅ Phase 2 fresh-clone exit gate |
+| P14 | Live, externally hosted, free, no account, usable through Nov 16 | 🟡 deployed, free, no login, live (`/healthz` 200); full usability through judging pending B-02 + freeze monitoring |
 
 ## 6. Locked runtime budgets (do not tune without measured evidence)
 
@@ -79,14 +86,16 @@ Cache TTL           ≈6h in-memory; PERSIST_QLOO_DERIVED=false by default
 
 ## 7. Build gates (must pass before UI polish)
 
+> Status refreshed 2026-10-18 (was frozen at Phase 3). Deeper audit → `docs/phase10-red-team.md`.
+
 | Gate | Question | Status |
 |---|---|---|
 | A — Transport | Qloo MCP connects, `qloo_capabilities` ready, one full tool chain returns structured output | ✅ **PASSED 2026-10-06.** REST path proven (10 live calls: `/search`, `/v2/tags`, `/v2/insights` all 200). **MCP path proven same day** (W-1.2 + independent orchestrator re-run): `qloo mcp` stdio boots on Node 24, 10 tools listed, `qloo_capabilities` → contract v1.0.0 canonical `ready: true`, live `qloo_find_tags` returned structured output in 1.6 s, `qloo doctor --network` accepted the credential. Verdict `USABLE-WITH-CONDITIONS` — 4 binding conditions in `ARCHITECTURE.md` §4.2 (trusted base URL pair, normalized envelope, 4 capability gaps → REST fallback mandatory, long-lived process). |
-| B — Resolution | ≥80% of component concepts resolve to defensible Qloo tags/entities | 🟡 1/8 concepts verified (`cinema` → `urn:tag:nearby_attraction:qloo:cinema` + `urn:tag:setting:qloo:cinema`, parents include `urn:entity:place`) |
-| C — Edge quality | shared-culture edges vary meaningfully, not just popularity | 🟡 preliminary: 50 local results show affinity-vs-popularity rank agreement **1/50** (independent) but affinity range only **0.036**. Pairwise shared-culture edge test still to run. |
-| D — Rate/latency | 6–8 concurrency run completes in an acceptable UX budget | ❌ not run. Known risk: responses are **0.2–1.0 MB** per call (no server-side field filtering). |
-| E — Evidence | explainability/affinity behavior known; rank-only fallback works | 🟡 **`query.affinity` numeric on every entity** (plus `popularity`); no separate explainability field observed. Affinity band is compressed → normalize before display. |
-| F — Presets | 2 genuinely Qloo-divergent presets + 1 honest control | ❌ |
+| B — Resolution | ≥80% of component concepts resolve to defensible Qloo tags/entities | 🟡 category resolution moved into the engine (per-category resolve, no hardcoded URNs — `src/web` has zero URN literals); full 8-concept live matrix recorded at freeze |
+| C — Edge quality | shared-culture edges vary meaningfully, not just popularity | ✅ Phase 7: IDF-weighted shared-culture edges + local-vs-city distinctiveness built and judge-path tested |
+| D — Rate/latency | 6–8 concurrency run completes in an acceptable UX budget | 🟡 concurrency locked at 6; live p50/p90 + call-count measurement pending the first funded run (B-02) |
+| E — Evidence | explainability/affinity behavior known; rank-only fallback works | ✅ affinity numeric and normalized before display; rank-only fallback implemented |
+| F — Presets | 2 genuinely Qloo-divergent presets + 1 honest control | 🟡 three presets shipped (divergent + control intent); live divergence recorded at freeze |
 | G — Compliance | written Qloo answer on cache/storage/key lifetime, or no-persist mode active | ✅ **answered from official docs** (developer guide, retrieved 2026-10-06): private server-side caching permitted with **no time limit**; never store Qloo responses in a public repo; keys active through end of judging period |
 
 ## 8. Day-1 / spike register (spec §18 + §35)
@@ -170,3 +179,8 @@ Only if needed: quota headroom and preset pre-warming, via **#api-help on Discor
 | 2026-10-06 | Phase 1 opened; contract written. Workers W-1.1 (`ARCHITECTURE.md` repo/API/state/Qloo/UI contracts) + W-1.2 (MCP transport recon) completed and reviewed. **MCP transport proven live → Gate A ✅** (verdict `USABLE-WITH-CONDITIONS`, 4 conditions in `ARCHITECTURE.md` §4.2); new Spike 7 registered and closed. Phantom `/api/qloo/proxy` route family corrected out — only the plan's 11 `/api/runs` routes exist. |
 | 2026-10-06 | **Phase 2 signed off** (fresh-checkout exit gate PASSED): typed runtime (React+Vite / Express / shared Zod), security baseline, real `/healthz` (200 configured, 503 degraded-boot naming missing vars), honest unimplemented-route 503s, Vitest 62/62 + Playwright 3/3 (system Chrome), Dockerfile + render.yaml (review-only, D-0.6), README run instructions verified on a real fresh clone → **R2 ✅**. Six commits `9d67bb6..6eb397f`. Phase 3 next (Qloo gateway unblocked; DeepSeek work waits on B-02). |
 | 2026-10-08 | **Phase 3 signed off** (exit gate PASSED with live Qloo): production Qloo gateway (MCP primary + REST fallback, per-attempt 180-call budget), DeepSeek bounded controller + write-once Prior Lock (`src/server/agent/`), minimal evidence owner (`src/server/evidence/`), official-pricing LLM budget ($2 ceiling, 80% reserve). Live exit-gate run 1/1: real brief → frozen Prior → **real Qloo observation** → guarded mutation → ledger `LLM,LLM,Qloo,LLM` → evidence record with real provenance; outage → honest partial state (unit-proven). Vitest 153 + 5 gated live; e2e 3/3. **P1 ✅, P3 🟡, P5 🟡.** DeepSeek key valid, balance unpaid (402) → real-LLM run deferred (`LIVE_DEEPSEEK=1` ready). Commits `edc9a62..62f29af`. Phase 4 next (deterministic measurement engine). |
+| 2026-10-08 | **Phase 4 signed off** — deterministic cultural measurement engine (`src/server/engine/`): neighborhoods, IDF edges, graph, compositions, null-model percentile, distinctiveness, triangulation, evidence grades. **P4 ✅** (LLM authors no numbers). |
+| 2026-10-09 | **Phase 5 signed off** — durable RunStore port (memory + Turso), resumable orchestrator (stop/resume/recovery), SSE with Last-Event-ID replay. Reliability group ✅ in-suite. |
+| 2026-10-11..17 | **Phases 6–8 built/signed off** — S0–S5 frontend + `/method`; typed run-state; S2 compositions; S3 graph + evidence drawer; Replace; S4 Challenge (5 attacks, verdicts); S5 Blueprint + share + Without-Qloo compare; constraint/format fit. **P3, P6–P11 ✅.** Phase 8 exit gate PASSED on the fixture judge path. |
+| 2026-10-18 | **Phase 9 deploy live** — Render Free Docker service at https://zorq-12dk.onrender.com (`/healthz` 200); MapTiler key inlined in the deployed bundle; Turso schema executed on boot; CI + scheduled health ping armed. **R6 ✅.** |
+| 2026-10-18 | **Tracker reviewed + corrected** (was frozen at Phase 3): R3 draft written (`docs/devpost-description.md`), R6 ✅; judging dimensions + P1–P14 refreshed; Gates C/E/F updated. **Phase 10 red-team audit** executed offline → `docs/phase10-red-team.md` (10.1–10.13; all pass offline, remaining rows = B-02). **One-command deploy** (`npm run deploy`, `deployment/render-deploy.mjs`, `903201c`). Gates green: typecheck 0, lint 0, 753 unit pass / 5 skip, e2e 11 pass / 4 skip. Remaining blocker for R1/R4/P2/P12/P14: **B-02** (DeepSeek balance $0.00). |

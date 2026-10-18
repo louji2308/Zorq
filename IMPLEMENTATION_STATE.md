@@ -2106,13 +2106,17 @@ with both mini-challenge attack rows after a real in-browser replace.
 
 ## Last Verified Commit
 
-`903201c` — *feat: add one-command Render deploy automation* (2026-10-18; `deployment/render-deploy.mjs`
-+ `npm run deploy` / `npm run deploy:verify`; `--selftest` PASS, lint 0, typecheck 0; the command
-drove deploy `dep-dbaf6orbc2fs73b5vj00` of `e5219f6` → **live**; see the deploy-automation
-continuation below). Preceded in Phase 9 by `e5219f6` (docs: live URL), `3179734` (docs: deploy +
-B-02), `1d716f6` (*build: inline the public MapTiler key into the deployed web bundle*, 2026-10-18;
-first live deploy `dep-dba2ia72d8hs73div25g` at https://zorq-12dk.onrender.com), then `85a320e`,
-`cc87661`, `71856a0`, `c98cc89`, `c1b59ac`.
+`bdc34e0` — *docs: record the one-command Render deploy and post-deploy re-verify* (2026-10-18; pushed
+`e5219f6..bdc34e0`; auto-deployed live `dep-dbaf8fm1egvs73dkh2j0`; `npm run deploy:verify` →
+`/healthz` 200, `/` 200, `RESULT: OK`). Preceded in Phase 9 by `903201c` (*feat: add one-command Render
+deploy automation* — `deployment/render-deploy.mjs` + `npm run deploy` / `npm run deploy:verify`;
+`--selftest` PASS, lint 0, typecheck 0; drove deploy `dep-dbaf6orbc2fs73b5vj00` of `e5219f6` → **live**),
+`e5219f6` (docs: live URL), `3179734` (docs: deploy + B-02), `1d716f6` (*build: inline the public
+MapTiler key into the deployed web bundle*, 2026-10-18; first live deploy `dep-dba2ia72d8hs73div25g` at
+https://zorq-12dk.onrender.com), then `85a320e`, `cc87661`, `71856a0`, `c98cc89`, `c1b59ac`.
+The tracker-review / Devpost-draft / Phase 10 offline-audit docs commit lands immediately after
+(`docs/phase10-red-team.md`, corrected `HACKATHON_TRACKER.md`, new `docs/devpost-description.md`); it is
+docs-only and does not alter the verified runtime tree.
 **Phase 8 sign-off (historical):** `f8b2172` — *test: pin display-name prose, honest fit states, and the narrative
 numeric guard.* Preceded by `90bcf13` (fix: speak member names and honest fit
 states across the judge-facing blueprint — the independent-review fix wave),
@@ -2137,9 +2141,15 @@ Prior. This one action unblocks: the deployed-leg run-persistence write (W-9.6),
 receipts (W-9.7), the README URL pin + real gallery screenshots (W-9.5), and Phase 6's live
 clause. Once funded: one real-services judge pass end-to-end → record receipts → pin
 **https://zorq-12dk.onrender.com** → capture real-run screenshots → close the Phase 9 exit-gate
-clause map. The deploy itself is DONE and now reproducible as one command — `npm run deploy`
-(`deployment/render-deploy.mjs`, `903201c`; last live deploy `dep-dbaf6orbc2fs73b5vj00` of
-`e5219f6`).
+clause map and the Phase 10 live clauses (10.4, 10.5, 10.10, 10.11, 10.13). The deploy itself is
+DONE and now reproducible as one command — `npm run deploy` (`deployment/render-deploy.mjs`,
+`903201c`; last live deploy `dep-dbaf8fm1egvs73dkh2j0` of `bdc34e0`).
+
+**Everything the agent can do without a funded key is now done** (2026-10-18): tracker corrected,
+Devpost description drafted (`docs/devpost-description.md`), Phase 10 offline red-team audited
+(`docs/phase10-red-team.md`). The only remaining work is **human-only**: (1) top up DeepSeek
+(B-02), (2) paste the Devpost description + enter the Oct 6 2026 start date and submit before the
+Oct 30 deadline (internal freeze Oct 28), (3) optional demo video (explicitly not required).
 
 ## Phase 8 Exit-Gate Status (PASSED 2026-10-17 — fixture judge path per user approval D-8.23; live-services clause deferred to Phase 9 / B-02)
 
@@ -2784,3 +2794,35 @@ W-9.4 ✅ · W-9.5 ~85% (URL pin + gallery pending a live run) · W-9.6 ✅ loca
 (run-persistence write blocked by B-02) · W-9.7 ⬜ blocked on B-02. **B-02 remains the single
 critical-path unblock** — at `$0.00` no run can generate a Prior, so W-9.6 deployed-leg write,
 W-9.7 live A/B, and the W-9.5 URL pin + real gallery all wait on the user's DeepSeek top-up.
+
+### Phase 9/10 continuation (2026-10-18 — tracker review, Devpost draft, offline Phase 10 red-team)
+
+**Document review (the required "draft document").** `HACKATHON_TRACKER.md` had been frozen at
+Phase 3 (2026-10-08); its requirement tables (R1–R8, judging dimensions, P1–P14, build gates)
+understated the built system. Corrected against the actual tree with evidence only:
+- §2 R6 (Qloo actually used) → **✅** (multi-stage gateway wired into every run); R3 → **🟡 draft
+  written**; R1/R4/R7/R8 remain ⚠️ pending (B-02 or Devpost-day entry).
+- §3/§3b judging dimensions refreshed to ✅ (all four targeted); §4 P3, P6–P11 → ✅; P2/P12 → ✅
+  mechanism built, live A/B record pending B-02; P14 → 🟡 deployed + free, usability through judging
+  pending B-02.
+- §7 gates C/E/F updated (shared-culture edges, normalized affinity, three presets); B/D live
+  matrix pending B-02. §12 change log extended through Phases 4–9 and this review.
+A new draft, `docs/devpost-description.md`, satisfies R3 (structure per `Hackathon_details.md` §30;
+two `[FREEZE]` slots left for the funded live run — no invented numbers).
+
+**Phase 10 offline red-team audit → `docs/phase10-red-team.md`** (Plan 899–1317, 10.1–10.13). Every
+clause provable without a funded run PASSES: repository integrity (129 src files, 0
+TODO/FIXME/mock/fake/dummy), hardcode audit, 11-route surface validated, determinism
+(byte-identical replay), security (dist bundle 0 secret hits, `.env` untracked, engine has no
+`Math.random`/`Date.now`), UI truth, submission surfaces present. Rows that require a live run
+(10.4 failure matrix, 10.5 adaptive run, 10.10 p50/p90, 10.11 deployed leg, 10.13 release gate)
+are marked pending B-02, not faked.
+
+**Gates re-run this session (observed):** typecheck 0; lint 0; `npm test` **753 pass / 5 skip**;
+`npm run test:e2e` **11 pass / 4 skip** (gallery-gated), exit 0; `npm run deploy:verify` →
+`/healthz` 200, `/` 200, `RESULT: OK`.
+
+**Decision D-9.20:** Phase 10 is executed as a *verification* phase only (Plan: "no feature enters
+unless it fixes a release-blocking defect"). All non-live clauses are audited and recorded now;
+the live-service clauses execute as one batch the moment B-02 clears, so no time is spent
+re-discovering them at the deadline.
