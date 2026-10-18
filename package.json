@@ -14,7 +14,9 @@
     "build": "tsc -p tsconfig.build.json && vite build",
     "start": "node dist/server/main.js",
     "dev:web": "vite",
-    "dev:server": "tsx watch src/server/main.ts"
+    "dev:server": "tsx watch src/server/main.ts",
+    "deploy": "node deployment/render-deploy.mjs",
+    "deploy:verify": "node deployment/render-deploy.mjs --no-deploy"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",
