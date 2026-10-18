@@ -2114,9 +2114,9 @@ deploy automation* — `deployment/render-deploy.mjs` + `npm run deploy` / `npm 
 `e5219f6` (docs: live URL), `3179734` (docs: deploy + B-02), `1d716f6` (*build: inline the public
 MapTiler key into the deployed web bundle*, 2026-10-18; first live deploy `dep-dba2ia72d8hs73div25g` at
 https://zorq-12dk.onrender.com), then `85a320e`, `cc87661`, `71856a0`, `c98cc89`, `c1b59ac`.
-The tracker-review / Devpost-draft / Phase 10 offline-audit docs commit lands immediately after
-(`docs/phase10-red-team.md`, corrected `HACKATHON_TRACKER.md`, new `docs/devpost-description.md`); it is
-docs-only and does not alter the verified runtime tree.
+The tracker-review / Devpost-draft / Phase 10 offline-audit docs commit is `b415f0f` (*docs: correct
+the hackathon tracker and add Devpost draft + Phase 10 red-team audit*); it is docs-only and does not
+alter the verified runtime tree.
 **Phase 8 sign-off (historical):** `f8b2172` — *test: pin display-name prose, honest fit states, and the narrative
 numeric guard.* Preceded by `90bcf13` (fix: speak member names and honest fit
 states across the judge-facing blueprint — the independent-review fix wave),
