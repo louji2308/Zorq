@@ -2,8 +2,10 @@
 #
 # Env var NAMES only — no values, no keys, ever (AGENTS.md §24; .env.example holds the full contract).
 # Before the first deploy an operator sets these in the Render dashboard:
-#   NODE_ENV     = production
-#   APP_BASE_URL = the public service URL (e.g. https://<service-name>.onrender.com)
+#   NODE_ENV          = production
+#   APP_BASE_URL      = the public service URL (e.g. https://<service-name>.onrender.com)
+#   VITE_MAPTILER_KEY = public MapTiler key (D-6.1). Render translates it into a Docker build arg
+#                       so `vite build` inlines it (deployment/Dockerfile: ARG VITE_MAPTILER_KEY).
 # `sync: false` marks them dashboard-managed so no value can leak into this file or git history.
 #
 # DEFERRED (not validated in Phase 2): the image build itself (D-0.6 — Docker not installed
@@ -22,4 +24,6 @@ services:
       - key: NODE_ENV
         sync: false
       - key: APP_BASE_URL
+        sync: false
+      - key: VITE_MAPTILER_KEY
         sync: false

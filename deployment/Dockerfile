@@ -22,6 +22,13 @@ RUN npm ci
 # tsconfig.build.json extends tsconfig.json; vite.config.ts roots the web build at src/web.
 COPY tsconfig.json tsconfig.build.json vite.config.ts ./
 COPY src ./src
+# Public map key, inlined into the static web bundle by `vite build` (D-6.1: client-visible by
+# design, never a secret). Render translates every service env var into a Docker build arg
+# (render.com/docs/docker -> "Environment variable translation"), so declaring this ARG lets the
+# build see VITE_MAPTILER_KEY without shipping .env (excluded by .dockerignore). Declared last so
+# only this RUN layer's cache is invalidated when the key rotates. Undeclared secrets (QLOO_*,
+# DEEPSEEK_*, TURSO_*) that Render also passes as build args stay out of the build env and image.
+ARG VITE_MAPTILER_KEY
 RUN npm run build && npm prune --omit=dev
 
 # --- Stage 2: minimal runtime ------------------------------------------------------------------
