@@ -22,10 +22,15 @@ DONE: W-9.1 (PORT fix `66f3289` + degraded-copy fix + observed production smoke)
 W-9.4 (/method content `e867054` + clause-verified completions this session); W-9.3
 workflows written (`bdf4a2e`, inert until push + HEALTHZ_URL); W-9.5 README `0439b08`
 (live URL placeholder + gallery pending deploy); W-9.6 local e2e leg green.
-OPEN (operator/live-gated): W-9.2 Render deploy → deployed smoke + W-9.6 deployed leg →
-W-9.7 live A/B (needs B-02) → URL pin + real gallery screenshots → exit-gate clause map.
-Parallel user-side: top up DeepSeek (B-02), Turso (B-06), push the unpushed commits so CI
-runs. Phase 6 remains OPEN on B-02 only. Deadline Oct 30 2026 23:45 EDT; internal freeze Oct 28.
+DONE 2026-10-18: **W-9.2 Render deploy LIVE** — https://zorq-12dk.onrender.com (deploy
+`dep-dba2ia72d8hs73div25g`, built `1d716f6`); deployed `/healthz` 200, public map key verified in
+the served bundle; `HEALTHZ_URL` armed. Turso provisioned (B-06 cleared) with deployed
+connectivity verified (boot ran the schema). See the 2026-10-18 continuation below.
+OPEN (live-gated by B-02): W-9.6 deployed-leg run-persistence write + W-9.7 live A/B → URL pin +
+real gallery screenshots → exit-gate clause map.
+Parallel user-side: **top up DeepSeek (B-02 — re-confirmed $0.00/`is_available=false`, now the
+single critical-path blocker)**; push so CI runs. Phase 6 remains OPEN on B-02 only. Deadline
+Oct 30 2026 23:45 EDT; internal freeze Oct 28.
 
 ## Current Objective
 
@@ -2088,11 +2093,11 @@ with both mini-challenge attack rows after a real in-browser replace.
 | ID | Severity | Blocker | Impact | Owner |
 |---|---|---|---|---|
 | B-01 | ~~Qloo key not issued~~ | **Closed 2026-10-06**: key received from user, stored in gitignored `.env`, authenticated successfully against `hackathon.api.qloo.com`. | Gate A REST path unblocked; MCP path also proven same day (see Verified Tests M1–M6). | — |
-| B-02 | **Critical → PARTIALLY CLEARED 2026-10-08** | DeepSeek key **delivered and proven valid**: `/models` 200 → `deepseek-flash`, `deepseek-v4-pro`; completion → **HTTP 402 (unpaid, not 401)** — key recognized, **balance = 0** (user topping up later). | **Implementation UNBLOCKED** (fake-LLM tests + gated live suite). Live LLM verification (real Prior generation, `LIVE_DEEPSEEK=1`) deferred until balance is topped up; key stored only in gitignored `.env`. | User (payment) |
+| B-02 | **Critical → PARTIALLY CLEARED 2026-10-08** | DeepSeek key **delivered and proven valid**: `/models` 200 → `deepseek-flash`, `deepseek-v4-pro`; completion → **HTTP 402 (unpaid, not 401)** — key recognized, **balance = 0** (user topping up later). **Re-confirmed 2026-10-18:** `GET https://api.deepseek.com/user/balance` → `total_balance=0.00`, `is_available=false`. | **Implementation UNBLOCKED** (fake-LLM tests + gated live suite). The service is now deployed and live, but no run can start (the Prior needs the LLM), so the deployed-leg run-persistence write (W-9.6), the live A/B receipts (W-9.7), the URL pin + real gallery (W-9.5) and Phase 6's live clause are all blocked on this one top-up. Key stored only in gitignored `.env`. | User (payment) |
 | B-03 | ~~Docker not installed~~ | **Closed by D-0.6** (accepted risk). | Local container tests skipped; Dockerfile validated on Render. | — |
 | B-04 | ~~No public GitHub repo~~ | **Closed by D-0.9**: https://github.com/louji2308/zorq is PUBLIC, pushed, MIT detected, About set. | R2/R5 satisfied. | — |
 | B-05 | ~~Cache/storage + key-lifetime terms unconfirmed~~ | **Closed 2026-10-06 from the official developer guide**: private server-side caching allowed with no time limit; never store Qloo output publicly; keys valid through end of judging. | `PERSIST_QLOO_DERIVED` remains `false` until Phase 5 gives storage a private owner. | — |
-| B-06 | **PARTIALLY CLEARED 2026-10-09** | **MapTiler key DELIVERED** (`VITE_MAPTILER_KEY` set in gitignored `.env`, build verified). Turso database still not provisioned. | Map/geocoding (S0/S1) unblocked — public Vite client key, safe in bundle by design. Turso still optional — in-memory adapter is default. | MapTiler: **closed**. Turso: User |
+| B-06 | **CLEARED 2026-10-18** | **MapTiler key DELIVERED** (`VITE_MAPTILER_KEY` in gitignored `.env`; build verified and **inlined into the deployed bundle** — the live bundle contains the key, verified 2026-10-18). **Turso provisioned 2026-10-18** (`zorq` db @ `aws-ap-northeast-1`): local-leg write verified (4 tables created) and deployed-leg connectivity verified (the deployed boot ran the schema against Turso). | Map/geocoding (S0/S1) live in production. Durable Run state is Turso-backed; only the deployed-leg run-row **write** proof remains, and that is blocked by B-02, not by B-06. | MapTiler: **closed**. Turso: **provisioned** (write proof = B-02) |
 | B-07 | Medium | Deadline Oct 30 2026 23:45 EDT; internal freeze Oct 28. **21 days from today.** | Schedule pressure; see `HACKATHON_TRACKER.md`. Phase 5 closed on time with buffer remaining. | Orchestrator |
 | B-08 | Medium | Qloo `qloo mcp` needs Node 22.19+ and a long-lived backend; serverless unsupported. | Constrains hosting to Render Free (locked). | Locked, no action |
 | B-09 | Medium | **FD 684 vs locked SSE contract (escalated 2026-10-15):** "See the lookups → matching ledger rows" cannot survive a fresh reload under state-only SSE; the drawer chain is complete within a live session. | Judge-visible gap only on reload; links stay honest. Needs spec-owner decision: FD amendment vs SSE history replay vs client replay route. | User / spec owner |
@@ -2101,7 +2106,11 @@ with both mini-challenge attack rows after a real in-browser replace.
 
 ## Last Verified Commit
 
-`f8b2172` — *test: pin display-name prose, honest fit states, and the narrative
+`1d716f6` — *build: inline the public MapTiler key into the deployed web bundle* (2026-10-18;
+deployed live as `dep-dba2ia72d8hs73div25g` at https://zorq-12dk.onrender.com — see the Phase 9
+continuation for the deploy evidence). Preceded in Phase 9 by `85a320e`, `cc87661`, `71856a0`,
+`c98cc89`, `c1b59ac`.
+**Phase 8 sign-off (historical):** `f8b2172` — *test: pin display-name prose, honest fit states, and the narrative
 numeric guard.* Preceded by `90bcf13` (fix: speak member names and honest fit
 states across the judge-facing blueprint — the independent-review fix wave),
 `d4edc90` (test: e2e challenge order + compare members), `8d71f49` (fix: compare
@@ -2119,15 +2128,13 @@ Next: Phase 9 contract at the boundary; clause map + closure recorded below.
 
 ## Next Highest-Value Action
 
-**Write the Phase 9 contract at the boundary (read all seven ProjectSpec sources
-fresh), then execute Phase 9's full-path proof:** one scripted fixture run walked
-Landing → preset → Prior → S1 → S2 → S3 → S4 → S5 → Without-Qloo → Share/Print
-in a browser on production dist (extending `tmp/phase8-walk.ts` past S4/S5), then
-the deployment/CI/`/method` work of Plan 819+. Highest-value live action once
-user-side B-02 clears: one real-services judge pass (real DeepSeek + real Qloo
-end-to-end) — closes Phase 6's live clause and Phase 8's deferred live clause in
-one run. Carry into the Phase 9 contract: B-09, B-10, B-11, /method route,
-D-8.16 (S5 in-place Replace), deadline Oct 30 2026 / internal freeze Oct 28.
+**User tops up DeepSeek (B-02) — the single critical-path unblock.** Balance is $0.00
+(`GET /user/balance` → `is_available=false`, observed 2026-10-18), so no run can generate a
+Prior. This one action unblocks: the deployed-leg run-persistence write (W-9.6), the live A/B
+receipts (W-9.7), the README URL pin + real gallery screenshots (W-9.5), and Phase 6's live
+clause. Once funded: one real-services judge pass end-to-end → record receipts → pin
+**https://zorq-12dk.onrender.com** → capture real-run screenshots → close the Phase 9 exit-gate
+clause map. The deploy itself is DONE (`1d716f6`; deploy `dep-dba2ia72d8hs73div25g`, live).
 
 ## Phase 8 Exit-Gate Status (PASSED 2026-10-17 — fixture judge path per user approval D-8.23; live-services clause deferred to Phase 9 / B-02)
 
@@ -2673,3 +2680,65 @@ Pins added: `tests/api/method.test.ts` (triangulation formula/steps, typeNote),
 pending deploy) · W-9.6 ✅ local leg / ⬜ deployed leg · W-9.7 ⬜ blocked on B-02 + deploy.
 Next agent-side action: none outstanding; everything remaining is the user-side critical
 path (push → Render → keys → live proof → URL pin → exit-gate clause map).
+
+### Phase 9 continuation (2026-10-18 — W-9.2 Render deploy LIVE; deployed smoke + store-connectivity verified; run-write blocked by B-02)
+
+**Deploy mechanism (decision D-9.18).** The Render CLI (v2.29.0) cannot express this service:
+`services create/update` expose no `--dockerfile-path` flag, and `blueprints` offers only
+`validate`. The Blueprint schema has no `buildArgs` field. The service was therefore created
+through the Render REST API (`POST /v1/services`) with the `RENDER_API_KEY` present in the
+environment, setting `serviceDetails.envSpecificDetails.dockerfilePath=./deployment/Dockerfile`
+— the same contract `deployment/render.yaml` declares.
+
+**Map key reaches the production bundle (build fix `1d716f6`).** Render translates a Docker
+service's env vars into Docker build args (render.com/docs/docker → "Environment variable
+translation"), so `deployment/Dockerfile` now declares `ARG VITE_MAPTILER_KEY` immediately
+before `RUN npm run build`; `vite build` then inlines the documented-public key (D-6.1) without
+shipping `.env` (excluded by `.dockerignore`), and undeclared secrets Render also passes as build
+args stay out of the build env and image. `deployment/render.yaml` names `VITE_MAPTILER_KEY`
+(`sync: false`). Locally verified (Docker absent per D-0.6): a probe `npm run build` with
+`VITE_MAPTILER_KEY` set in the process env inlined it into `dist/web/assets/*.js`; a clean rebuild
+removed it. `render blueprints validate ./deployment/render.yaml` → `valid:true`.
+
+**Deployed service.** id `srv-dba2d7vbtjjs73dh83cg` (name `zorq`, owner
+`tea-d6lfejh5pdvs73f7qu1g`, region oregon, plan free, runtime docker, healthCheckPath `/healthz`,
+repo `https://github.com/louji2308/Zorq` @ `main`, autoDeploy yes). Public URL
+**https://zorq-12dk.onrender.com**. Deploy `dep-dba2ia72d8hs73div25g` → **status=live** (built
+`1d716f6`). The first deploy `dep-dba2d8fbtjjs73dh856g` was created before `APP_BASE_URL` was
+set, booted degraded (`/healthz` 503 "APP_BASE_URL: required at start") and was cancelled to let
+the correct deploy run — Render snapshots the deploy's env at creation time, so env vars must be
+complete before the deploy that matters starts.
+
+**Observed evidence (exit codes / bodies observed, not assumed):**
+- `GET https://zorq-12dk.onrender.com/healthz` → **200**
+  `{"status":"ok","service":"zorq","version":"0.1.0","checks":{"config":"ok","staticBuild":"ok"}}`
+  (config ok ⇒ not degraded ⇒ `APP_BASE_URL` present).
+- `GET /` → **200**; served script `/assets/index-DkB3JN0-.js` matches the artifact built inside
+  the Docker build log (`dist/web/assets/index-DkB3JN0-.js`).
+- Served bundle contains the exact `VITE_MAPTILER_KEY` value and references `api.maptiler.com`
+  (in-memory containment check; key never printed) ⇒ the map renders in production.
+- Turso: `createTursoStore` runs its schema (4 tables + 2 indexes) at construction
+  (`src/server/persistence/tursoStore.ts:158–160`), so the successful boot proves the **deployed
+  instance opened an authenticated Turso connection and executed DDL**. The run-row write proof
+  (W-9.6 deployed leg) is blocked by B-02.
+- `HEALTHZ_URL` repository variable armed (`gh variable set` → set at 2026-10-18T02:08:50Z), so
+  `.github/workflows/health-ping.yml` now pings `/healthz` every 10 minutes (also a best-effort
+  warm-up against the Render Free cold start).
+
+**B-02 re-confirmed active (2026-10-18).** `GET https://api.deepseek.com/user/balance` →
+`{"is_available":false,"balance_infos":[{"currency":"USD","total_balance":"0.00",...}]}`. Any run
+generates the Prior first (`src/server/orchestrator/orchestrator.ts:350–353`) and only then writes
+the `runs` row, so at $0.00 no run can start: W-9.6 (run-persistence write), W-9.7 (live A/B),
+W-9.5 (URL pin + real gallery) and Phase 6's live clause are all blocked on this single user-side
+top-up.
+
+**Decision D-9.18:** deploy via the Render REST API (`RENDER_API_KEY` from the environment)
+rather than the CLI (no Dockerfile-path flag) or a dashboard Blueprint click-through (not
+automatable from this session). The service matches `deployment/render.yaml`; a Blueprint link
+can adopt it later.
+
+**Worker status now:** W-9.1 ✅ · W-9.2 ✅ deployed (live; smoke + bundle + store-connectivity
+verified) · W-9.3 ✅ armed · W-9.4 ✅ · W-9.5 ~85% (URL pin + gallery pending a live run) ·
+W-9.6 ✅ local leg / ◑ deployed leg (run-persistence write blocked by B-02) · W-9.7 ⬜ blocked on
+B-02. Next (user-side): top up DeepSeek → one real-services judge pass → receipts → URL pin +
+real gallery → exit-gate clause map.
