@@ -999,6 +999,19 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 
 ## Active Work
 
+- **2026-10-19 S0 static adaptive preferences (`2947ea1`):** Removed the first-page
+  "Try a site" section and preset activation path from the landing UI; the map remains
+  the left subject and the custom brief remains the entry path. The shell is now fixed to
+  the viewport, with hidden outer overflow, a right-only scrolling brief region, and a
+  non-scrolling map. The landing line uses a responsive 70px maximum (about 8% below the
+  previous 76px desktop size). Fixed constraint rectangles and the Custom input were
+  replaced by four common local preference seeds plus a bounded deterministic relationship
+  graph. Selecting a tag immediately exposes related suggestions; selected, available,
+  and suggested states are explicit in the UI. This is local interaction scaffolding:
+  Qloo remains responsible for resolving/measuring submitted phrases during a run, Zorq
+  owns validation and deterministic fit, and the LLM interprets evidence/chooses probes.
+  `/method` now states this boundary and adds the corresponding limitation.
+
 - **2026-10-19 local API boot / proxy failure fix (working tree):** The Vite `502` was
   traced to `dev:server` exiting during Turso schema bootstrap when the configured remote
   database was unreachable (`fetch failed`, TCP `EACCES` on port 443). Development now
@@ -1267,6 +1280,24 @@ returned the pre-persist Prior object (unfrozen, separate object from the persis
 (`62f29af`).
 
 ## Verified Tests / Evidence
+
+### 2026-10-19 — static S0 adaptive preferences (`2947ea1`)
+
+- TDD red was observed before implementation: the new adaptive tests failed because the
+  old fixed-chip state had no `adaptivePreferenceTags`/common seeds. Green focused run:
+  `npx.cmd vitest run tests/web/s0Brief.test.ts` → **16 passed / 0 failed**.
+- Full regression: `npm.cmd test` → **71 files passed, 3 skipped; 759 tests passed,
+  6 skipped**. `npm.cmd run typecheck`, `npm.cmd run lint`, `npm.cmd run build`, and
+  `git diff --cached --check` all exited 0.
+- Browser geometry check at 1440×900 against the Vite dev server: document and body
+  scroll heights both equalled 900px; `.s0` overflow was `hidden`; `.s0-map` overflow
+  was `hidden`; `.s0-main` overflow-y was `auto`; heading computed to **70px**; and
+  `Try a site` was absent.
+- Controlled MapLibre browser pass with a minimal valid style stub: map veil absent,
+  initial common tags rendered, and selecting `Walkable` produced `WalkableSelected`
+  plus `Transit-connectedSuggested`, `Street-facingSuggested`, and `Short dwellSuggested`.
+  The real offline provider path still honestly shows the existing map failure veil when
+  MapTiler cannot be reached; no fake tiles or Qloo results were introduced.
 
 ### 2026-10-19 — local API boot / proxy failure fix (working tree)
 
@@ -2193,6 +2224,11 @@ was stopped before the fresh attempt. Unit/type/build evidence is green; browser
 verification must be repeated when the server dependency/network path is available.
 
 ## Last Verified Commit
+
+`2947ea1` — **make S0 preferences adaptive and viewport locked** (2026-10-19; focused
+adaptive tests, full regression, typecheck, lint, build, layout browser geometry, and
+controlled adaptive-state browser pass green). Previous verified commit is `d54a2f8` —
+**keep local API available when Turso is offline**.
 
 `d54a2f8` — **keep local API available when Turso is offline** (2026-10-19; development
 fallback, typed failure coverage, favicon, full tests, typecheck, lint, and production build
