@@ -999,6 +999,16 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 
 ## Active Work
 
+- **2026-10-19 S0 first-load performance fix (`0d792f4`, `7c581c4`, `cd059a5`):**
+  MapLibre now loads through a cancellable idle/timeout scheduler and dynamic import
+  in both `MapPanel` and `InvestigateMap`. The initial JS entry measured **749.28 kB**
+  after the change versus **1,530.82 kB** in the prior production build; MapLibre
+  moved to a separate `map-CUa5QFYE.js` chunk at **1,036.12 kB** plus its CSS chunk.
+  The focused scheduler test (3/3), S0 focused tests (32/32), dual typecheck, and
+  production build passed. A fresh Playwright run could not start because the server
+  exits `fatal: fetch failed`; the first run reused a stale port-3000 server and
+  returned SPA 404s, so no browser-pass claim is made here.
+
 - **PHASE 8 CLOSED 2026-10-17 — exit gate PASSED** (contract `c81bfbb`; all
   workers committed; close-out `8d71f49` compare-modal fix, `d4edc90` e2e
   assertions, `90bcf13` review-fix wave, `f8b2172` test pins). The remaining
@@ -1241,6 +1251,22 @@ returned the pre-persist Prior object (unfrozen, separate object from the persis
 (`62f29af`).
 
 ## Verified Tests / Evidence
+
+### 2026-10-19 — deferred S0/S1 MapLibre loading (`cd059a5`)
+
+- TDD red: `npx.cmd vitest run tests/web/deferred.test.ts` failed before the helper
+  existed with `Cannot find module '../../src/web/lib/deferred.js'`.
+- TDD green: `npx.cmd vitest run tests/web/deferred.test.ts` → **3 passed / 0 failed**.
+- Focused S0 regression set: `npx.cmd vitest run tests/web/deferred.test.ts tests/web/s0Brief.test.ts tests/web/s0Geocode.test.ts tests/web/s0Presets.test.ts`
+  → **32 passed / 0 failed**.
+- `npm.cmd run typecheck` → **exit 0**; `npm.cmd run build` → **exit 0**.
+- Build evidence: previous entry `index-DkB3JN0-.js` **1,530.82 kB**; new entry
+  `index-IeHyq1Ap.js` **749.28 kB**; new deferred `map-CUa5QFYE.js` **1,036.12 kB**;
+  worker remains separately emitted.
+- Browser verification limitation: the stale server on port 3000 was stopped after
+  it served API-only 404s for `/`; a fresh `npm.cmd start` / Playwright web server
+  then exited with `fatal: fetch failed`, so the S0 browser smoke test is **not
+  claimed** for this increment.
 
 ### Phase 8 — independent review, fix wave, and browser walk (2026-10-17, commits `90bcf13` + `f8b2172`)
 
@@ -2104,7 +2130,20 @@ with both mini-challenge attack rows after a real in-browser replace.
 | B-10 | Low | **GET-only evidence projection:** only `GET /api/runs/:id` injects evidence; SSE/replace/stop responses carry RunState without it. Client evidence slot + terminal refetch bridge the gap (`b1f276e`). | Server-side unification deferred; Phase 8 challenge/blueprint surfaces did NOT add more state-only projections (challenge/blueprint responses stay report/blueprint-shaped; D-8.7 posture held). | Orchestrator (Phase 9) |
 | B-11 | Low | **Phase 8 deferred review polish** (from the 15-finding independent review, D-8.23): #8 rounds history not persisted per report (detail lines now render, `rounds` exists, but full per-round mutation history is not modeled); #9 bridge evidence provenance not attached to the blueprint's bridge-member receipts; #10 deep challenge block (full report) absent from the standalone share blueprint — share shows the composed artifact only; #11 `state.evidence` field is dead code alongside the projecting GET; #13 format-downshift ordering in fit copy vs spec's "downshift before dropping a role when practical"; #15 deterministic-fallback rationale cites positional indices without per-citation attribution; #16 mutation operator `Shift-scale` from the Plan's operator list exists only as the catchment attack's city-scale re-measure (challenge.ts:83 union = swap/drop/bridge), never as a mutation candidate producer. | None falsifies evidence, numeric truth, or the protected loop (verified during triage); each is judge-visible polish, state hygiene, or a bounded operator gap. Backlog for Phase 9 alongside `/method`. | Orchestrator (Phase 9) |
 
+### B-12 — Medium — local fresh production server boot failed 2026-10-19
+
+`npm.cmd start` exits `fatal: fetch failed`, which prevented a fresh Playwright smoke
+run after the S0 map deferral. A stale port-3000 process was serving API-only 404s and
+was stopped before the fresh attempt. Unit/type/build evidence is green; browser
+verification must be repeated when the server dependency/network path is available.
+
 ## Last Verified Commit
+
+`cd059a5` — *perf: defer S0 MapLibre loading until idle* (2026-10-19; focused tests
+and production build green; fresh Playwright blocked by B-12). Preceded by `d2e2a31`
+(corrected design/implementation plan), `7c581c4` (deferred scheduler + regression
+tests), and `0d792f4` (initial design). Previous deployment verification remains
+below.
 
 `bdc34e0` — *docs: record the one-command Render deploy and post-deploy re-verify* (2026-10-18; pushed
 `e5219f6..bdc34e0`; auto-deployed live `dep-dbaf8fm1egvs73dkh2j0`; `npm run deploy:verify` →
