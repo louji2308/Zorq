@@ -9,7 +9,8 @@ describe("scheduleDeferred", () => {
 
   it("runs through requestIdleCallback when the browser provides it", () => {
     vi.useFakeTimers();
-    const idle = vi.fn((callback: () => void) => {
+    const idle = vi.fn((callback: () => void, options?: { timeout: number }) => {
+      void options;
       return globalThis.setTimeout(callback, 25);
     });
     const cancelIdle = vi.fn((id: number) => globalThis.clearTimeout(id));

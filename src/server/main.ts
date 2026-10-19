@@ -66,8 +66,15 @@ async function bootstrap(): Promise<void> {
   const hub = createEventHub();
   const store = await createRunStore({
     tursoDatabaseUrl: config?.tursoDatabaseUrl,
-    tursoAuthToken: config?.tursoAuthToken
+    tursoAuthToken: config?.tursoAuthToken,
+    allowMemoryFallback: config?.nodeEnv === "development"
   });
+  if (config?.nodeEnv === "development" && config.tursoDatabaseUrl !== undefined && store.kind === "memory") {
+    logger.warn(
+      { store: "memory", durableStore: "turso" },
+      "Turso is unavailable; using in-memory run state for local development only"
+    );
+  }
   const gateway = config !== undefined ? createQlooGateway({ config }) : unconfiguredGateway();
   const llm = createDeepSeekLlmClient({ apiKey: config?.deepseekApiKey });
   const orchestrator = createOrchestrator({

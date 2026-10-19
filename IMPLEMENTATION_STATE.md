@@ -999,6 +999,14 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 
 ## Active Work
 
+- **2026-10-19 local API boot / proxy failure fix (working tree):** The Vite `502` was
+  traced to `dev:server` exiting during Turso schema bootstrap when the configured remote
+  database was unreachable (`fetch failed`, TCP `EACCES` on port 443). Development now
+  explicitly falls back to the in-memory adapter and logs that durability is local-only;
+  production still fails fast when configured Turso cannot be opened. A favicon is served
+  from Vite's public root so `/favicon.ico`-style browser noise is removed via the linked
+  `/favicon.svg` asset.
+
 - **2026-10-19 blank-map render fix and fast map reuse (working tree):** Confirmed in a
   real Playwright run against the Vite dev server that the MapLibre container had
   `height: 0px` because the dynamically loaded MapLibre CSS overrode the screen's
@@ -1259,6 +1267,25 @@ returned the pre-persist Prior object (unfrozen, separate object from the persis
 (`62f29af`).
 
 ## Verified Tests / Evidence
+
+### 2026-10-19 — local API boot / proxy failure fix (working tree)
+
+- Root-cause reproduction before the fix: port `5173` was listening but port `3000` was
+  absent; `npm.cmd run dev:server` exited `fatal: fetch failed`. Direct store probing showed
+  the cause was Turso network access (`connect EACCES ...:443`), so Vite returned an empty
+  proxy `502` and the client correctly classified it as `INVALID_RESPONSE`.
+- TDD red: the new unavailable-Turso fallback test failed by attempting the real Turso
+  connection. Green: `npx.cmd vitest run tests/persistence/contract.test.ts` → **30 passed**.
+- After the fix, `npm.cmd run dev:server` logged the explicit development-only memory
+  fallback and listened on port `3000`; `GET /healthz` → **200**; `GET /favicon.svg` →
+  **200**. The real Playwright preset-submit flow rendered “The first guess couldn't be
+  generated…” rather than “The server replied in a shape we didn't expect.”
+- With the backend reachable, the remaining offline request was a typed
+  `502 DEPENDENCY_UNAVAILABLE` from DeepSeek (`Connection error`), which the UI maps to
+  honest failure copy; no run is fabricated when the provider is unavailable.
+- Focused checks: **60 tests passed**; `npm.cmd run typecheck`, `npm.cmd run lint`, and
+  `npm.cmd run build` → **exit 0**. Full `npm.cmd test` → **71 files passed, 3 skipped;
+  757 tests passed, 6 skipped**.
 
 ### 2026-10-19 — blank-map layout and fast reuse fix (working tree)
 

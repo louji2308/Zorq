@@ -23,4 +23,21 @@ describe("createRunStore factory", () => {
     expect(store.kind).toBe("turso");
     await store.close?.();
   });
+
+  it("falls back to memory when development explicitly allows an unavailable Turso store", async () => {
+    const store = await createRunStore(
+      { tursoDatabaseUrl: "libsql://offline.example", allowMemoryFallback: true },
+      { tursoFactory: async () => Promise.reject(new Error("fetch failed")) }
+    );
+    expect(store.kind).toBe("memory");
+  });
+
+  it("still fails fast when Turso is unavailable and fallback is not allowed", async () => {
+    await expect(
+      createRunStore(
+        { tursoDatabaseUrl: "libsql://offline.example" },
+        { tursoFactory: async () => Promise.reject(new Error("fetch failed")) }
+      )
+    ).rejects.toThrow("fetch failed");
+  });
 });
