@@ -6,11 +6,11 @@ Make the first page usable sooner while preserving the S0 map as the primary vis
 
 ## Current finding
 
-`HomeRoute` imports `MapPanel`, which imports `src/web/lib/map.ts` at module evaluation time. That pulls MapLibre GL, its CSS, and the worker URL into the initial browser entry path. The current production entry asset is approximately 1.5 MB before the map can be deferred. `MapPanel` also constructs the MapLibre instance immediately on mount, causing the style and tile request to compete with first-page rendering.
+`HomeRoute` imports `MapPanel`, and `RunRoute` imports `InvestigateMap`; both components imported `src/web/lib/map.ts` at module evaluation time. That pulls MapLibre GL, its CSS, and the worker URL into the initial browser entry path even though the map is only needed after the landing content mounts. The current production entry asset is approximately 1.5 MB before the map can be deferred. Both map consumers also construct the MapLibre instance immediately on mount, causing the style and tile request to compete with first-page rendering.
 
 ## Chosen approach
 
-Keep `MapPanel` mounted immediately so the page retains its full-height map surface and honest loading state, but defer the MapLibre implementation behind a dynamic import scheduled after the browser has had an opportunity to paint the page. The dynamic import creates a separate map chunk. Once it resolves, `MapPanel` constructs the map using the existing `createS0Map` contract and applies the latest props.
+Keep `MapPanel` mounted immediately so the page retains its full-height map surface and honest loading state, but defer the MapLibre implementation behind a dynamic import scheduled after the browser has had an opportunity to paint the page. Apply the same boundary to `InvestigateMap` so the shared route graph cannot pull MapLibre back into the entry chunk. The dynamic import creates a separate map chunk. Once it resolves, each component constructs the map using the existing `createS0Map` contract and applies the latest props.
 
 The scheduling policy is:
 
@@ -23,14 +23,14 @@ This changes only when the renderer is loaded; it does not change the provider, 
 ## Component/data flow
 
 ```text
-HomeRoute
-  -> MapPanel renders canvas + loading label immediately
+HomeRoute / RunRoute
+  -> MapPanel or InvestigateMap renders canvas + loading label immediately
   -> idle/timeout callback imports ../../lib/map.js
   -> createS0Map(canvas, options)
   -> existing onReady/onFailure and handle methods drive the map
 ```
 
-`MapPanel` remains the owner of lifecycle and retry state. `map.ts` remains the canonical owner of MapLibre construction. No duplicate map implementation or provider path is introduced.
+`MapPanel` and `InvestigateMap` remain owners of their own lifecycle and retry state. `map.ts` remains the canonical owner of MapLibre construction. No duplicate map implementation or provider path is introduced.
 
 ## Error handling and invariants
 
