@@ -568,6 +568,7 @@ export function createS0Map(container: HTMLElement, options: S0MapOptions): S0Ma
     try {
     if (destroyed || failureReported) { dbg.loadAborted = { destroyed, failureReported }; return; }
     if (failureTimer !== undefined) window.clearTimeout(failureTimer);
+    map.resize();
     layersReady = true;
     installLayers();
     applyPresets();
@@ -619,6 +620,10 @@ export function createS0Map(container: HTMLElement, options: S0MapOptions): S0Ma
       active = site;
       applyActive();
       if (site === null) return;
+      // The panel can change size while the deferred map module is loading.
+      // Resize before fitting so a new search uses the current viewport and
+      // the already-loaded MapLibre tile cache instead of rebuilding the map.
+      map.resize();
       const radiusM = site.radiusM ?? 0;
       const latRad = (site.lat * Math.PI) / 180;
       const dLat = (radiusM / 6378137) * (180 / Math.PI);

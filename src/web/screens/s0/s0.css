@@ -26,6 +26,14 @@
   inset: 0;
 }
 
+/* MapLibre adds .maplibregl-map to this same node and loads its CSS later. */
+.s0-map > .s0-map-canvas {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+}
+
 .s0-map-veil {
   position: absolute;
   inset: 0;

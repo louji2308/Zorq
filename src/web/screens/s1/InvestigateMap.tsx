@@ -56,6 +56,7 @@ export function InvestigateMap({ apiKey, site, anchors, heat }: InvestigateMapPr
             onFailure: () => setStatus("failed")
           });
           handleRef.current = handle;
+          handle.resize();
           const currentSite = siteRef.current;
           handle.focusSite(currentSite === null ? null : { ...currentSite }, false);
           handle.setAnchors(anchorsRef.current);
@@ -64,7 +65,7 @@ export function InvestigateMap({ apiKey, site, anchors, heat }: InvestigateMapPr
         .catch(() => {
           if (!cancelled) setStatus("failed");
         });
-    });
+    }, { timeoutMs: 350 });
 
     return () => {
       cancelled = true;

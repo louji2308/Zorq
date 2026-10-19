@@ -999,6 +999,14 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 
 ## Active Work
 
+- **2026-10-19 blank-map render fix and fast map reuse (working tree):** Confirmed in a
+  real Playwright run against the Vite dev server that the MapLibre container had
+  `height: 0px` because the dynamically loaded MapLibre CSS overrode the screen's
+  equal-specificity absolute-fill rule. S0 and S1 now use a more-specific direct-child
+  rule; map construction and every focus/search resize the existing handle before fitting;
+  deferred loading has a 350 ms deadline. The existing MapLibre/browser tile cache is
+  therefore reused when a new place is selected; no second map is constructed.
+
 - **2026-10-19 S0 first-load performance fix (`0d792f4`, `7c581c4`, `cd059a5`):**
   MapLibre now loads through a cancellable idle/timeout scheduler and dynamic import
   in both `MapPanel` and `InvestigateMap`. The initial JS entry measured **749.28 kB**
@@ -1251,6 +1259,26 @@ returned the pre-persist Prior object (unfrozen, separate object from the persis
 (`62f29af`).
 
 ## Verified Tests / Evidence
+
+### 2026-10-19 — blank-map layout and fast reuse fix (working tree)
+
+- Pre-fix browser evidence: `.s0-map-canvas` and `.maplibregl-map` were `805.39px` wide
+  but `0px` high, with computed `position: relative`; this reproduced the completely
+  blank map independently of the offline style request.
+- Post-fix browser evidence: the same Vite/Playwright check measured both elements at
+  `805.39px × 1262.16px`, computed `position: absolute`, with the honest offline fallback
+  still visible because MapTiler was unreachable. This proves the renderer has a real
+  viewport; it does not falsely claim remote tiles work without network.
+- Controlled browser evidence: intercepting only the MapTiler style with a minimal valid
+  style made the real MapLibre path reach `ready` with the same positive viewport and no
+  fallback veil; this isolates layout correctness from provider availability.
+- `npx.cmd vitest run tests/web/deferred.test.ts` → **3 passed / 0 failed**;
+  `npm.cmd run typecheck` → **exit 0**; `npm.cmd run lint` → **exit 0**;
+  `npm.cmd run build` → **exit 0**.
+- `npm.cmd test` → **71 passed, 3 skipped; 756 passed, 5 skipped**.
+- Build entry remains split: `index-BGqkV6Np.js` **749.33 kB** and deferred
+  `map-2r0gR5Se.js` **1,036.15 kB**. The 350 ms deadline changes scheduling only; place
+  changes reuse the live map and its MapLibre/browser cache.
 
 ### 2026-10-19 — deferred S0/S1 MapLibre loading (`cd059a5`)
 
@@ -2139,8 +2167,10 @@ verification must be repeated when the server dependency/network path is availab
 
 ## Last Verified Commit
 
-`cd059a5` — *perf: defer S0 MapLibre loading until idle* (2026-10-19; focused tests
-and production build green; fresh Playwright blocked by B-12). Preceded by `d2e2a31`
+Working-tree fix pending commit: **blank-map layout override, resize-before-focus, and
+350 ms deferred deadline**. Previous verified commit is `cd059a5` — *perf: defer S0
+MapLibre loading until idle* (2026-10-19; focused tests and production build green; fresh
+production Playwright blocked by B-12). Preceded by `d2e2a31`
 (corrected design/implementation plan), `7c581c4` (deferred scheduler + regression
 tests), and `0d792f4` (initial design). Previous deployment verification remains
 below.

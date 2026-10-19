@@ -56,6 +56,7 @@ export function MapPanel({ apiKey, presets, activeSite, crosshair, onSitePick }:
             onFailure: () => setStatus("failed")
           });
           handleRef.current = handle;
+          handle.resize();
           handle.setPresets(presetsRef.current);
           handle.focusSite(activeSiteRef.current, false);
           handle.setCrosshair(crosshairRef.current);
@@ -63,7 +64,7 @@ export function MapPanel({ apiKey, presets, activeSite, crosshair, onSitePick }:
         .catch(() => {
           if (!cancelled) setStatus("failed");
         });
-    });
+    }, { timeoutMs: 350 });
 
     return () => {
       cancelled = true;
