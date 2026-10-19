@@ -1012,6 +1012,13 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
   owns validation and deterministic fit, and the LLM interprets evidence/chooses probes.
   `/method` now states this boundary and adds the corresponding limitation.
 
+- **2026-10-19 S0 preference interaction refinement (`42d3ac6`):** Each selected tag
+  now reveals exactly two direct related tags. Visible “Suggested”/“Selected” labels were
+  removed; selected tags carry an in-box right-edge `×` control and accessible remove label.
+  Newly revealed tags use a short fade/scale morph, with the existing reduced-motion rule
+  disabling motion when requested. Browser verification confirmed four common tags initially,
+  two animated tags after selecting Walkable, and removal returning to the common set.
+
 - **2026-10-19 local API boot / proxy failure fix (working tree):** The Vite `502` was
   traced to `dev:server` exiting during Turso schema bootstrap when the configured remote
   database was unreachable (`fetch failed`, TCP `EACCES` on port 443). Development now
