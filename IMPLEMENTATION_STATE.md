@@ -2194,9 +2194,12 @@ verification must be repeated when the server dependency/network path is availab
 
 ## Last Verified Commit
 
-`93da3cb` — **blank-map layout override, resize-before-focus, and 350 ms deferred deadline**
-(2026-10-19; browser geometry and controlled ready-path verified; full tests, typecheck,
-lint, and production build green). Previous verified commit is `cd059a5` — *perf: defer S0
+`d54a2f8` — **keep local API available when Turso is offline** (2026-10-19; development
+fallback, typed failure coverage, favicon, full tests, typecheck, lint, and production build
+green). Previous verified commit is `93da3cb` — **blank-map layout override,
+resize-before-focus, and 350 ms deferred deadline** (2026-10-19; browser geometry and
+controlled ready-path verified; full tests, typecheck, lint, and production build green).
+Preceded by `cd059a5` — *perf: defer S0
 MapLibre loading until idle* (2026-10-19; focused tests and production build green; fresh
 production Playwright blocked by B-12). Preceded by `d2e2a31`
 (corrected design/implementation plan), `7c581c4` (deferred scheduler + regression
