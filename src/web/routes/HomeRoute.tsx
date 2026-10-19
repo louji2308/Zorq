@@ -3,19 +3,18 @@
  *
  * Layout authority is Final Design §7.0: full-height MapLibre hero on the left,
  * decision column on the right (wordmark + "How to read", Display-XL landing
- * line, three presets ABOVE the custom brief, then the progressive form, then
- * the numbered three-step strip).
+ * line, the custom brief, then the numbered three-step strip).
  *
  * Ownership rules:
- *  - Presets seed a Brief only (presets.ts). The frozen Prior is built
- *    server-side by POST /api/runs — this screen never computes or fakes one.
+ *  - The custom brief seeds a Brief only. The frozen Prior is built server-side
+ *    by POST /api/runs — this screen never computes or fakes one.
  *  - The browser talks to MapTiler only (geocoding + tiles). NO Qloo calls:
  *    the QLOO key never reaches the bundle (AGENTS §14).
  *  - createRun failures are rendered verbatim from ApiClientError codes
  *    (runFailure.ts). No run id is ever invented; navigation only happens with
  *    an id the server returned.
  *  - Map/key failures degrade to an honest note (MapPanel); the right column
- *    and the preset path keep working without any map at all.
+ *    and the brief path keep working without any map at all.
  */
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -23,11 +22,9 @@ import type { Brief } from "../../shared/brief.js";
 import type { GeocodeSuggestion } from "../lib/geocode.js";
 import { createRun } from "../lib/api.js";
 import type { MapSite } from "../lib/map.js";
-import { PRESETS, briefFromPreset, type PresetSite } from "../presets.js";
 import type { GeocodeState } from "../screens/s0/AddressSearch.js";
 import { BriefForm } from "../screens/s0/BriefForm.js";
 import { MapPanel } from "../screens/s0/MapPanel.js";
-import { PresetCard } from "../screens/s0/PresetCard.js";
 import {
   DEFAULT_RADIUS_M,
   addAdmiredPlace,
@@ -39,8 +36,7 @@ import {
   submitBriefForm,
   toggleConstraint,
   type BriefFormErrors,
-  type BriefFormState,
-  type ConstraintChip
+  type BriefFormState
 } from "../screens/s0/briefFormState.js";
 import { describeRunFailure, type RunFailureView } from "../screens/s0/runFailure.js";
 import "../screens/s0/s0.css";
@@ -69,34 +65,14 @@ export function HomeRoute() {
   const [status, setStatus] = useState<string | null>(null);
   const [failure, setFailure] = useState<RunFailureView | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [hovered, setHovered] = useState<PresetSite | null>(null);
   const [crosshair, setCrosshair] = useState(false);
 
-  const presetSites = useMemo<MapSite[]>(
-    () =>
-      PRESETS.map((preset) => ({
-        lat: preset.coordinates.lat,
-        lon: preset.coordinates.lon,
-        radiusM: preset.radiusM
-      })),
-    []
-  );
-
-  // Identity must be stable or MapPanel's focus effect would refly every render.
+  const emptyMapSites = useMemo<readonly MapSite[]>(() => [], []);
   const placedSite = form.site;
-  const activeSite = useMemo<MapSite | null>(() => {
-    if (hovered !== null) {
-      return {
-        lat: hovered.coordinates.lat,
-        lon: hovered.coordinates.lon,
-        radiusM: hovered.radiusM
-      };
-    }
-    if (placedSite !== null) {
-      return { lat: placedSite.lat, lon: placedSite.lon, radiusM: DEFAULT_RADIUS_M };
-    }
-    return null;
-  }, [hovered, placedSite]);
+  const activeSite = useMemo<MapSite | null>(
+    () => (placedSite === null ? null : { lat: placedSite.lat, lon: placedSite.lon, radiusM: DEFAULT_RADIUS_M }),
+    [placedSite]
+  );
 
   function clearErrors(keys: readonly (keyof BriefFormErrors)[]): void {
     setErrors((current) => {
@@ -163,7 +139,6 @@ export function HomeRoute() {
     if (patch.site !== undefined) touched.push("site");
     if (patch.area !== undefined) touched.push("area");
     if (patch.objective !== undefined) touched.push("objective");
-    if (patch.customConstraint !== undefined) touched.push("customConstraint");
     if (patch.admiredPlaces !== undefined) touched.push("admiredPlaces");
     if (touched.length > 0) clearErrors(touched);
   }
@@ -184,7 +159,7 @@ export function HomeRoute() {
     <div className="s0">
       <MapPanel
         apiKey={MAP_API_KEY}
-        presets={presetSites}
+        presets={emptyMapSites}
         activeSite={activeSite}
         crosshair={crosshair}
         onSitePick={handleSitePick}
@@ -207,26 +182,6 @@ export function HomeRoute() {
             </p>
           </div>
 
-          <section className="s0-section" aria-labelledby="s0-try-title">
-            <h2 className="s0-section-title" id="s0-try-title">
-              Try a site
-            </h2>
-            <div className="s0-presets">
-              {PRESETS.map((preset) => (
-                <PresetCard
-                  key={preset.id}
-                  preset={preset}
-                  busy={submitting}
-                  onFocusSite={setHovered}
-                  onLeaveSite={() => setHovered(null)}
-                  onActivate={(chosen) => {
-                    void startRun(briefFromPreset(chosen));
-                  }}
-                />
-              ))}
-            </div>
-          </section>
-
           <section className="s0-section" aria-labelledby="s0-custom-title">
             <h2 className="s0-section-title" id="s0-custom-title">
               Or describe your own site
@@ -241,9 +196,8 @@ export function HomeRoute() {
               onSelectSuggestion={handleSelectSuggestion}
               onGeocodeState={handleGeocodeState}
               onFieldChange={handleFieldChange}
-              onToggleConstraint={(chip: ConstraintChip) => {
-                setForm((current) => toggleConstraint(current, chip));
-                clearErrors(["customConstraint"]);
+              onToggleConstraint={(tag: string) => {
+                setForm((current) => toggleConstraint(current, tag));
               }}
               onAddAdmired={(name) => setForm((current) => addAdmiredPlace(current, name))}
               onRemoveAdmired={(index) =>
@@ -254,7 +208,7 @@ export function HomeRoute() {
           </section>
 
           {/* Single async outcome region — always in the DOM so aria-live can announce
-              preset submissions too (the CTA only exists once a site is placed). */}
+              submissions (the CTA only exists once a site is placed). */}
           <div className="s0-field" role="status" aria-live="polite">
             <p className="s0-status">{status ?? ""}</p>
             {failure !== null && (

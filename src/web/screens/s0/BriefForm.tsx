@@ -9,12 +9,12 @@
 import { useState } from "react";
 import { AddressSearch, type GeocodeState } from "./AddressSearch.js";
 import {
-  CONSTRAINT_CHIPS,
   MAX_ADMIRED_PLACES,
   MAX_OBJECTIVE_CHARS,
+  adaptivePreferenceTags,
+  isAdaptivePreference,
   type BriefFormErrors,
-  type BriefFormState,
-  type ConstraintChip
+  type BriefFormState
 } from "./briefFormState.js";
 import type { GeocodeSuggestion } from "../../lib/geocode.js";
 
@@ -28,7 +28,7 @@ export interface BriefFormProps {
   onSelectSuggestion: (suggestion: GeocodeSuggestion) => void;
   onGeocodeState: (state: GeocodeState) => void;
   onFieldChange: (patch: Partial<BriefFormState>) => void;
-  onToggleConstraint: (chip: ConstraintChip) => void;
+  onToggleConstraint: (tag: string) => void;
   onAddAdmired: (name: string) => void;
   onRemoveAdmired: (index: number) => void;
   onSubmit: () => void;
@@ -63,8 +63,8 @@ export function BriefForm(props: BriefFormProps) {
   const siteError = fieldError(errors, "site");
   const areaError = fieldError(errors, "area");
   const objectiveError = fieldError(errors, "objective");
-  const customError = fieldError(errors, "customConstraint");
   const admiredError = fieldError(errors, "admiredPlaces");
+  const preferenceTags = adaptivePreferenceTags(form.selectedConstraints);
 
   function commitAdmired(): void {
     if (admiredDraft.trim() === "") return;
@@ -159,36 +159,32 @@ export function BriefForm(props: BriefFormProps) {
             </div>
           </div>
 
-          <fieldset className="s0-fieldset">
-            <legend className="s0-label">Constraints</legend>
-            <div className="s0-chips">
-              {CONSTRAINT_CHIPS.map((chip) => (
-                <button
-                  key={chip}
-                  type="button"
-                  className="s0-chip"
-                  aria-pressed={form.selectedConstraints.includes(chip)}
-                  onClick={() => onToggleConstraint(chip)}
-                >
-                  {chip}
-                </button>
-              ))}
+          <fieldset className="s0-fieldset" aria-describedby="s0-preferences-note">
+            <legend className="s0-label">Preferences</legend>
+            <p className="s0-preferences-note" id="s0-preferences-note">
+              Choose what matters. Related suggestions appear instantly; Qloo resolves and
+              measures the selected phrases when the investigation runs.
+            </p>
+            <div className="s0-chips" aria-label="Adaptive preferences">
+              {preferenceTags.map((tag) => {
+                const selected = form.selectedConstraints.includes(tag);
+                const adaptive = isAdaptivePreference(tag);
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    className={`s0-chip${selected ? " is-selected" : ""}${adaptive ? " is-adaptive" : ""}`}
+                    aria-pressed={selected}
+                    onClick={() => onToggleConstraint(tag)}
+                  >
+                    <span>{tag}</span>
+                    <span className="s0-chip-state">
+                      {selected ? "Selected" : adaptive ? "Suggested" : "Available"}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
-            {form.selectedConstraints.includes("Custom") && (
-              <div className="s0-custom-constraint">
-                <input
-                  id="s0-custom-constraint"
-                  className="s0-input"
-                  type="text"
-                  placeholder="Describe your constraint"
-                  aria-label="Custom constraint"
-                  aria-invalid={customError !== undefined}
-                  value={form.customConstraint}
-                  onChange={(event) => onFieldChange({ customConstraint: event.target.value })}
-                />
-              </div>
-            )}
-            {customError && <p className="s0-error">{customError}</p>}
           </fieldset>
 
           <fieldset className="s0-fieldset">
@@ -214,7 +210,7 @@ export function BriefForm(props: BriefFormProps) {
               </ul>
             )}
             {form.admiredPlaces.length < MAX_ADMIRED_PLACES && (
-              <div className="s0-custom-constraint">
+              <div className="s0-admired-entry">
                 <input
                   id="s0-admired"
                   className="s0-input"

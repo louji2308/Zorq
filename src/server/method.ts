@@ -41,6 +41,7 @@ export const methodContent: MethodContent = {
     "Ranking and the Familiar ↔ Distinctive dial: hard role and constraint filters first, then the z-scored blend of coherence and distinctiveness.",
     "Triangulation classification for finalist edges (confirmed / contested / thin) from an independent second query route.",
     "Evidence grades A/B/C by rule, applied consistently and never averaged away.",
+    "Adaptive preference input: the interface starts with common local suggestions and derives related phrases deterministically; Qloo resolves and measures submitted phrases during the run, while the LLM interprets evidence and chooses probes.",
     "Constraint fit: footprint sums, hours and noise rules, format downshifts, and the Prior → Final diff.",
     "Budget accounting: Qloo call budgets, concurrency, planner turns, mutation rounds — every number deterministic."
   ],
@@ -121,7 +122,8 @@ export const methodContent: MethodContent = {
     "Format footprints and hours profiles are planning heuristics, labelled editable above; they are not surveyed building data.",
     "Coherence and percentiles are relative to the measured pool. A poor pool yields an honest \"best of a bad set\" reading, not a hidden upgrade.",
     "No ground truth exists for \"the correct mix\". Zorq's falsification (Challenge the Plan, triangulation, percentiles, control cases) tests internal consistency, and the Without-Qloo view tests what evidence contributed — it cannot validate against an unmeasured real world.",
-    "Sparse or contradictory measurement is surfaced as thin or contested and caps the evidence grade; it is never averaged away into confidence."
+    "Sparse or contradictory measurement is surfaced as thin or contested and caps the evidence grade; it is never averaged away into confidence.",
+    "Adaptive preference suggestions are local interaction scaffolding, not Qloo evidence or LLM-authored recommendations. A selected phrase becomes measured only if Qloo can resolve and return it during the run."
   ],
   typeNote:
     "The interface sets the results of assembly in Bricolage and the explanations in Raleway: the agent is a bricoleur, assembling a place from the cultural fragments Qloo returns, while the code is the engineer, measuring those fragments from first principles. The pairing makes that boundary visible wherever the product speaks.",

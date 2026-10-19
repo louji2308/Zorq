@@ -16,8 +16,45 @@ export interface SitePoint {
 }
 
 /** Constraint rectangles shown on S0 (Final Design §7.0 step 3). */
-export const CONSTRAINT_CHIPS = ["No late night", "No loud venue", "Ground floor only", "Custom"] as const;
-export type ConstraintChip = (typeof CONSTRAINT_CHIPS)[number];
+export const COMMON_PREFERENCES = [
+  "Local character",
+  "Walkable",
+  "Daytime energy",
+  "Quiet / low noise"
+] as const;
+
+export const PREFERENCE_RELATIONSHIPS: Readonly<Record<string, readonly string[]>> = {
+  "Local character": ["Independent makers", "Neighbourhood regulars", "Heritage fabric"],
+  Walkable: ["Transit-connected", "Street-facing", "Short dwell"],
+  "Daytime energy": ["Morning use", "Weekday rhythm", "Family-friendly"],
+  "Quiet / low noise": ["Acoustic calm", "No late-night hours", "Small-format social"],
+  "Independent makers": ["Small-format social", "Local suppliers"],
+  "Neighbourhood regulars": ["Community gathering", "Repeat visits"],
+  "Heritage fabric": ["Adaptive reuse", "Street-facing"],
+  "Transit-connected": ["Short dwell", "All-weather access"],
+  "Street-facing": ["Outdoor threshold", "Visible frontage"],
+  "Short dwell": ["Grab-and-go rhythm", "Transit-connected"],
+  "Morning use": ["Early opening", "Coffee-compatible"],
+  "Weekday rhythm": ["Workday audience", "Repeat visits"],
+  "Family-friendly": ["All-ages welcome", "Daytime energy"],
+  "Acoustic calm": ["Quiet / low noise", "Conversation-friendly"],
+  "No late-night hours": ["Early closing", "Daytime energy"],
+  "Small-format social": ["Conversation-friendly", "Neighbourhood regulars"]
+};
+
+export type PreferenceTag = string;
+
+export function adaptivePreferenceTags(selected: readonly string[]): string[] {
+  const tags = new Set<string>([...COMMON_PREFERENCES, ...selected]);
+  for (const tag of selected) {
+    for (const related of PREFERENCE_RELATIONSHIPS[tag] ?? []) tags.add(related);
+  }
+  return [...tags];
+}
+
+export function isAdaptivePreference(tag: string): boolean {
+  return !(COMMON_PREFERENCES as readonly string[]).includes(tag);
+}
 
 export const MAX_OBJECTIVE_CHARS = 200;
 export const MAX_ADMIRED_PLACES = 3;
@@ -33,8 +70,7 @@ export interface BriefFormState {
   site: SitePoint | null;
   area: string;
   objective: string;
-  selectedConstraints: readonly ConstraintChip[];
-  customConstraint: string;
+  selectedConstraints: readonly PreferenceTag[];
   admiredPlaces: readonly string[];
 }
 
@@ -43,7 +79,6 @@ export interface BriefFormErrors {
   site?: string;
   area?: string;
   objective?: string;
-  customConstraint?: string;
   admiredPlaces?: string;
 }
 
@@ -55,7 +90,6 @@ export function emptyBriefForm(): BriefFormState {
     area: "",
     objective: "",
     selectedConstraints: [],
-    customConstraint: "",
     admiredPlaces: []
   };
 }
@@ -94,10 +128,10 @@ export function pickSiteOnMap(state: BriefFormState, point: SitePoint): BriefFor
   return { ...state, site: { lat: point.lat, lon: point.lon } };
 }
 
-export function toggleConstraint(state: BriefFormState, chip: ConstraintChip): BriefFormState {
-  const selected = state.selectedConstraints.includes(chip)
-    ? state.selectedConstraints.filter((value) => value !== chip)
-    : [...state.selectedConstraints, chip];
+export function toggleConstraint(state: BriefFormState, tag: PreferenceTag): BriefFormState {
+  const selected = state.selectedConstraints.includes(tag)
+    ? state.selectedConstraints.filter((value) => value !== tag)
+    : [...state.selectedConstraints, tag];
   return { ...state, selectedConstraints: selected };
 }
 
@@ -109,17 +143,6 @@ export function addAdmiredPlace(state: BriefFormState, raw: string): BriefFormSt
 
 export function removeAdmiredPlace(state: BriefFormState, index: number): BriefFormState {
   return { ...state, admiredPlaces: state.admiredPlaces.filter((_, i) => i !== index) };
-}
-
-function trimmedConstraints(state: BriefFormState): string[] {
-  // Explicit string[]: the `chip !== "Custom"` predicate narrows the element
-  // type to the three preset chips, which would reject the free-text custom one.
-  const constraints: string[] = state.selectedConstraints.filter((chip) => chip !== "Custom");
-  if (state.selectedConstraints.includes("Custom")) {
-    const custom = state.customConstraint.trim();
-    if (custom !== "") constraints.push(custom);
-  }
-  return constraints;
 }
 
 export function validateBriefForm(state: BriefFormState): BriefFormErrors {
@@ -147,13 +170,6 @@ export function validateBriefForm(state: BriefFormState): BriefFormErrors {
     errors.objective = `Keep the goal to ${MAX_OBJECTIVE_CHARS} characters or fewer.`;
   }
 
-  if (
-    state.selectedConstraints.includes("Custom") &&
-    state.customConstraint.trim() === ""
-  ) {
-    errors.customConstraint = "Describe the custom constraint, or turn Custom off.";
-  }
-
   if (state.admiredPlaces.length > MAX_ADMIRED_PLACES) {
     errors.admiredPlaces = `Keep it to ${MAX_ADMIRED_PLACES} places.`;
   }
@@ -173,7 +189,7 @@ export function submitBriefForm(state: BriefFormState): BriefFormSubmission {
   }
 
   const area = state.area.trim();
-  const constraints = trimmedConstraints(state);
+  const constraints = state.selectedConstraints.map((tag) => tag.trim()).filter((tag) => tag !== "");
   const admiredPlaces = state.admiredPlaces
     .map((place) => place.trim())
     .filter((place) => place !== "")

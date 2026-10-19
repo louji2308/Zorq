@@ -10,10 +10,11 @@
 import { describe, expect, it } from "vitest";
 import { briefSchema } from "../../src/shared/brief.js";
 import {
-  CONSTRAINT_CHIPS,
+  COMMON_PREFERENCES,
   DEFAULT_RADIUS_M,
   MAX_ADMIRED_PLACES,
   MAX_OBJECTIVE_CHARS,
+  adaptivePreferenceTags,
   addAdmiredPlace,
   emptyBriefForm,
   pickSiteOnMap,
@@ -73,17 +74,24 @@ describe("S0 brief form — validation", () => {
       .toBe(`Keep the goal to ${MAX_OBJECTIVE_CHARS} characters or fewer.`);
   });
 
-  it("demands custom-constraint text only while the Custom rectangle is on", () => {
+  it("does not require a hidden custom-constraint field", () => {
     const base = placedForm();
-    const withCustom = toggleConstraint(base, "Custom");
+    expect(validateBriefForm(base)).toEqual({});
+  });
+});
 
-    expect(validateBriefForm(withCustom).customConstraint).toBe(
-      "Describe the custom constraint, or turn Custom off."
-    );
-    expect(validateBriefForm({ ...withCustom, customConstraint: "no drive-through" })
-      .customConstraint).toBeUndefined();
-    expect(validateBriefForm(toggleConstraint(withCustom, "Custom")).customConstraint)
-      .toBeUndefined();
+describe("S0 adaptive preferences", () => {
+  it("starts with a small common seed set", () => {
+    expect(adaptivePreferenceTags([])).toEqual([...COMMON_PREFERENCES]);
+  });
+
+  it("reveals related tags instantly and continues adapting after a suggestion is selected", () => {
+    const first = adaptivePreferenceTags(["Walkable"]);
+    expect(first).toContain("Transit-connected");
+    expect(first).toContain("Street-facing");
+
+    const second = adaptivePreferenceTags(["Walkable", "Transit-connected"]);
+    expect(second).toContain("All-weather access");
   });
 });
 
@@ -131,20 +139,17 @@ describe("S0 brief form — placement transitions", () => {
 });
 
 describe("S0 brief form — constraints and admired places", () => {
-  it("turns constraint rectangles into plain strings, never the label 'Custom'", () => {
+  it("submits selected adaptive preference phrases as plain strings", () => {
     let state = placedForm();
-    state = toggleConstraint(state, "No late night");
-    state = toggleConstraint(state, "Ground floor only");
-    state = toggleConstraint(state, "Custom");
-    state = { ...state, customConstraint: "no drive-through" };
+    state = toggleConstraint(state, "Walkable");
+    state = toggleConstraint(state, "Transit-connected");
 
     const submission = submitBriefForm(state);
     expect(submission.ok).toBe(true);
     if (!submission.ok) return;
     expect(submission.brief.constraints).toEqual([
-      "No late night",
-      "Ground floor only",
-      "no drive-through"
+      "Walkable",
+      "Transit-connected"
     ]);
     expect(submission.brief.constraints).not.toContain("Custom");
   });
@@ -156,13 +161,9 @@ describe("S0 brief form — constraints and admired places", () => {
     expect(submission.brief.constraints).toBeUndefined();
   });
 
-  it("exposes exactly the four spec rectangles", () => {
-    expect([...CONSTRAINT_CHIPS]).toEqual([
-      "No late night",
-      "No loud venue",
-      "Ground floor only",
-      "Custom"
-    ]);
+  it("exposes no hard-coded constraint rectangle list", () => {
+    expect(COMMON_PREFERENCES).not.toContain("Custom");
+    expect(COMMON_PREFERENCES).not.toContain("No late night");
   });
 
   it("keeps admired places to three and supports removal", () => {
