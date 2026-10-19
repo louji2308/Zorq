@@ -9,7 +9,8 @@
  * usable no matter what the tiles do.
  */
 import { useEffect, useRef, useState } from "react";
-import { createS0Map, type MapAnchor, type MapHeatPoint, type S0MapHandle } from "../../lib/map.js";
+import { scheduleDeferred } from "../../lib/deferred.js";
+import type { MapAnchor, MapHeatPoint, S0MapHandle } from "../../lib/map.js";
 import type { S1Site } from "./s1Model.js";
 
 export type S1MapStatus = "no-key" | "loading" | "ready" | "failed";
@@ -24,6 +25,12 @@ export interface InvestigateMapProps {
 export function InvestigateMap({ apiKey, site, anchors, heat }: InvestigateMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<S0MapHandle | null>(null);
+  const siteRef = useRef(site);
+  const anchorsRef = useRef(anchors);
+  const heatRef = useRef(heat);
+  siteRef.current = site;
+  anchorsRef.current = anchors;
+  heatRef.current = heat;
 
   const [status, setStatus] = useState<S1MapStatus>(apiKey === null ? "no-key" : "loading");
   const [attempt, setAttempt] = useState(0);
@@ -36,15 +43,33 @@ export function InvestigateMap({ apiKey, site, anchors, heat }: InvestigateMapPr
     const container = containerRef.current;
     if (container === null) return;
 
+    let cancelled = false;
+    let handle: S0MapHandle | null = null;
     setStatus("loading");
-    const handle = createS0Map(container, {
-      apiKey,
-      onReady: () => setStatus("ready"),
-      onFailure: () => setStatus("failed")
+    const cancelDeferred = scheduleDeferred(() => {
+      void import("../../lib/map.js")
+        .then(({ createS0Map }) => {
+          if (cancelled) return;
+          handle = createS0Map(container, {
+            apiKey,
+            onReady: () => setStatus("ready"),
+            onFailure: () => setStatus("failed")
+          });
+          handleRef.current = handle;
+          const currentSite = siteRef.current;
+          handle.focusSite(currentSite === null ? null : { ...currentSite }, false);
+          handle.setAnchors(anchorsRef.current);
+          handle.setHeat(heatRef.current);
+        })
+        .catch(() => {
+          if (!cancelled) setStatus("failed");
+        });
     });
-    handleRef.current = handle;
+
     return () => {
-      handle.destroy();
+      cancelled = true;
+      cancelDeferred();
+      handle?.destroy();
       handleRef.current = null;
     };
   }, [apiKey, attempt]);

@@ -4,7 +4,8 @@
  * column usable no matter what the tiles do.
  */
 import { useEffect, useRef, useState } from "react";
-import { createS0Map, type MapSite, type S0MapHandle } from "../../lib/map.js";
+import { scheduleDeferred } from "../../lib/deferred.js";
+import type { MapSite, S0MapHandle } from "../../lib/map.js";
 
 export type MapPanelStatus = "no-key" | "loading" | "ready" | "failed";
 
@@ -22,7 +23,13 @@ export function MapPanel({ apiKey, presets, activeSite, crosshair, onSitePick }:
   const containerRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<S0MapHandle | null>(null);
   const onSitePickRef = useRef(onSitePick);
+  const presetsRef = useRef(presets);
+  const activeSiteRef = useRef(activeSite);
+  const crosshairRef = useRef(crosshair);
   onSitePickRef.current = onSitePick;
+  presetsRef.current = presets;
+  activeSiteRef.current = activeSite;
+  crosshairRef.current = crosshair;
 
   const [status, setStatus] = useState<MapPanelStatus>(apiKey === null ? "no-key" : "loading");
   const [attempt, setAttempt] = useState(0);
@@ -35,16 +42,33 @@ export function MapPanel({ apiKey, presets, activeSite, crosshair, onSitePick }:
     const container = containerRef.current;
     if (container === null) return;
 
+    let cancelled = false;
+    let handle: S0MapHandle | null = null;
     setStatus("loading");
-    const handle = createS0Map(container, {
-      apiKey,
-      onSitePick: (point) => onSitePickRef.current(point),
-      onReady: () => setStatus("ready"),
-      onFailure: () => setStatus("failed")
+    const cancelDeferred = scheduleDeferred(() => {
+      void import("../../lib/map.js")
+        .then(({ createS0Map }) => {
+          if (cancelled) return;
+          handle = createS0Map(container, {
+            apiKey,
+            onSitePick: (point) => onSitePickRef.current(point),
+            onReady: () => setStatus("ready"),
+            onFailure: () => setStatus("failed")
+          });
+          handleRef.current = handle;
+          handle.setPresets(presetsRef.current);
+          handle.focusSite(activeSiteRef.current, false);
+          handle.setCrosshair(crosshairRef.current);
+        })
+        .catch(() => {
+          if (!cancelled) setStatus("failed");
+        });
     });
-    handleRef.current = handle;
+
     return () => {
-      handle.destroy();
+      cancelled = true;
+      cancelDeferred();
+      handle?.destroy();
       handleRef.current = null;
     };
   }, [apiKey, attempt]);
