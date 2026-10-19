@@ -175,12 +175,15 @@ export function BriefForm(props: BriefFormProps) {
                     type="button"
                     className={`s0-chip${selected ? " is-selected" : ""}${adaptive ? " is-adaptive" : ""}`}
                     aria-pressed={selected}
+                    aria-label={`${tag}${selected ? ", selected; activate to remove" : ""}`}
                     onClick={() => onToggleConstraint(tag)}
                   >
                     <span>{tag}</span>
-                    <span className="s0-chip-state">
-                      {selected ? "Selected" : adaptive ? "Suggested" : "Available"}
-                    </span>
+                    {selected && (
+                      <span className="s0-chip-remove" aria-hidden="true">
+                        ×
+                      </span>
+                    )}
                   </button>
                 );
               })}

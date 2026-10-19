@@ -14,6 +14,7 @@ import {
   DEFAULT_RADIUS_M,
   MAX_ADMIRED_PLACES,
   MAX_OBJECTIVE_CHARS,
+  PREFERENCE_RELATIONSHIPS,
   adaptivePreferenceTags,
   addAdmiredPlace,
   emptyBriefForm,
@@ -87,8 +88,11 @@ describe("S0 adaptive preferences", () => {
 
   it("reveals related tags instantly and continues adapting after a suggestion is selected", () => {
     const first = adaptivePreferenceTags(["Walkable"]);
-    expect(first).toContain("Transit-connected");
-    expect(first).toContain("Street-facing");
+    expect(first.slice(COMMON_PREFERENCES.length)).toEqual([
+      "Transit-connected",
+      "Street-facing"
+    ]);
+    expect(PREFERENCE_RELATIONSHIPS.Walkable).toHaveLength(2);
 
     const second = adaptivePreferenceTags(["Walkable", "Transit-connected"]);
     expect(second).toContain("All-weather access");
@@ -154,7 +158,7 @@ describe("S0 brief form — constraints and admired places", () => {
     expect(submission.brief.constraints).not.toContain("Custom");
   });
 
-  it("omits constraints entirely when no rectangle is on", () => {
+  it("omits constraints entirely when no preference is on", () => {
     const submission = submitBriefForm(placedForm());
     expect(submission.ok).toBe(true);
     if (!submission.ok) return;
@@ -211,7 +215,7 @@ describe("S0 brief form — submission", () => {
     expect(Object.keys(submission.errors).sort()).toEqual(["location", "objective", "site"]);
   });
 
-  it("toggles a constraint rectangle on and off", () => {
+  it("toggles a preference on and off", () => {
     let state = placedForm();
     state = toggleConstraint(state, "No late night");
     expect(state.selectedConstraints).toEqual(["No late night"]);

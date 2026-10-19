@@ -24,10 +24,10 @@ export const COMMON_PREFERENCES = [
 ] as const;
 
 export const PREFERENCE_RELATIONSHIPS: Readonly<Record<string, readonly string[]>> = {
-  "Local character": ["Independent makers", "Neighbourhood regulars", "Heritage fabric"],
-  Walkable: ["Transit-connected", "Street-facing", "Short dwell"],
-  "Daytime energy": ["Morning use", "Weekday rhythm", "Family-friendly"],
-  "Quiet / low noise": ["Acoustic calm", "No late-night hours", "Small-format social"],
+  "Local character": ["Independent makers", "Neighbourhood regulars"],
+  Walkable: ["Transit-connected", "Street-facing"],
+  "Daytime energy": ["Morning use", "Weekday rhythm"],
+  "Quiet / low noise": ["Acoustic calm", "No late-night hours"],
   "Independent makers": ["Small-format social", "Local suppliers"],
   "Neighbourhood regulars": ["Community gathering", "Repeat visits"],
   "Heritage fabric": ["Adaptive reuse", "Street-facing"],
