@@ -26,6 +26,14 @@ import { buildQlooTagSuggestions } from "./qloo/tagSuggestions.js";
 import type { QlooGateway } from "./qloo/gateway.js";
 import { createRunEventsHandler, type EventHub } from "./sse/index.js";
 
+const QLOO_PREVIEW_DEGRADED_CODES = new Set([
+  "DEPENDENCY_UNAVAILABLE",
+  "SERVICE_UNAVAILABLE",
+  "RATE_LIMITED"
+]);
+const QLOO_PREVIEW_DEGRADED_MESSAGE =
+  "Qloo could not complete the tag read. You can continue without adaptive tags.";
+
 // Honest unavailable answers for routes registered without their runtime
 // dependencies (a partially wired app) and for the two endpoints that ship as
 // typed 503 stubs in this build. Copy names the missing dependency or states
@@ -57,6 +65,11 @@ function unimplemented(message: string) {
   return (_req: Request, _res: Response, next: NextFunction): void => {
     next(new ApiError("SERVICE_UNAVAILABLE", message));
   };
+}
+
+function sendDegradedQlooPreview(res: Response, message = QLOO_PREVIEW_DEGRADED_MESSAGE): void {
+  const body = qlooTagSuggestionsResponseSchema.parse({ status: "degraded", tags: [], message });
+  res.status(200).json(body);
 }
 
 export function mapRouteError(error: unknown): unknown {
@@ -100,7 +113,7 @@ export function registerRoutes(app: Express, dependencies: RouteDependencies): v
 
   app.post("/api/qloo/tags", validate({ body: qlooTagSuggestionsRequestSchema }), (req, res, next) => {
     if (qloo === undefined) {
-      unimplemented(UNIMPLEMENTED_MESSAGES.qlooTags)(req, res, next);
+      sendDegradedQlooPreview(res, UNIMPLEMENTED_MESSAGES.qlooTags);
       return;
     }
     const request = qlooTagSuggestionsRequestSchema.parse(req.body);
@@ -109,7 +122,12 @@ export function registerRoutes(app: Express, dependencies: RouteDependencies): v
         res.status(200).json(qlooTagSuggestionsResponseSchema.parse(body));
       })
       .catch((error: unknown) => {
-        next(mapRouteError(error));
+        const mapped = mapRouteError(error);
+        if (mapped instanceof ApiError && QLOO_PREVIEW_DEGRADED_CODES.has(mapped.code)) {
+          sendDegradedQlooPreview(res);
+          return;
+        }
+        next(mapped);
       });
   });
 

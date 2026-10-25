@@ -127,20 +127,21 @@ describe("server HTTP contract (ARCHITECTURE.md 3.0)", () => {
     }
   });
 
-  it("returns typed 503 when the Qloo preview gateway is unavailable", async () => {
+  it("returns an in-band degraded preview when the Qloo gateway is unavailable", async () => {
     const response = await fetch(`${shared.baseUrl}/api/qloo/tags`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ location: "Lisbon, Portugal", objective: "A daytime cultural corner" })
     });
-    expect(response.status).toBe(503);
-    const body = (await response.json()) as { error: { code: string; message: string } };
-    expect(body.error.code).toBe("SERVICE_UNAVAILABLE");
-    expect(body.error.message).toContain("Qloo");
-    expect(body.error.message).not.toContain("QLOO_API_KEY");
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { status: string; tags: unknown[]; message?: string };
+    expect(body.status).toBe("degraded");
+    expect(body.tags).toEqual([]);
+    expect(body.message).toContain("Qloo");
+    expect(body.message).not.toContain("QLOO_API_KEY");
   });
 
-  it("preserves a typed Qloo upstream failure without leaking provider material", async () => {
+  it("returns a degraded preview for a Qloo upstream failure without leaking provider material", async () => {
     const qloo = {
       resolveTags: async () => {
         throw new ApiError("DEPENDENCY_UNAVAILABLE", "Qloo request failed; credential [redacted]");
@@ -153,10 +154,12 @@ describe("server HTTP contract (ARCHITECTURE.md 3.0)", () => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ location: "Lisbon, Portugal", objective: "A daytime cultural corner" })
       });
-      expect(response.status).toBe(502);
-      const body = (await response.json()) as { error: { code: string; message: string } };
-      expect(body.error.code).toBe("DEPENDENCY_UNAVAILABLE");
-      expect(body.error.message).not.toContain("sk-");
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as { status: string; tags: unknown[]; message?: string };
+      expect(body.status).toBe("degraded");
+      expect(body.tags).toEqual([]);
+      expect(body.message).toContain("Qloo");
+      expect(JSON.stringify(body)).not.toContain("sk-");
     } finally {
       await server.close();
     }
