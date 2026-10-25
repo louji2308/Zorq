@@ -3082,3 +3082,14 @@ Evidence: the new tab and Prior tests passed; the new browser regression first f
 135px map height deficit, then passed after the CSS fix with canvas height 615px matching the
 615px panel. A post-fix browser screenshot showed the full Williamsburg map, site marker, radius,
 and controls; browser verification reported zero console errors, page errors, or failed requests.
+The focused fixture browser path passed 8/8. A clean production E2E run passed all 8 judge-flow
+tests plus healthz, method, and SPA-fallback checks; two older smoke checks remain outside this
+patch: the S0 smoke expects a removed "Try a site" heading, and its live POST check timed out
+against the configured external providers.
+
+### Latest verified commit
+
+`bb3472e` - restore honest S1 map and downstream gates. The map regression was red at a 135px
+canvas deficit and green after the selector fix; tab/Prior regressions, 8/8 fixture browser
+tests, unit/typecheck/lint/build, and visual browser verification are recorded above. The API
+and web development terminals were restored after verification (`/healthz` 200, `/` 200).
