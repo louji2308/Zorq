@@ -3093,3 +3093,20 @@ against the configured external providers.
 canvas deficit and green after the selector fix; tab/Prior regressions, 8/8 fixture browser
 tests, unit/typecheck/lint/build, and visual browser verification are recorded above. The API
 and web development terminals were restored after verification (`/healthz` 200, `/` 200).
+
+### 2026-10-25 — S1 partial-run recovery
+
+Simulation of the latest stopped/partial screenshot exposed a stranded state: the existing
+orchestrator already implemented `retryRun()`, but there was no HTTP route, browser client, or S1
+ledger recovery action. A partial run could show its frozen Prior and map while leaving the user
+with an empty ledger and no way to continue.
+
+Fix: added typed `POST /api/runs/:id/retry`, a validated browser client/action, and an honest S1
+recovery block for `stopped`, `partial`, and `failed` statuses. It preserves the server Prior,
+shows an in-flight disabled state, surfaces retry errors, and leaves Challenge/Blueprint gated
+until their required persisted data exists.
+
+Evidence: route/client TDD was red (404 / missing function) then green; recovery rendering was
+red then green; full unit suite passed 783 tests / 6 skips, typecheck, lint, and build passed;
+the partial screenshot browser regression and all 9 judge-flow tests passed. No browser console
+errors, page errors, or failed requests were observed.
