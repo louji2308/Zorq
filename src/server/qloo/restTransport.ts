@@ -106,7 +106,7 @@ function insightsPlan(request: InsightsRequest): RestPlan {
     path: "/v2/insights",
     method: requiresPost ? "POST" : "GET",
     params,
-    resultKey: request.filterType === "heatmap" ? "heatmap" : "entities"
+    resultKey: request.filterType === "heatmap" ? "heatmap" : request.filterType === "tag" ? "tags" : "entities"
   };
 }
 

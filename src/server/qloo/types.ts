@@ -40,7 +40,7 @@ export const insightsEntityTypes = [
 
 export type InsightsEntityType = (typeof insightsEntityTypes)[number];
 
-export const insightsFilterTypes = [...insightsEntityTypes, "heatmap"] as const;
+export const insightsFilterTypes = [...insightsEntityTypes, "heatmap", "tag"] as const;
 
 export type InsightsFilterType = (typeof insightsFilterTypes)[number];
 
@@ -74,7 +74,9 @@ export const describeEntityTypes = searchEntityTypes;
 export type DescribeEntityType = SearchEntityType;
 
 export function insightsTypeUrn(type: InsightsFilterType): string {
-  return type === "heatmap" ? "urn:heatmap" : `urn:entity:${type}`;
+  if (type === "heatmap") return "urn:heatmap";
+  if (type === "tag") return "urn:tag";
+  return `urn:entity:${type}`;
 }
 
 export function searchTypeUrn(type: SearchEntityType): string {
@@ -282,6 +284,7 @@ export interface QlooTagResults {
 export interface QlooInsightsResults {
   entities?: ProjectedEntity[];
   heatmap?: ProjectedHeatmapCell[];
+  tags?: ProjectedTag[];
 }
 
 export interface QlooCapabilitiesResult {

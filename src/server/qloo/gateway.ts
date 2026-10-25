@@ -291,8 +291,11 @@ export function createQlooGateway(options: QlooGatewayOptions): QlooGateway {
         project: (payload) =>
           request.filterType === "heatmap"
             ? { heatmap: projectHeatmapCells(payload) }
+            : request.filterType === "tag"
+              ? { tags: projectTags(payload) }
             : { entities: projectEntities(payload) },
-        count: (results) => (results.entities?.length ?? 0) + (results.heatmap?.length ?? 0)
+        count: (results) =>
+          (results.entities?.length ?? 0) + (results.heatmap?.length ?? 0) + (results.tags?.length ?? 0)
       });
     },
 

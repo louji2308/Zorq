@@ -315,6 +315,36 @@ describe("qloo gateway", () => {
     expect(envelope.results.entities).toBeUndefined();
   });
 
+  it("projects direct tag insights with their Qloo scores", async () => {
+    const { calls, transport } = fakeTransport(() =>
+      okResponse({
+        results: { tags: [{ id: "t-2", name: "Conversation-friendly", affinity: 0.82 }] }
+      })
+    );
+    const { gateway } = makeGateway(transport);
+
+    const envelope = await gateway.insights(
+      {
+        filterType: "tag",
+        signalTags: ["t-1"],
+        signalLocation: "Lisbon, Portugal",
+        take: 8
+      },
+      { transport: "rest" }
+    );
+
+    expect(calls[0]?.request).toEqual({
+      filterType: "tag",
+      signalTags: ["t-1"],
+      signalLocation: "Lisbon, Portugal",
+      take: 8
+    });
+    expect(envelope.results.tags).toEqual([
+      { id: "t-2", name: "Conversation-friendly", score: 0.82 }
+    ]);
+    expect(envelope.results.entities).toBeUndefined();
+  });
+
   it("answers REST capabilities locally with readiness and its warning", async () => {
     const gateway = createQlooGateway({ config: loadConfig(BASE_ENV), transport: createRestTransport() });
 

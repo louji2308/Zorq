@@ -100,6 +100,26 @@ describe("rest transport", () => {
     expect(calls[0].init?.body).toBeUndefined();
   });
 
+  it("plans tag insights with location context and tag signals", async () => {
+    const { calls, fetchImpl } = stubFetch(() =>
+      jsonResponse({ results: { tags: [{ id: "t-2", name: "Conversation-friendly", affinity: 0.82 }] } })
+    );
+    const transport = createRestTransport({ fetchImpl });
+    await call(transport, "insights", {
+      filterType: "tag",
+      signalTags: ["t-1"],
+      signalLocation: "Lisbon, Portugal",
+      take: 8
+    });
+
+    const url = new URL(calls[0].url);
+    expect(url.pathname).toBe("/v2/insights");
+    expect(url.searchParams.get("filter.type")).toBe("urn:tag");
+    expect(url.searchParams.get("signal.interests.tags")).toBe("t-1");
+    expect(url.searchParams.get("signal.location.query")).toBe("Lisbon, Portugal");
+    expect(url.searchParams.get("take")).toBe("8");
+  });
+
   it("answers capabilities locally without touching the network", async () => {
     const { calls, fetchImpl } = stubFetch(() => {
       throw new Error("capabilities must not fetch");
