@@ -32,6 +32,7 @@ import {
   challengeResponseSchema,
   methodResponseSchema,
   postRunsResponseSchema,
+  qlooTagSuggestionsResponseSchema,
   replaceResponseSchema,
   runResponseSchema,
   type Blueprint,
@@ -39,6 +40,8 @@ import {
   type ChallengeResponse,
   type MethodContent,
   type PostRunsResponse,
+  type QlooTagSuggestionsInput,
+  type QlooTagSuggestionsResponse,
   type ReplaceRequest,
   type ReplaceResponse
 } from "../../shared/routes.js";
@@ -73,9 +76,36 @@ export class ApiClientError extends Error {
 /** The created run carries the frozen brief + Prior (createdRunSchema). */
 export type CreatedRun = PostRunsResponse["run"];
 
+/** A bounded, server-backed preview of Qloo's cultural tag inference for S0. */
+export async function getQlooTagSuggestions(
+  request: QlooTagSuggestionsInput,
+  options?: ApiCallOptions
+): Promise<QlooTagSuggestionsResponse> {
+  const response = await requestJson(
+    "/api/qloo/tags",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(request)
+    },
+    options
+  );
+  const parsed = qlooTagSuggestionsResponseSchema.safeParse(response.body);
+  if (!parsed.success) {
+    throw new ApiClientError(
+      "INVALID_RESPONSE",
+      "POST /api/qloo/tags response did not match the expected contract",
+      response.status
+    );
+  }
+  return parsed.data;
+}
+
 export interface ApiCallOptions {
   /** Injectable fetch for tests; defaults to same-origin global fetch. */
   fetchImpl?: typeof fetch;
+  /** Cancels an in-flight preview when the user edits the draft again. */
+  signal?: AbortSignal;
 }
 
 interface JsonResponse {
@@ -95,7 +125,9 @@ async function requestJson(
 
   let response: Response;
   try {
-    response = await doFetch(path, init);
+    const requestInit =
+      options?.signal === undefined ? init : { ...init, signal: options.signal };
+    response = await doFetch(path, requestInit);
   } catch (error) {
     const message = error instanceof Error ? error.message : "network request failed";
     throw new ApiClientError("NETWORK_ERROR", `network request failed: ${message}`, 0);

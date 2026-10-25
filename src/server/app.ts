@@ -8,6 +8,7 @@ import { requestIdMiddleware } from "./middleware/requestId.js";
 import { createRateLimiters, type RateLimitOverrides } from "./middleware/rateLimit.js";
 import type { Orchestrator } from "./orchestrator/index.js";
 import type { RunStore } from "./persistence/index.js";
+import type { QlooGateway } from "./qloo/index.js";
 import { registerRoutes } from "./routes.js";
 import { createEventHub, type EventHub } from "./sse/index.js";
 import { DEFAULT_WEB_DIR, mountStaticWeb, resolveWebDirPath, webIndexPath } from "./staticWeb.js";
@@ -18,6 +19,7 @@ export interface CreateAppOptions {
   webDir?: string;
   orchestrator?: Orchestrator;
   store?: RunStore;
+  qloo?: QlooGateway;
   eventHub?: EventHub;
   sseHeartbeatMs?: number;
 }
@@ -71,6 +73,7 @@ export function createApp(logger?: ReturnType<typeof createLogger>, options?: Cr
       }),
     ...(options?.orchestrator !== undefined ? { orchestrator: options.orchestrator } : {}),
     ...(options?.store !== undefined ? { store: options.store } : {}),
+    ...(options?.qloo !== undefined ? { qloo: options.qloo } : {}),
     eventHub,
     ...(options?.sseHeartbeatMs !== undefined ? { sseHeartbeatMs: options.sseHeartbeatMs } : {})
   });

@@ -42,6 +42,7 @@ export const qlooTagSuggestionsRequestSchema = z.object({
 });
 
 export type QlooTagSuggestionsRequest = z.infer<typeof qlooTagSuggestionsRequestSchema>;
+export type QlooTagSuggestionsInput = z.input<typeof qlooTagSuggestionsRequestSchema>;
 
 export const qlooTagSuggestionSchema = z.object({
   id: z.string().trim().min(1).max(300),

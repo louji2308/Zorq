@@ -9,6 +9,7 @@ import { createLogger } from "../src/server/logger.js";
 import { createErrorHandler } from "../src/server/middleware/errors.js";
 import { requestIdMiddleware } from "../src/server/middleware/requestId.js";
 import { validate } from "../src/server/middleware/validate.js";
+import type { QlooGateway } from "../src/server/qloo/gateway.js";
 import { ApiError, apiErrorBodySchema, runIdParamsSchema } from "../src/shared/index.js";
 import { startServer, type RunningServer } from "./support/http.js";
 
@@ -20,6 +21,29 @@ const VALID_BRIEF = {
   location: "Lisbon, Portugal",
   objective: "A late-night listening bar that feels local"
 };
+
+function previewGateway(): QlooGateway {
+  return {
+    resolveTags: async () => ({
+      status: "ok",
+      operation: "resolveTags",
+      transport: "rest",
+      cache: "live",
+      resultCount: 1,
+      results: { tags: [{ id: "t-objective", name: "daytime" }] },
+      provenance: { transport: "rest", operation: "resolveTags", endpoint: "fake://qloo", durationMs: 1 }
+    }),
+    insights: async () => ({
+      status: "ok",
+      operation: "insights",
+      transport: "rest",
+      cache: "live",
+      resultCount: 1,
+      results: { tags: [{ id: "t-suggestion", name: "Conversation-friendly", score: 0.82 }] },
+      provenance: { transport: "rest", operation: "insights", endpoint: "fake://qloo", durationMs: 1 }
+    })
+  } as unknown as QlooGateway;
+}
 
 describe("server HTTP contract (ARCHITECTURE.md 3.0)", () => {
   let shared: RunningServer;
@@ -76,6 +100,66 @@ describe("server HTTP contract (ARCHITECTURE.md 3.0)", () => {
     expect(parsed.error).not.toHaveProperty("id");
     expect(JSON.stringify(body)).not.toMatch(/"run"\s*:/);
     expect(JSON.stringify(body)).not.toMatch(/run_[A-Za-z0-9]/);
+  });
+
+  it("serves Qloo-driven tag suggestions without exposing a provider key", async () => {
+    const server = await startServer(
+      createApp(createLogger("test"), { config: testConfig(), qloo: previewGateway() })
+    );
+    try {
+      const response = await fetch(`${server.baseUrl}/api/qloo/tags`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          location: "Lisbon, Portugal",
+          objective: "A daytime cultural corner"
+        })
+      });
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as { status: string; tags: { source: string; label: string }[] };
+      expect(body).toEqual({
+        status: "ok",
+        tags: [{ id: "t-suggestion", label: "Conversation-friendly", score: 0.82, source: "qloo" }]
+      });
+      expect(JSON.stringify(body)).not.toContain("QLOO_API_KEY");
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("returns typed 503 when the Qloo preview gateway is unavailable", async () => {
+    const response = await fetch(`${shared.baseUrl}/api/qloo/tags`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ location: "Lisbon, Portugal", objective: "A daytime cultural corner" })
+    });
+    expect(response.status).toBe(503);
+    const body = (await response.json()) as { error: { code: string; message: string } };
+    expect(body.error.code).toBe("SERVICE_UNAVAILABLE");
+    expect(body.error.message).toContain("Qloo");
+    expect(body.error.message).not.toContain("QLOO_API_KEY");
+  });
+
+  it("preserves a typed Qloo upstream failure without leaking provider material", async () => {
+    const qloo = {
+      resolveTags: async () => {
+        throw new ApiError("DEPENDENCY_UNAVAILABLE", "Qloo request failed; credential [redacted]");
+      }
+    } as unknown as QlooGateway;
+    const server = await startServer(createApp(createLogger("test"), { config: testConfig(), qloo }));
+    try {
+      const response = await fetch(`${server.baseUrl}/api/qloo/tags`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ location: "Lisbon, Portugal", objective: "A daytime cultural corner" })
+      });
+      expect(response.status).toBe(502);
+      const body = (await response.json()) as { error: { code: string; message: string } };
+      expect(body.error.code).toBe("DEPENDENCY_UNAVAILABLE");
+      expect(body.error.message).not.toContain("sk-");
+    } finally {
+      await server.close();
+    }
   });
 
   it("g. answers an unknown /api/* route with a typed 404 body", async () => {

@@ -10,6 +10,8 @@ import {
   replaceRequestSchema,
   runIdParamsSchema,
   runStateSchema,
+  qlooTagSuggestionsRequestSchema,
+  qlooTagSuggestionsResponseSchema,
   stopRunRequestSchema,
   unpinAnchorRequestSchema,
   type ChallengeRequest,
@@ -20,6 +22,8 @@ import { validate } from "./middleware/validate.js";
 import { methodContent } from "./method.js";
 import type { Orchestrator } from "./orchestrator/index.js";
 import { RunNotFound, RunStoreError, type RunStore } from "./persistence/index.js";
+import { buildQlooTagSuggestions } from "./qloo/tagSuggestions.js";
+import type { QlooGateway } from "./qloo/gateway.js";
 import { createRunEventsHandler, type EventHub } from "./sse/index.js";
 
 // Honest unavailable answers for routes registered without their runtime
@@ -44,7 +48,9 @@ export const UNIMPLEMENTED_MESSAGES = {
   recompute:
     "Recomputing fit for changed constraints is not available as a standalone endpoint in this build. Start a new brief with the updated constraints; constraint fit is applied when the Place Blueprint is built.",
   blueprint:
-    "The Place Blueprint is unavailable because this server is running without its run store and orchestrator. See /healthz for configuration status."
+    "The Place Blueprint is unavailable because this server is running without its run store and orchestrator. See /healthz for configuration status.",
+  qlooTags:
+    "Qloo-driven tags are unavailable because this server is running without its Qloo gateway. See /healthz for configuration status."
 } as const;
 
 function unimplemented(message: string) {
@@ -75,12 +81,13 @@ export interface RouteDependencies {
   healthz: () => HealthzResult;
   orchestrator?: Orchestrator;
   store?: RunStore;
+  qloo?: QlooGateway;
   eventHub?: EventHub;
   sseHeartbeatMs?: number;
 }
 
 export function registerRoutes(app: Express, dependencies: RouteDependencies): void {
-  const { orchestrator, store, eventHub } = dependencies;
+  const { orchestrator, store, qloo, eventHub } = dependencies;
 
   app.get("/healthz", (_req, res, next) => {
     const result = dependencies.healthz();
@@ -89,6 +96,21 @@ export function registerRoutes(app: Express, dependencies: RouteDependencies): v
       return;
     }
     next(new ApiError("SERVICE_UNAVAILABLE", result.message));
+  });
+
+  app.post("/api/qloo/tags", validate({ body: qlooTagSuggestionsRequestSchema }), (req, res, next) => {
+    if (qloo === undefined) {
+      unimplemented(UNIMPLEMENTED_MESSAGES.qlooTags)(req, res, next);
+      return;
+    }
+    const request = qlooTagSuggestionsRequestSchema.parse(req.body);
+    void buildQlooTagSuggestions(qloo, request)
+      .then((body) => {
+        res.status(200).json(qlooTagSuggestionsResponseSchema.parse(body));
+      })
+      .catch((error: unknown) => {
+        next(mapRouteError(error));
+      });
   });
 
   app.post("/api/runs", validate({ body: postRunsRequestSchema }), (req, res, next) => {

@@ -306,23 +306,6 @@
   border-radius: var(--zq-radius-sheet);
 }
 
-.s0-chip.is-adaptive {
-  border-style: dashed;
-  animation: s0-chip-in var(--zq-motion-tab) var(--zq-ease-out) both;
-}
-
-@keyframes s0-chip-in {
-  from {
-    opacity: 0;
-    transform: translateY(4px) scale(0.94);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
 .s0-chip-remove {
   display: inline-flex;
   align-items: center;
@@ -347,6 +330,43 @@
   max-width: 62ch;
   font-size: var(--zq-text-small);
   color: var(--zq-ink-600);
+}
+
+.s0-qloo-tags-label {
+  color: var(--zq-ink-600);
+}
+
+.s0-qloo-tags-list {
+  align-items: center;
+  gap: var(--zq-space-4);
+}
+
+.s0-qloo-tag {
+  min-height: 32px;
+  padding: var(--zq-space-4) var(--zq-space-8);
+  font-size: var(--zq-text-micro);
+  font-weight: var(--zq-weight-body);
+  color: var(--zq-ink-600);
+  background: var(--zq-paper);
+  border: var(--zq-l1) solid var(--zq-ink-350);
+}
+
+.s0-qloo-tag:hover {
+  color: var(--zq-ink);
+  background: var(--zq-ink-50);
+  border-color: var(--zq-ink-600);
+}
+
+.s0-qloo-tag[aria-pressed="true"] {
+  color: var(--zq-ink);
+  background: var(--zq-ink-100);
+  border: var(--zq-l2) solid var(--zq-ink);
+  font-weight: var(--zq-weight-strong);
+}
+
+.s0-qloo-tags-note {
+  font-size: var(--zq-text-micro);
+  color: var(--zq-ink-450);
 }
 
 .s0-admired-entry {

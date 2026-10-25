@@ -90,6 +90,7 @@ async function bootstrap(): Promise<void> {
     ...(config !== undefined ? { config } : {}),
     store,
     orchestrator,
+    qloo: gateway,
     eventHub: hub
   });
   const listenPort = resolveListenPort(process.env, config);

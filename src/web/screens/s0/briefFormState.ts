@@ -10,54 +10,20 @@
  */
 import type { Brief } from "../../../shared/brief.js";
 
+export interface SelectedQlooTag {
+  readonly id: string;
+  readonly label: string;
+}
+
 export interface SitePoint {
   readonly lat: number;
   readonly lon: number;
 }
 
-/** Constraint rectangles shown on S0 (Final Design §7.0 step 3). */
-export const COMMON_PREFERENCES = [
-  "Local character",
-  "Walkable",
-  "Daytime energy",
-  "Quiet / low noise"
-] as const;
-
-export const PREFERENCE_RELATIONSHIPS: Readonly<Record<string, readonly string[]>> = {
-  "Local character": ["Independent makers", "Neighbourhood regulars"],
-  Walkable: ["Transit-connected", "Street-facing"],
-  "Daytime energy": ["Morning use", "Weekday rhythm"],
-  "Quiet / low noise": ["Acoustic calm", "No late-night hours"],
-  "Independent makers": ["Small-format social", "Local suppliers"],
-  "Neighbourhood regulars": ["Community gathering", "Repeat visits"],
-  "Heritage fabric": ["Adaptive reuse", "Street-facing"],
-  "Transit-connected": ["Short dwell", "All-weather access"],
-  "Street-facing": ["Outdoor threshold", "Visible frontage"],
-  "Short dwell": ["Grab-and-go rhythm", "Transit-connected"],
-  "Morning use": ["Early opening", "Coffee-compatible"],
-  "Weekday rhythm": ["Workday audience", "Repeat visits"],
-  "Family-friendly": ["All-ages welcome", "Daytime energy"],
-  "Acoustic calm": ["Quiet / low noise", "Conversation-friendly"],
-  "No late-night hours": ["Early closing", "Daytime energy"],
-  "Small-format social": ["Conversation-friendly", "Neighbourhood regulars"]
-};
-
-export type PreferenceTag = string;
-
-export function adaptivePreferenceTags(selected: readonly string[]): string[] {
-  const tags = new Set<string>([...COMMON_PREFERENCES, ...selected]);
-  for (const tag of selected) {
-    for (const related of PREFERENCE_RELATIONSHIPS[tag] ?? []) tags.add(related);
-  }
-  return [...tags];
-}
-
-export function isAdaptivePreference(tag: string): boolean {
-  return !(COMMON_PREFERENCES as readonly string[]).includes(tag);
-}
-
+/** Qloo owns cultural suggestions; S0 stores only selected draft tags. */
 export const MAX_OBJECTIVE_CHARS = 200;
 export const MAX_ADMIRED_PLACES = 3;
+export const MAX_SELECTED_QLOO_TAGS = 6;
 /** Search radius (metres) attached to custom briefs so S0/S1 can draw the ring. */
 export const DEFAULT_RADIUS_M = 400;
 
@@ -70,7 +36,7 @@ export interface BriefFormState {
   site: SitePoint | null;
   area: string;
   objective: string;
-  selectedConstraints: readonly PreferenceTag[];
+  selectedQlooTags: readonly SelectedQlooTag[];
   admiredPlaces: readonly string[];
 }
 
@@ -89,7 +55,7 @@ export function emptyBriefForm(): BriefFormState {
     site: null,
     area: "",
     objective: "",
-    selectedConstraints: [],
+    selectedQlooTags: [],
     admiredPlaces: []
   };
 }
@@ -128,11 +94,16 @@ export function pickSiteOnMap(state: BriefFormState, point: SitePoint): BriefFor
   return { ...state, site: { lat: point.lat, lon: point.lon } };
 }
 
-export function toggleConstraint(state: BriefFormState, tag: PreferenceTag): BriefFormState {
-  const selected = state.selectedConstraints.includes(tag)
-    ? state.selectedConstraints.filter((value) => value !== tag)
-    : [...state.selectedConstraints, tag];
-  return { ...state, selectedConstraints: selected };
+export function toggleQlooTag(state: BriefFormState, tag: SelectedQlooTag): BriefFormState {
+  const id = tag.id.trim();
+  const label = tag.label.trim();
+  if (id === "" || label === "") return state;
+  const selected = state.selectedQlooTags.some((value) => value.id === id)
+    ? state.selectedQlooTags.filter((value) => value.id !== id)
+    : state.selectedQlooTags.length >= MAX_SELECTED_QLOO_TAGS
+      ? state.selectedQlooTags
+      : [...state.selectedQlooTags, { id, label }];
+  return { ...state, selectedQlooTags: selected };
 }
 
 export function addAdmiredPlace(state: BriefFormState, raw: string): BriefFormState {
@@ -189,7 +160,7 @@ export function submitBriefForm(state: BriefFormState): BriefFormSubmission {
   }
 
   const area = state.area.trim();
-  const constraints = state.selectedConstraints.map((tag) => tag.trim()).filter((tag) => tag !== "");
+  const constraints = state.selectedQlooTags.map((tag) => tag.label.trim()).filter((tag) => tag !== "");
   const admiredPlaces = state.admiredPlaces
     .map((place) => place.trim())
     .filter((place) => place !== "")

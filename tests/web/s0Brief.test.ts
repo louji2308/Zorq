@@ -10,12 +10,9 @@
 import { describe, expect, it } from "vitest";
 import { briefSchema } from "../../src/shared/brief.js";
 import {
-  COMMON_PREFERENCES,
   DEFAULT_RADIUS_M,
   MAX_ADMIRED_PLACES,
   MAX_OBJECTIVE_CHARS,
-  PREFERENCE_RELATIONSHIPS,
-  adaptivePreferenceTags,
   addAdmiredPlace,
   emptyBriefForm,
   pickSiteOnMap,
@@ -23,7 +20,7 @@ import {
   selectSuggestion,
   setLocationText,
   submitBriefForm,
-  toggleConstraint,
+  toggleQlooTag,
   validateBriefForm,
   type BriefFormState
 } from "../../src/web/screens/s0/briefFormState.js";
@@ -81,21 +78,27 @@ describe("S0 brief form — validation", () => {
   });
 });
 
-describe("S0 adaptive preferences", () => {
-  it("starts with a small common seed set", () => {
-    expect(adaptivePreferenceTags([])).toEqual([...COMMON_PREFERENCES]);
+describe("S0 Qloo-driven tags", () => {
+  it("selects and removes draft-only Qloo tags by id", () => {
+    let state = placedForm();
+    const tag = { id: "urn:tag:conversation", label: "Conversation-friendly" };
+
+    state = toggleQlooTag(state, tag);
+    expect(state.selectedQlooTags).toEqual([tag]);
+    expect(toggleQlooTag(state, tag).selectedQlooTags).toEqual([]);
   });
 
-  it("reveals related tags instantly and continues adapting after a suggestion is selected", () => {
-    const first = adaptivePreferenceTags(["Walkable"]);
-    expect(first.slice(COMMON_PREFERENCES.length)).toEqual([
-      "Transit-connected",
-      "Street-facing"
-    ]);
-    expect(PREFERENCE_RELATIONSHIPS.Walkable).toHaveLength(2);
+  it("submits selected Qloo labels as Brief constraints without exposing ids", () => {
+    const state = toggleQlooTag(placedForm(), {
+      id: "urn:tag:conversation",
+      label: "Conversation-friendly"
+    });
 
-    const second = adaptivePreferenceTags(["Walkable", "Transit-connected"]);
-    expect(second).toContain("All-weather access");
+    const submission = submitBriefForm(state);
+    expect(submission.ok).toBe(true);
+    if (!submission.ok) return;
+    expect(submission.brief.constraints).toEqual(["Conversation-friendly"]);
+    expect(JSON.stringify(submission.brief)).not.toContain("urn:tag:conversation");
   });
 });
 
@@ -143,31 +146,11 @@ describe("S0 brief form — placement transitions", () => {
 });
 
 describe("S0 brief form — constraints and admired places", () => {
-  it("submits selected adaptive preference phrases as plain strings", () => {
-    let state = placedForm();
-    state = toggleConstraint(state, "Walkable");
-    state = toggleConstraint(state, "Transit-connected");
-
-    const submission = submitBriefForm(state);
-    expect(submission.ok).toBe(true);
-    if (!submission.ok) return;
-    expect(submission.brief.constraints).toEqual([
-      "Walkable",
-      "Transit-connected"
-    ]);
-    expect(submission.brief.constraints).not.toContain("Custom");
-  });
-
   it("omits constraints entirely when no preference is on", () => {
     const submission = submitBriefForm(placedForm());
     expect(submission.ok).toBe(true);
     if (!submission.ok) return;
     expect(submission.brief.constraints).toBeUndefined();
-  });
-
-  it("exposes no hard-coded constraint rectangle list", () => {
-    expect(COMMON_PREFERENCES).not.toContain("Custom");
-    expect(COMMON_PREFERENCES).not.toContain("No late night");
   });
 
   it("keeps admired places to three and supports removal", () => {
@@ -215,11 +198,4 @@ describe("S0 brief form — submission", () => {
     expect(Object.keys(submission.errors).sort()).toEqual(["location", "objective", "site"]);
   });
 
-  it("toggles a preference on and off", () => {
-    let state = placedForm();
-    state = toggleConstraint(state, "No late night");
-    expect(state.selectedConstraints).toEqual(["No late night"]);
-    state = toggleConstraint(state, "No late night");
-    expect(state.selectedConstraints).toEqual([]);
-  });
 });

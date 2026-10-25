@@ -8,19 +8,21 @@
  * Ownership rules:
  *  - The custom brief seeds a Brief only. The frozen Prior is built server-side
  *    by POST /api/runs — this screen never computes or fakes one.
- *  - The browser talks to MapTiler only (geocoding + tiles). NO Qloo calls:
- *    the QLOO key never reaches the bundle (AGENTS §14).
+ *  - The browser talks to MapTiler for geocoding/tiles and to a same-origin
+ *    server route for the bounded Qloo tag preview. The Qloo key never reaches
+ *    the key never reaches the bundle (AGENTS §14).
  *  - createRun failures are rendered verbatim from ApiClientError codes
  *    (runFailure.ts). No run id is ever invented; navigation only happens with
  *    an id the server returned.
  *  - Map/key failures degrade to an honest note (MapPanel); the right column
  *    and the brief path keep working without any map at all.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type { Brief } from "../../shared/brief.js";
 import type { GeocodeSuggestion } from "../lib/geocode.js";
-import { createRun } from "../lib/api.js";
+import { createRun, getQlooTagSuggestions } from "../lib/api.js";
+import type { QlooTagSuggestion } from "../../shared/routes.js";
 import type { MapSite } from "../lib/map.js";
 import type { GeocodeState } from "../screens/s0/AddressSearch.js";
 import { BriefForm } from "../screens/s0/BriefForm.js";
@@ -34,7 +36,7 @@ import {
   selectSuggestion,
   setLocationText,
   submitBriefForm,
-  toggleConstraint,
+  toggleQlooTag,
   type BriefFormErrors,
   type BriefFormState
 } from "../screens/s0/briefFormState.js";
@@ -55,6 +57,8 @@ function readMapApiKey(): string | null {
 }
 
 const MAP_API_KEY = readMapApiKey();
+const QLOO_TAG_DEBOUNCE_MS = 650;
+const QLOO_TAG_UNAVAILABLE = "Qloo-driven tags are unavailable right now. You can continue without them.";
 
 export function HomeRoute() {
   const navigate = useNavigate();
@@ -66,6 +70,10 @@ export function HomeRoute() {
   const [failure, setFailure] = useState<RunFailureView | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [crosshair, setCrosshair] = useState(false);
+  const [qlooTags, setQlooTags] = useState<readonly QlooTagSuggestion[]>([]);
+  const [qlooTagLoading, setQlooTagLoading] = useState(false);
+  const [qlooTagMessage, setQlooTagMessage] = useState<string | null>(null);
+  const qlooRequestSequence = useRef(0);
 
   const emptyMapSites = useMemo<readonly MapSite[]>(() => [], []);
   const placedSite = form.site;
@@ -73,6 +81,62 @@ export function HomeRoute() {
     () => (placedSite === null ? null : { lat: placedSite.lat, lon: placedSite.lon, radiusM: DEFAULT_RADIUS_M }),
     [placedSite]
   );
+
+  useEffect(() => {
+    const site = form.site;
+    const location = form.location.trim();
+    const objective = form.objective.trim();
+    const selectedTagIds = form.selectedQlooTags.map((tag) => tag.id);
+    const requestSequence = qlooRequestSequence.current + 1;
+    qlooRequestSequence.current = requestSequence;
+
+    if (site === null || location === "" || objective.length < 3) {
+      setQlooTags([]);
+      setQlooTagLoading(false);
+      setQlooTagMessage(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    setQlooTags([]);
+    setQlooTagLoading(true);
+    setQlooTagMessage(null);
+
+    const timer = window.setTimeout(() => {
+      void getQlooTagSuggestions(
+        {
+          location,
+          coordinates: { lat: site.lat, lon: site.lon },
+          objective,
+          selectedTagIds
+        },
+        { signal: controller.signal }
+      )
+        .then((result) => {
+          if (qlooRequestSequence.current !== requestSequence) return;
+          setQlooTags(result.tags);
+          setQlooTagMessage(result.message ?? null);
+        })
+        .catch(() => {
+          if (controller.signal.aborted || qlooRequestSequence.current !== requestSequence) return;
+          setQlooTags([]);
+          setQlooTagMessage(QLOO_TAG_UNAVAILABLE);
+        })
+        .finally(() => {
+          if (!controller.signal.aborted && qlooRequestSequence.current === requestSequence) {
+            setQlooTagLoading(false);
+          }
+        });
+    }, QLOO_TAG_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+      if (qlooRequestSequence.current === requestSequence) {
+        qlooRequestSequence.current += 1;
+      }
+    };
+  }, [form.location, form.objective, form.site, form.selectedQlooTags]);
 
   function clearErrors(keys: readonly (keyof BriefFormErrors)[]): void {
     setErrors((current) => {
@@ -196,9 +260,10 @@ export function HomeRoute() {
               onSelectSuggestion={handleSelectSuggestion}
               onGeocodeState={handleGeocodeState}
               onFieldChange={handleFieldChange}
-              onToggleConstraint={(tag: string) => {
-                setForm((current) => toggleConstraint(current, tag));
-              }}
+              qlooTags={qlooTags}
+              qlooTagLoading={qlooTagLoading}
+              qlooTagMessage={qlooTagMessage}
+              onToggleQlooTag={(tag) => setForm((current) => toggleQlooTag(current, tag))}
               onAddAdmired={(name) => setForm((current) => addAdmiredPlace(current, name))}
               onRemoveAdmired={(index) =>
                 setForm((current) => removeAdmiredPlace(current, index))

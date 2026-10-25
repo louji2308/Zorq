@@ -999,6 +999,23 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 
 ## Active Work
 
+- **2026-10-25 user-requested Qloo-driven S0 tags (in progress):** Replaced the
+  local four-seed relationship graph with a server-mediated `POST /api/qloo/tags`
+  preview. The route resolves the Goal through Qloo, asks the typed REST insight
+  boundary for tag signals in the site context, returns at most eight projected
+  suggestions, and never calls the LLM. S0 debounces 650 ms, ignores stale reads,
+  shows honest empty/unavailable states, and renders the small grey
+  **Qloo-driven tags** rail beside the Goal. Selected Qloo ids remain draft-only;
+  only labels enter the submitted Brief constraints. This is a bounded deviation
+  from the original 11-route / no-pre-submit-Qloo S0 contract: the preview is not
+  a run, ledger event, evidence source or Prior replacement. The actual run still
+  freezes the Rapid Router Prior before investigation Qloo calls. Focused proof:
+  Qloo/gateway/preview/server tests green (53), web API/state tests green (34),
+  typecheck/lint/build green. Production Playwright smoke was not usable in this
+  check because its reused port-3000 server returned 404 for static routes; the
+  server-selection issue is environmental and remains to be rerun against the
+  current production server.
+
 - **2026-10-19 S0 static adaptive preferences (`2947ea1`):** Removed the first-page
   "Try a site" section and preset activation path from the landing UI; the map remains
   the left subject and the custom brief remains the entry path. The shell is now fixed to

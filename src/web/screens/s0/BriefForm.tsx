@@ -11,12 +11,12 @@ import { AddressSearch, type GeocodeState } from "./AddressSearch.js";
 import {
   MAX_ADMIRED_PLACES,
   MAX_OBJECTIVE_CHARS,
-  adaptivePreferenceTags,
-  isAdaptivePreference,
   type BriefFormErrors,
-  type BriefFormState
+  type BriefFormState,
+  type SelectedQlooTag
 } from "./briefFormState.js";
 import type { GeocodeSuggestion } from "../../lib/geocode.js";
+import type { QlooTagSuggestion } from "../../../shared/routes.js";
 
 export interface BriefFormProps {
   form: BriefFormState;
@@ -28,7 +28,10 @@ export interface BriefFormProps {
   onSelectSuggestion: (suggestion: GeocodeSuggestion) => void;
   onGeocodeState: (state: GeocodeState) => void;
   onFieldChange: (patch: Partial<BriefFormState>) => void;
-  onToggleConstraint: (tag: string) => void;
+  qlooTags: readonly QlooTagSuggestion[];
+  qlooTagLoading: boolean;
+  qlooTagMessage: string | null;
+  onToggleQlooTag: (tag: SelectedQlooTag) => void;
   onAddAdmired: (name: string) => void;
   onRemoveAdmired: (index: number) => void;
   onSubmit: () => void;
@@ -49,7 +52,10 @@ export function BriefForm(props: BriefFormProps) {
     onSelectSuggestion,
     onGeocodeState,
     onFieldChange,
-    onToggleConstraint,
+    qlooTags,
+    qlooTagLoading,
+    qlooTagMessage,
+    onToggleQlooTag,
     onAddAdmired,
     onRemoveAdmired,
     onSubmit
@@ -64,7 +70,15 @@ export function BriefForm(props: BriefFormProps) {
   const areaError = fieldError(errors, "area");
   const objectiveError = fieldError(errors, "objective");
   const admiredError = fieldError(errors, "admiredPlaces");
-  const preferenceTags = adaptivePreferenceTags(form.selectedConstraints);
+  const selectedQlooTags = form.selectedQlooTags.map((tag) => ({
+    ...tag,
+    source: "qloo" as const,
+    score: null
+  }));
+  const visibleQlooTags = [
+    ...selectedQlooTags,
+    ...qlooTags.filter((tag) => !form.selectedQlooTags.some((selected) => selected.id === tag.id))
+  ];
 
   function commitAdmired(): void {
     if (admiredDraft.trim() === "") return;
@@ -159,26 +173,25 @@ export function BriefForm(props: BriefFormProps) {
             </div>
           </div>
 
-          <fieldset className="s0-fieldset" aria-describedby="s0-preferences-note">
-            <legend className="s0-label">Preferences</legend>
-            <p className="s0-preferences-note" id="s0-preferences-note">
-              Choose what matters. Related suggestions appear instantly; Qloo resolves and
-              measures the selected phrases when the investigation runs.
+          <fieldset className="s0-fieldset" aria-describedby="s0-qloo-tags-note">
+            <legend className="s0-label s0-qloo-tags-label">Qloo-driven tags</legend>
+            <p className="s0-preferences-note" id="s0-qloo-tags-note">
+              Qloo reads the goal and site context to suggest related cultural signals.
+              {qlooTagLoading ? " Reading the signal…" : ""}
             </p>
-            <div className="s0-chips" aria-label="Adaptive preferences">
-              {preferenceTags.map((tag) => {
-                const selected = form.selectedConstraints.includes(tag);
-                const adaptive = isAdaptivePreference(tag);
+            <div className="s0-chips s0-qloo-tags-list" aria-label="Qloo-driven tags">
+              {visibleQlooTags.map((tag) => {
+                const selected = form.selectedQlooTags.some((value) => value.id === tag.id);
                 return (
                   <button
-                    key={tag}
+                    key={tag.id}
                     type="button"
-                    className={`s0-chip${selected ? " is-selected" : ""}${adaptive ? " is-adaptive" : ""}`}
+                    className={`s0-chip s0-qloo-tag${selected ? " is-selected" : ""}`}
                     aria-pressed={selected}
-                    aria-label={`${tag}${selected ? ", selected; activate to remove" : ""}`}
-                    onClick={() => onToggleConstraint(tag)}
+                    aria-label={`${tag.label}${selected ? ", selected; activate to remove" : ""}`}
+                    onClick={() => onToggleQlooTag({ id: tag.id, label: tag.label })}
                   >
-                    <span>{tag}</span>
+                    <span>{tag.label}</span>
                     {selected && (
                       <span className="s0-chip-remove" aria-hidden="true">
                         ×
@@ -188,6 +201,7 @@ export function BriefForm(props: BriefFormProps) {
                 );
               })}
             </div>
+            {qlooTagMessage && <p className="s0-qloo-tags-note">{qlooTagMessage}</p>}
           </fieldset>
 
           <fieldset className="s0-fieldset">

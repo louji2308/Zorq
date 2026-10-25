@@ -1,6 +1,6 @@
 /*
- * MapTiler forward geocoding for the S0 address search (no Qloo involved —
- * Product Spec §7 S0: "Agent/Qloo here: none until submit").
+ * MapTiler forward geocoding for the S0 address search. Cultural tag preview
+ * stays in the separate same-origin Qloo route; this helper only places sites.
  *
  * Endpoint (verified against MapTiler docs 2026-10-10 and live traffic):
  *   GET https://api.maptiler.com/geocoding/{query}.json?key=KEY&limit=N&language=en

@@ -8,6 +8,7 @@ import {
   createRun,
   getBlueprint,
   getRun,
+  getQlooTagSuggestions,
   stopRun
 } from "../../src/web/lib/api.js";
 
@@ -69,6 +70,52 @@ function expectApiClientError(promise: Promise<unknown>): Promise<ApiClientError
 }
 
 describe("api client", () => {
+  it("getQlooTagSuggestions posts the preview request and returns validated tags", async () => {
+    const { fetchImpl, calls } = fakeFetch(async () =>
+      jsonResponse({
+        status: "ok",
+        tags: [{ id: "urn:tag:conversation", label: "Conversation-friendly", score: 0.82, source: "qloo" }]
+      })
+    );
+
+    const response = await getQlooTagSuggestions(
+      {
+        location: "Lisbon, Portugal",
+        coordinates: { lat: 38.7223, lon: -9.1393 },
+        objective: "A daytime cultural corner",
+        selectedTagIds: ["urn:tag:local"]
+      },
+      { fetchImpl }
+    );
+
+    expect(response.status).toBe("ok");
+    expect(calls[0]?.url).toBe("/api/qloo/tags");
+    expect(calls[0]?.init?.method).toBe("POST");
+    expect(calls[0]?.init?.headers).toEqual({ "content-type": "application/json" });
+    expect(calls[0]?.init?.body).toBe(
+      JSON.stringify({
+        location: "Lisbon, Portugal",
+        coordinates: { lat: 38.7223, lon: -9.1393 },
+        objective: "A daytime cultural corner",
+        selectedTagIds: ["urn:tag:local"]
+      })
+    );
+  });
+
+  it("getQlooTagSuggestions rejects a malformed successful response", async () => {
+    const { fetchImpl } = fakeFetch(async () => jsonResponse({ status: "ok", tags: [{ id: "missing-label" }] }));
+
+    const error = await expectApiClientError(
+      getQlooTagSuggestions(
+        { location: "Lisbon, Portugal", objective: "A daytime cultural corner" },
+        { fetchImpl }
+      )
+    );
+
+    expect(error.code).toBe("INVALID_RESPONSE");
+    expect(error.status).toBe(200);
+  });
+
   it("createRun posts the brief as JSON and returns the validated created run", async () => {
     const { fetchImpl, calls } = fakeFetch(async () =>
       jsonResponse({ run: TEST_CREATED_RUN }, 201)

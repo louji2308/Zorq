@@ -27,7 +27,8 @@ Eleven responsibility domains (named verbatim by `IMPLEMENTATION_PLAN.md` Phase 
 │  │  └─ state/                           Zustand projection of `Run` (a view, not a source of truth)
 │  ├─ server/                  [backend]   Express + TypeScript API host: app wiring, middleware
 │  │  │                                    (Helmet, per-IP rate limit, Zod validation, typed errors),
-│  │  │                                    route registration for exactly the 11 routes (§3), Pino logs.
+│  │  │                                    route registration for the locked run routes plus the bounded S0 Qloo
+│  │  │                                    tag preview (§3), Pino logs.
 │  │  ├─ routes/                          one module per §3 route — HTTP shape only, no domain logic
 │  │  ├─ agent/         [agent]           one bounded Rapid Router-routed LLM controller: Prior, anchor
 │  │  │                                    selection, probe/mutation choice, stress emphasis, naming,
@@ -124,7 +125,7 @@ Run
 
 ## 3. API Surface
 
-**Exactly one API family: the 11 routes below** (locked by `ProjectSpec/IMPLEMENTATION_PLAN.md` Phase 1 → "API surface", repeated verbatim at Phase 10 → 10.3). No other HTTP endpoint exists or may be added without amending the plan.
+**Exactly one API family: the locked run routes plus one bounded S0 preview route below.** The preview route is a user-requested, explicitly recorded deviation from the original 11-route plan; it does not create runs, persist evidence, or replace the locked run API.
 
 ### 3.0 Shared error model (applies to every route)
 
@@ -148,7 +149,7 @@ Phase 2 implements this as the "typed error model" (`IMPLEMENTATION_PLAN.md` Pha
 | `SERVICE_UNAVAILABLE` | 503 | Required configuration absent / dependency check failed (Phase 2 gate: "fails clearly when required configuration is absent"). |
 | `INTERNAL` | 500 | Unexpected; logged with `requestId`, never leaks secrets. |
 
-Security baseline for **all** routes: Helmet; per-IP `express-rate-limit` (numeric limits are Phase 2 config recorded in `IMPLEMENTATION_STATE.md`; mutating routes use the stricter class); Zod validation at the boundary; `QLOO_API_KEY`/`RAPIDROUTER_API_KEY`/Turso credentials server-side only; **Qloo is never called from the browser**; responses and SSE events never contain keys or raw Qloo payloads (field projection first) — `ProjectSpec/Architecture.md` §21, `Tools_and_Requirements.md` §12.
+Security baseline for **all** routes: Helmet; per-IP `express-rate-limit` (numeric limits are Phase 2 config recorded in `IMPLEMENTATION_STATE.md`; mutating routes use the stricter class); Zod validation at the boundary; `QLOO_API_KEY`/`RAPIDROUTER_API_KEY`/Turso credentials server-side only; **the browser never calls Qloo directly** (the S0 preview is same-origin and server-mediated); responses and SSE events never contain keys or raw Qloo payloads (field projection first) — `ProjectSpec/Architecture.md` §21, `Tools_and_Requirements.md` §12.
 
 ---
 
@@ -161,6 +162,17 @@ Security baseline for **all** routes: Helmet; per-IP `express-rate-limit` (numer
 | Errors | `503 SERVICE_UNAVAILABLE` with the shared error body when required configuration is absent or a critical dependency check fails. |
 | Security | Public (scheduled GitHub Actions warm-up pings it every ~10 min: Tools §18, Architecture §22); still rate-limited; payload must be provably free of key material. |
 | Tests | Returns 200 with empty checks when config present; returns 503 (and clear message) with a required env var removed; assertion that no value from `.env` appears in the body; CI smoke against the deployed app (Phase 2 gate). |
+
+### 3.1a `POST /api/qloo/tags` — bounded S0 preview
+
+| Field | Contract |
+|---|---|
+| Request | `{ location: string, coordinates?: { lat: number, lon: number }, objective: string, selectedTagIds?: string[] }`; all fields are Zod-bounded. |
+| Response `200` | `{ status: "ok" | "empty" | "degraded", tags: [{ id, label, score, source: "qloo" }], message?: string }`; at most eight projected suggestions. |
+| Behavior | The server resolves the objective through Qloo, combines those signals with selected draft Qloo ids, asks the REST insight boundary for tag signals in the site context, then deterministically deduplicates, excludes selected ids, sorts by returned score and caps the result. |
+| Security | Same-origin only; `QLOO_API_KEY` remains server-only; no LLM call, run state, ledger event, evidence record or raw Qloo payload crosses the route. Existing rate limits apply. |
+| Failure | Missing gateway/configuration returns typed `503`; upstream Qloo failures remain typed dependency errors; empty/degraded Qloo states never fall back to hardcoded tags. |
+| Invariant | This is a preview deviation for S0 only. `POST /api/runs` still freezes the Rapid Router Prior before any investigation Qloo call, and submitted labels are resolved again by the canonical run path. |
 
 ### 3.2 `POST /api/runs`
 
@@ -321,7 +333,7 @@ From `IMPLEMENTATION_PLAN.md` Phase 1 → "UI contract" and `Product Specificati
 
 | Route | Screen(s) | Contract |
 |---|---|---|
-| `/` | S0 Brief | One-click entry: presets (2 Qloo-divergent + 1 honest control), brief card (address/place, sq ft, goal ≤200 chars, constraint chips, up to 3 admired places), CTA "Investigate this site". **No Qloo cultural calls before the Prior** — autocomplete `/search` only (Product Spec §7 S0; Architecture §16). |
+| `/` | S0 Brief | One-click entry: presets (2 Qloo-divergent + 1 honest control), brief card (address/place, sq ft, goal ≤200 chars, compact Qloo-driven tag preview, up to 3 admired places), CTA "Investigate this site". The preview is same-origin and bounded; **the actual run still makes no investigation Qloo call before the Prior is locked** (Product Spec §7 S0; Architecture §16). |
 | `/run/:id` | views `investigate` \| `compositions` \| `graph` \| `stress` \| `blueprint` (S1–S5) | Single workspace; tabs unlock as phases complete; browser back returns to previous view while the run continues; no dead ends — every view has a forward action and "New brief" (Product Spec §6). |
 | `/run/:id/blueprint` | read-only shareable snapshot | Stands alone as a decision artifact with the same provenance/evidence language; expired → honest "snapshot expired" + same-brief rerun (Architecture §16; Product Spec §15). |
 | `/method` | method page | Exactly what Qloo measures, what Zorq computes, what the LLM generates, heuristics, formulas, examples, known limits, evidence vs inference (Architecture §16; served by §3.11). |
