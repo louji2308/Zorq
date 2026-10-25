@@ -117,6 +117,70 @@ describe("buildQlooTagSuggestions", () => {
     expect(qloo.insights).not.toHaveBeenCalled();
   });
 
+  it("retries a natural-language objective with bounded Qloo query fragments", async () => {
+    const resolveTags = vi.fn(async ({ query }: { query: string }) => {
+      if (query !== "daytime") {
+        return {
+          status: "empty" as const,
+          operation: "resolveTags" as const,
+          transport: "rest" as const,
+          cache: "live" as const,
+          resultCount: 0,
+          results: { tags: [] },
+          provenance: {
+            transport: "rest" as const,
+            operation: "resolveTags" as const,
+            endpoint: "fake://qloo",
+            durationMs: 1
+          }
+        };
+      }
+      return {
+        status: "ok" as const,
+        operation: "resolveTags" as const,
+        transport: "rest" as const,
+        cache: "live" as const,
+        resultCount: 1,
+        results: { tags: [{ id: "t-daytime", name: "Daytime" }] },
+        provenance: {
+          transport: "rest" as const,
+          operation: "resolveTags" as const,
+          endpoint: "fake://qloo",
+          durationMs: 1
+        }
+      };
+    });
+    const insights = vi.fn(async () => ({
+      status: "ok" as const,
+      operation: "insights" as const,
+      transport: "rest" as const,
+      cache: "live" as const,
+      resultCount: 1,
+      results: { tags: [{ id: "t-cultural", name: "Cultural", score: 0.81 }] },
+      provenance: { transport: "rest" as const, operation: "insights" as const, endpoint: "fake://qloo", durationMs: 1 }
+    }));
+
+    const result = await buildQlooTagSuggestions(gateway({ resolveTags, insights }), {
+      ...REQUEST,
+      selectedTagIds: []
+    });
+
+    expect(resolveTags.mock.calls.map(([request]) => request.query)).toEqual([
+      "A daytime cultural corner",
+      "daytime cultural corner",
+      "daytime",
+      "cultural"
+    ]);
+    expect(insights).toHaveBeenCalledWith(
+      expect.objectContaining({ signalTags: ["t-daytime"], signalLocation: REQUEST.location }),
+      { transport: "rest" }
+    );
+    expect(result).toEqual({
+      status: "ok",
+      tags: [{ id: "t-cultural", label: "Cultural", score: 0.81, source: "qloo" }]
+    });
+  });
+
   it("preserves a degraded Qloo state instead of inventing suggestions", async () => {
     const qloo = gateway({
       insights: vi.fn(async () => ({

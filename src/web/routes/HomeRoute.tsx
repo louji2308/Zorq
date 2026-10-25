@@ -29,6 +29,7 @@ import { BriefForm } from "../screens/s0/BriefForm.js";
 import { MapPanel } from "../screens/s0/MapPanel.js";
 import {
   DEFAULT_RADIUS_M,
+  mergeQlooTagSuggestions,
   addAdmiredPlace,
   emptyBriefForm,
   pickSiteOnMap,
@@ -71,9 +72,12 @@ export function HomeRoute() {
   const [submitting, setSubmitting] = useState(false);
   const [crosshair, setCrosshair] = useState(false);
   const [qlooTags, setQlooTags] = useState<readonly QlooTagSuggestion[]>([]);
+  const [qlooTagNewIds, setQlooTagNewIds] = useState<readonly string[]>([]);
   const [qlooTagLoading, setQlooTagLoading] = useState(false);
   const [qlooTagMessage, setQlooTagMessage] = useState<string | null>(null);
   const qlooRequestSequence = useRef(0);
+  const qlooTagsRef = useRef<readonly QlooTagSuggestion[]>([]);
+  const qlooTagSiteKey = useRef<string | null>(null);
 
   const emptyMapSites = useMemo<readonly MapSite[]>(() => [], []);
   const placedSite = form.site;
@@ -87,18 +91,24 @@ export function HomeRoute() {
     const location = form.location.trim();
     const objective = form.objective.trim();
     const selectedTagIds = form.selectedQlooTags.map((tag) => tag.id);
+    const siteKey = site === null ? null : `${site.lat}:${site.lon}`;
     const requestSequence = qlooRequestSequence.current + 1;
     qlooRequestSequence.current = requestSequence;
 
-    if (site === null || location === "" || objective.length < 3) {
+    if (qlooTagSiteKey.current !== siteKey) {
+      qlooTagSiteKey.current = siteKey;
+      qlooTagsRef.current = [];
       setQlooTags([]);
+      setQlooTagNewIds([]);
+    }
+
+    if (site === null || location === "" || objective.length < 3) {
       setQlooTagLoading(false);
       setQlooTagMessage(null);
       return;
     }
 
     const controller = new AbortController();
-    setQlooTags([]);
     setQlooTagLoading(true);
     setQlooTagMessage(null);
 
@@ -114,13 +124,17 @@ export function HomeRoute() {
       )
         .then((result) => {
           if (qlooRequestSequence.current !== requestSequence) return;
-          setQlooTags(result.tags);
-          setQlooTagMessage(result.message ?? null);
+          const merged = mergeQlooTagSuggestions(qlooTagsRef.current, result.tags);
+          qlooTagsRef.current = merged.tags;
+          setQlooTags(merged.tags);
+          setQlooTagNewIds((currentIds) => [...new Set([...currentIds, ...merged.addedIds])]);
+          setQlooTagMessage(merged.tags.length === 0 ? result.message ?? null : null);
         })
         .catch(() => {
           if (controller.signal.aborted || qlooRequestSequence.current !== requestSequence) return;
-          setQlooTags([]);
-          setQlooTagMessage(QLOO_TAG_UNAVAILABLE);
+          setQlooTagMessage((current) =>
+            qlooTagsRef.current.length === 0 ? QLOO_TAG_UNAVAILABLE : current
+          );
         })
         .finally(() => {
           if (!controller.signal.aborted && qlooRequestSequence.current === requestSequence) {
@@ -261,6 +275,7 @@ export function HomeRoute() {
               onGeocodeState={handleGeocodeState}
               onFieldChange={handleFieldChange}
               qlooTags={qlooTags}
+              qlooTagNewIds={qlooTagNewIds}
               qlooTagLoading={qlooTagLoading}
               qlooTagMessage={qlooTagMessage}
               onToggleQlooTag={(tag) => setForm((current) => toggleQlooTag(current, tag))}

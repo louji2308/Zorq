@@ -13,6 +13,7 @@ import {
   DEFAULT_RADIUS_M,
   MAX_ADMIRED_PLACES,
   MAX_OBJECTIVE_CHARS,
+  mergeQlooTagSuggestions,
   addAdmiredPlace,
   emptyBriefForm,
   pickSiteOnMap,
@@ -79,6 +80,23 @@ describe("S0 brief form — validation", () => {
 });
 
 describe("S0 Qloo-driven tags", () => {
+  it("keeps existing suggestions and appends only new ids or labels", () => {
+    const existing = [
+      { id: "urn:tag:daytime", label: "Daytime", score: 0.9, source: "qloo" as const },
+      { id: "urn:tag:local", label: "Local", score: 0.8, source: "qloo" as const }
+    ];
+    const incoming = [
+      { id: "urn:tag:daytime", label: "Daytime updated", score: 0.95, source: "qloo" as const },
+      { id: "urn:tag:duplicate-label", label: " local ", score: 0.85, source: "qloo" as const },
+      { id: "urn:tag:creative", label: "Creative", score: 0.82, source: "qloo" as const }
+    ];
+
+    expect(mergeQlooTagSuggestions(existing, incoming)).toEqual({
+      tags: [...existing, incoming[2]],
+      addedIds: ["urn:tag:creative"]
+    });
+  });
+
   it("selects and removes draft-only Qloo tags by id", () => {
     let state = placedForm();
     const tag = { id: "urn:tag:conversation", label: "Conversation-friendly" };

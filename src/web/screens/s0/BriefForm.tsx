@@ -11,6 +11,7 @@ import { AddressSearch, type GeocodeState } from "./AddressSearch.js";
 import {
   MAX_ADMIRED_PLACES,
   MAX_OBJECTIVE_CHARS,
+  QLOO_TAG_STAGGER_MS,
   type BriefFormErrors,
   type BriefFormState,
   type SelectedQlooTag
@@ -29,6 +30,7 @@ export interface BriefFormProps {
   onGeocodeState: (state: GeocodeState) => void;
   onFieldChange: (patch: Partial<BriefFormState>) => void;
   qlooTags: readonly QlooTagSuggestion[];
+  qlooTagNewIds: readonly string[];
   qlooTagLoading: boolean;
   qlooTagMessage: string | null;
   onToggleQlooTag: (tag: SelectedQlooTag) => void;
@@ -53,6 +55,7 @@ export function BriefForm(props: BriefFormProps) {
     onGeocodeState,
     onFieldChange,
     qlooTags,
+    qlooTagNewIds,
     qlooTagLoading,
     qlooTagMessage,
     onToggleQlooTag,
@@ -79,6 +82,7 @@ export function BriefForm(props: BriefFormProps) {
     ...selectedQlooTags,
     ...qlooTags.filter((tag) => !form.selectedQlooTags.some((selected) => selected.id === tag.id))
   ];
+  const qlooTagNewIndexes = new Map(qlooTagNewIds.map((id, index) => [id, index]));
 
   function commitAdmired(): void {
     if (admiredDraft.trim() === "") return;
@@ -182,11 +186,19 @@ export function BriefForm(props: BriefFormProps) {
             <div className="s0-chips s0-qloo-tags-list" aria-label="Qloo-driven tags">
               {visibleQlooTags.map((tag) => {
                 const selected = form.selectedQlooTags.some((value) => value.id === tag.id);
+                const newIndex = qlooTagNewIndexes.get(tag.id);
                 return (
                   <button
                     key={tag.id}
                     type="button"
-                    className={`s0-chip s0-qloo-tag${selected ? " is-selected" : ""}`}
+                    className={`s0-chip s0-qloo-tag${selected ? " is-selected" : ""}${
+                      newIndex === undefined ? "" : " is-new"
+                    }`}
+                    style={
+                      newIndex === undefined
+                        ? undefined
+                        : { animationDelay: `${newIndex * QLOO_TAG_STAGGER_MS}ms` }
+                    }
                     aria-pressed={selected}
                     aria-label={`${tag.label}${selected ? ", selected; activate to remove" : ""}`}
                     onClick={() => onToggleQlooTag({ id: tag.id, label: tag.label })}

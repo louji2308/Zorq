@@ -9,6 +9,7 @@
  * capped at 200 characters.
  */
 import type { Brief } from "../../../shared/brief.js";
+import type { QlooTagSuggestion } from "../../../shared/routes.js";
 
 export interface SelectedQlooTag {
   readonly id: string;
@@ -24,6 +25,8 @@ export interface SitePoint {
 export const MAX_OBJECTIVE_CHARS = 200;
 export const MAX_ADMIRED_PLACES = 3;
 export const MAX_SELECTED_QLOO_TAGS = 6;
+export const MAX_QLOO_TAG_SUGGESTIONS = 12;
+export const QLOO_TAG_STAGGER_MS = 36;
 /** Search radius (metres) attached to custom briefs so S0/S1 can draw the ring. */
 export const DEFAULT_RADIUS_M = 400;
 
@@ -38,6 +41,36 @@ export interface BriefFormState {
   objective: string;
   selectedQlooTags: readonly SelectedQlooTag[];
   admiredPlaces: readonly string[];
+}
+
+export interface MergedQlooTagSuggestions {
+  readonly tags: readonly QlooTagSuggestion[];
+  readonly addedIds: readonly string[];
+}
+
+/** Keep the rail stable while a new Qloo response contributes only new signals. */
+export function mergeQlooTagSuggestions(
+  existing: readonly QlooTagSuggestion[],
+  incoming: readonly QlooTagSuggestion[]
+): MergedQlooTagSuggestions {
+  const tags = [...existing].slice(0, MAX_QLOO_TAG_SUGGESTIONS);
+  const ids = new Set(tags.map((tag) => tag.id));
+  const labels = new Set(tags.map((tag) => tag.label.trim().toLocaleLowerCase()));
+  const addedIds: string[] = [];
+
+  for (const tag of incoming) {
+    const id = tag.id.trim();
+    const label = tag.label.trim();
+    const normalizedLabel = label.toLocaleLowerCase();
+    if (id === "" || label === "" || ids.has(id) || labels.has(normalizedLabel)) continue;
+    if (tags.length >= MAX_QLOO_TAG_SUGGESTIONS) break;
+    tags.push(tag);
+    ids.add(id);
+    labels.add(normalizedLabel);
+    addedIds.push(id);
+  }
+
+  return { tags, addedIds };
 }
 
 export interface BriefFormErrors {

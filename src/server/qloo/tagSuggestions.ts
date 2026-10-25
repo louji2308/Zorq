@@ -6,6 +6,69 @@ import type { QlooGateway } from "./gateway.js";
 
 const EMPTY_MESSAGE = "Qloo found no cultural signals for this goal yet.";
 const DEGRADED_MESSAGE = "Qloo could not complete the tag read. You can continue without adaptive tags.";
+const MAX_OBJECTIVE_TAG_QUERIES = 4;
+const OBJECTIVE_STOP_WORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "are",
+  "as",
+  "at",
+  "because",
+  "both",
+  "by",
+  "can",
+  "does",
+  "exist",
+  "feel",
+  "for",
+  "from",
+  "in",
+  "into",
+  "is",
+  "of",
+  "on",
+  "or",
+  "should",
+  "so",
+  "that",
+  "the",
+  "their",
+  "them",
+  "they",
+  "this",
+  "to",
+  "together",
+  "want",
+  "where",
+  "while",
+  "with",
+  "would"
+]);
+
+function unique(values: readonly string[]): string[] {
+  return [...new Set(values.map((value) => value.trim()).filter((value) => value !== ""))];
+}
+
+function buildObjectiveTagQueries(objective: string): string[] {
+  const normalizedObjective = objective.trim().replace(/\s+/g, " ");
+  if (normalizedObjective === "") return [];
+
+  const queries = [normalizedObjective];
+  const fragments = normalizedObjective
+    .split(/[,;:!?]+|\b(?:and|or|with|where|while|because|so|that)\b/gi)
+    .map((fragment) => fragment.trim().replace(/^(?:a|an|the)\s+/i, ""))
+    .filter((fragment) => fragment !== "" && fragment !== normalizedObjective);
+  queries.push(...fragments);
+
+  const contentWords = normalizedObjective
+    .replace(/[^\p{L}\p{N}-]+/gu, " ")
+    .split(/\s+/)
+    .filter((word) => word.length >= 4 && !OBJECTIVE_STOP_WORDS.has(word.toLocaleLowerCase()));
+  queries.push(...contentWords);
+
+  return unique(queries).slice(0, MAX_OBJECTIVE_TAG_QUERIES);
+}
 
 function normalized(value: string): string {
   return value.trim().toLocaleLowerCase();
@@ -15,21 +78,28 @@ export async function buildQlooTagSuggestions(
   gateway: QlooGateway,
   request: QlooTagSuggestionsRequest
 ): Promise<QlooTagSuggestionsResponse> {
-  const resolved = await gateway.resolveTags(
-    { query: request.objective, take: 6 },
-    { transport: "rest" }
-  );
-  const objectiveSignalIds = resolved.results.tags.map((tag) => tag.id).filter((id) => id.trim() !== "");
+  const objectiveSignalIds: string[] = [];
+  let resolutionDegraded = false;
+  for (const query of buildObjectiveTagQueries(request.objective)) {
+    const resolved = await gateway.resolveTags({ query, take: 6 }, { transport: "rest" });
+    if (resolved.status === "degraded" || resolved.status === "needs_input" || resolved.status === "partial") {
+      resolutionDegraded = true;
+    }
+    for (const tag of resolved.results.tags) {
+      const id = tag.id.trim();
+      if (id !== "" && !objectiveSignalIds.includes(id)) {
+        objectiveSignalIds.push(id);
+      }
+    }
+    if (objectiveSignalIds.length >= 10) break;
+  }
   const signalTags = [...new Set([...request.selectedTagIds, ...objectiveSignalIds])].slice(0, 10);
 
   if (signalTags.length === 0) {
-    return { status: "empty", tags: [], message: EMPTY_MESSAGE };
-  }
-
-  if (resolved.status === "degraded" || resolved.status === "needs_input") {
-    if (request.selectedTagIds.length === 0) {
+    if (resolutionDegraded && request.selectedTagIds.length === 0) {
       return { status: "degraded", tags: [], message: DEGRADED_MESSAGE };
     }
+    return { status: "empty", tags: [], message: EMPTY_MESSAGE };
   }
 
   const insights = await gateway.insights(

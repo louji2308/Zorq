@@ -364,6 +364,27 @@
   font-weight: var(--zq-weight-strong);
 }
 
+@keyframes s0-qloo-tag-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.s0-qloo-tag.is-new {
+  animation: s0-qloo-tag-fade-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .s0-qloo-tag.is-new {
+    animation: none;
+  }
+}
+
 .s0-qloo-tags-note {
   font-size: var(--zq-text-micro);
   color: var(--zq-ink-450);

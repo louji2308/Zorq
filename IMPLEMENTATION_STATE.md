@@ -3015,3 +3015,25 @@ remaining local smoke failures are environmental: without `.env`, the app return
 expects `DEPENDENCY_UNAVAILABLE`; with `.env` present, local production boot attempts the configured
 Turso connection and the restricted environment reports `fetch failed`. No production behavior was
 weakened to hide either condition.
+
+### 2026-10-25 — Qloo tag preview reliability and incremental rail
+
+The initial `Qloo-driven tags` preview failure was reproduced as a server-side `502
+DEPENDENCY_UNAVAILABLE` with `Qloo request failed for /v2/tags: fetch failed`. The running dev
+server had been launched inside the restricted shell, while an elevated direct Qloo request
+returned `401` without a key and `200` with the configured server-side key. Restarting the backend
+with outbound access restored the real route; `POST /api/qloo/tags` for the preset-style goal
+`A daytime cultural corner` now returns `200` with eight Qloo tags.
+
+Qloo `/v2/tags` also returns no signals for many full natural-language sentences, so the preview
+now tries the full goal plus at most three deterministic fragments/content words. It never invents
+tags or calls the LLM. The S0 rail preserves existing suggestions while a new preview is loading,
+appends only new Qloo ids/labels (case-insensitive label dedupe), caps accumulated suggestions at
+12, and resets only when the placed site changes. Newly appended chips use a 220 ms fade-in with
+36 ms staggering and respect `prefers-reduced-motion`.
+
+Evidence observed: the new fragment-resolution test was red before implementation and green after;
+the incremental merge test was red before implementation and green after; focused Qloo/web tests
+39/39 passed; full unit suite 772 passed / 6 skipped across 76 files; typecheck, lint, and build
+passed. The existing smoke command still has three unrelated 404 failures when it reuses the
+development API-only port-3000 server; its healthz and POST contract tests passed (2/5).
