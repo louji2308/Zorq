@@ -2249,6 +2249,9 @@ verification must be repeated when the server dependency/network path is availab
 
 ## Last Verified Commit
 
+`f682eb1` — **accumulate Qloo tag suggestions** (2026-10-25; Qloo fragment-resolution
+regression, incremental merge regression, full 772-pass unit suite / 6 skips, typecheck,
+lint, build, and live `/api/qloo/tags` response verified). Previous verified commit is
 `2947ea1` — **make S0 preferences adaptive and viewport locked** (2026-10-19; focused
 adaptive tests, full regression, typecheck, lint, build, layout browser geometry, and
 controlled adaptive-state browser pass green). Previous verified commit is `d54a2f8` —
