@@ -9,6 +9,8 @@ import {
   getRunRequestSchema,
   healthzResponseSchema,
   methodResponseSchema,
+  qlooTagSuggestionsRequestSchema,
+  qlooTagSuggestionsResponseSchema,
   postRunsRequestSchema,
   postRunsResponseSchema,
   recomputeRequestSchema,
@@ -65,6 +67,35 @@ interface SchemaCase {
 }
 
 const cases: SchemaCase[] = [
+  {
+    route: "POST /api/qloo/tags",
+    request: {
+      schema: qlooTagSuggestionsRequestSchema,
+      valid: {
+        location: "Lisbon, Portugal",
+        coordinates: { lat: 38.7223, lon: -9.1393 },
+        objective: "A daytime cultural corner",
+        selectedTagIds: ["tag-1"]
+      },
+      invalid: { location: "Lisbon, Portugal", objective: "" }
+    },
+    response: {
+      schema: qlooTagSuggestionsResponseSchema,
+      valid: {
+        status: "ok",
+        tags: [{ id: "tag-2", label: "Conversation-friendly", score: 0.82, source: "qloo" }]
+      },
+      invalid: {
+        status: "ok",
+        tags: Array.from({ length: 9 }, (_, index) => ({
+          id: `tag-${index}`,
+          label: `Tag ${index}`,
+          score: 0.5,
+          source: "qloo"
+        }))
+      }
+    }
+  },
   {
     route: "GET /healthz",
     response: {
@@ -381,9 +412,9 @@ const cases: SchemaCase[] = [
 ];
 
 describe("route schemas (ARCHITECTURE.md §3)", () => {
-  it("covers all 11 documented routes", () => {
-    expect(cases).toHaveLength(11);
-    expect(new Set(cases.map((entry) => entry.route)).size).toBe(11);
+  it("covers all 12 documented routes", () => {
+    expect(cases).toHaveLength(12);
+    expect(new Set(cases.map((entry) => entry.route)).size).toBe(12);
   });
 
   for (const testCase of cases) {

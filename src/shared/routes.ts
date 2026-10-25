@@ -29,6 +29,37 @@ export const postRunsResponseSchema = z.object({
 
 export type PostRunsResponse = z.infer<typeof postRunsResponseSchema>;
 
+export const qlooTagSuggestionsRequestSchema = z.object({
+  location: z.string().trim().min(1).max(200),
+  coordinates: z
+    .object({
+      lat: z.number().min(-90).max(90),
+      lon: z.number().min(-180).max(180)
+    })
+    .optional(),
+  objective: z.string().trim().min(1).max(200),
+  selectedTagIds: z.array(z.string().trim().min(1).max(300)).max(6).default([])
+});
+
+export type QlooTagSuggestionsRequest = z.infer<typeof qlooTagSuggestionsRequestSchema>;
+
+export const qlooTagSuggestionSchema = z.object({
+  id: z.string().trim().min(1).max(300),
+  label: z.string().trim().min(1).max(200),
+  score: z.number().finite().nullable(),
+  source: z.literal("qloo")
+});
+
+export type QlooTagSuggestion = z.infer<typeof qlooTagSuggestionSchema>;
+
+export const qlooTagSuggestionsResponseSchema = z.object({
+  status: z.enum(["ok", "empty", "degraded"]),
+  tags: z.array(qlooTagSuggestionSchema).max(8),
+  message: z.string().trim().min(1).max(200).optional()
+});
+
+export type QlooTagSuggestionsResponse = z.infer<typeof qlooTagSuggestionsResponseSchema>;
+
 export const getRunRequestSchema = z.object({
   params: runIdParamsSchema
 });
