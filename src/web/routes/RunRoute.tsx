@@ -21,7 +21,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ApiClientError, challengeRun, getRun } from "../lib/api.js";
+import { ApiClientError, challengeRun, getRun, retryRun } from "../lib/api.js";
 import { createRunEventStream, type RunStreamHandle } from "../lib/sse.js";
 import { useRunStore } from "../store/runStore.js";
 import { DnaStrip } from "../screens/s1/DnaStrip.js";
@@ -35,13 +35,16 @@ import {
   describeLoadFailure,
   describeRunStatus,
   describeStreamNotice,
+  buildRunRecoveryModel,
   hasCompositions,
   heatFromRun,
   isRunActive,
+  isRunRetryable,
   parseCulturalDna,
   siteFromRun
 } from "../screens/s1/s1Model.js";
 import { stopRunAction } from "../screens/s1/stopAction.js";
+import { retryRunAction } from "../screens/s1/retryAction.js";
 import { CompositionsPanel } from "../screens/s2/CompositionsPanel.js";
 import { buildS2Model } from "../screens/s2/s2Model.js";
 import { ConnectionsPanel } from "../screens/s3/ConnectionsPanel.js";
@@ -89,6 +92,8 @@ export function RunRoute() {
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [stopping, setStopping] = useState(false);
   const [stopError, setStopError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState<string | null>(null);
   const [priorCollapsed, setPriorCollapsed] = useState(false);
   const [dnaCollapsed, setDnaCollapsed] = useState(false);
   const [view, setView] = useState<RunView>("investigate");
@@ -136,6 +141,8 @@ export function RunRoute() {
     setLoadError(null);
     setRefreshError(null);
     setStopError(null);
+    setRetryError(null);
+    setRetrying(false);
     setView("investigate");
     setS3Key(null);
     setS3Pair(null);
@@ -208,6 +215,10 @@ export function RunRoute() {
   );
   const s3Model = useMemo(() => buildS3Model(graphRun, s3Key), [graphRun, s3Key]);
   const s4Model = useMemo(() => buildS4Model(run), [run]);
+  const recoveryModel = useMemo(
+    () => (run === null ? null : buildRunRecoveryModel(run.status)),
+    [run]
+  );
 
   const statusCopy =
     run === null ? (loadError !== null ? "Unavailable" : "Opening…") : describeRunStatus(run.status);
@@ -265,6 +276,31 @@ export function RunRoute() {
       }
     })();
   }, [runId, stopping]);
+
+  const handleRetry = useCallback(() => {
+    if (runId === "" || retrying || run === null || !isRunRetryable(run.status)) {
+      return;
+    }
+    setRetrying(true);
+    setRetryError(null);
+    void (async () => {
+      try {
+        const retried = await retryRunAction(runId, { retryRun });
+        useRunStore.getState().applyState(retried);
+        const latest = await getRun(runId);
+        useRunStore.getState().applyState(latest);
+        useRunStore.getState().applyEvidence(latest.evidence ?? []);
+      } catch (error) {
+        setRetryError(
+          error instanceof ApiClientError
+            ? error.message
+            : "We couldn't retry the investigation. Try again in a moment."
+        );
+      } finally {
+        setRetrying(false);
+      }
+    })();
+  }, [retrying, run, runId]);
 
   const handleChallenge = useCallback(() => {
     if (runId === "" || challenging) {
@@ -428,6 +464,16 @@ export function RunRoute() {
               stopVisible={stopVisible}
               stopping={stopping}
               onStop={handleStop}
+              recovery={
+                recoveryModel === null
+                  ? undefined
+                  : {
+                      message: recoveryModel.message,
+                      retrying,
+                      error: retryError,
+                      onRetry: handleRetry
+                    }
+              }
               docked={
                 s2Available ? (
                   <button type="button" className="s1-primary" onClick={() => setView("compositions")}>

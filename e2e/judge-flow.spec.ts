@@ -280,6 +280,31 @@ test("S1 map canvas fills the visible map panel", async ({ page }) => {
   });
 });
 
+test("partial S1 runs expose recovery without unlocking unmeasured views", async ({ page }) => {
+  await withFixture(async (server) => {
+    const stored = await server.store.loadRun(server.runId);
+    expect(stored).not.toBeNull();
+    if (stored === null) return;
+
+    await server.store.saveRunState(server.runId, {
+      ...stored.state,
+      status: "partial",
+      phase: "investigation",
+      compositions: undefined,
+      challengeReport: undefined
+    });
+
+    await page.goto(`${server.baseUrl}/run/${server.runId}`);
+    await expect(page.getByText("Stopped early — partial results", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Retry investigation", exact: true })).toBeVisible();
+    await expect(
+      page.getByText("Retry to continue from the same frozen Prior.", { exact: false })
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Challenge", exact: true })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Blueprint", exact: true })).toBeDisabled();
+  });
+});
+
 test("S5 blueprint cites stored evidence, drops the invented id, and the share view is read-only", async ({
   page,
   browser

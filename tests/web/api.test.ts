@@ -9,6 +9,7 @@ import {
   getBlueprint,
   getRun,
   getQlooTagSuggestions,
+  retryRun,
   stopRun
 } from "../../src/web/lib/api.js";
 
@@ -168,6 +169,19 @@ describe("api client", () => {
 
     await stopRun("run-1", undefined, { fetchImpl });
 
+    expect(calls[0]?.init?.body).toBe(JSON.stringify({}));
+  });
+
+  it("retryRun posts to the retry route and returns the validated run", async () => {
+    const retried: RunState = { ...TEST_RUN_STATE, status: "investigating", phase: "investigation" };
+    const { fetchImpl, calls } = fakeFetch(async () => jsonResponse({ run: retried }));
+
+    const run = await retryRun("run-1", { fetchImpl });
+
+    expect(run).toEqual(retried);
+    expect(calls[0]?.url).toBe("/api/runs/run-1/retry");
+    expect(calls[0]?.init?.method).toBe("POST");
+    expect(calls[0]?.init?.headers).toEqual({ "content-type": "application/json" });
     expect(calls[0]?.init?.body).toBe(JSON.stringify({}));
   });
 

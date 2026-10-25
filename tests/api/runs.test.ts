@@ -71,6 +71,14 @@ async function postStop(baseUrl: string, runId: string, body: unknown = {}): Pro
   });
 }
 
+async function postRetry(baseUrl: string, runId: string): Promise<Response> {
+  return fetch(`${baseUrl}/api/runs/${runId}/retry`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({})
+  });
+}
+
 describe("POST /api/runs", () => {
   it("creates a run, executes the pipeline, and returns the terminal run with a frozen Prior", async () => {
     const { baseUrl } = await createStack();
@@ -227,6 +235,36 @@ describe("POST /api/runs/:id/stop", () => {
     const { baseUrl } = await createStack();
 
     const response = await postStop(baseUrl, "33333333-3333-4333-8333-333333333333");
+
+    expect(response.status).toBe(404);
+    const body = (await response.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("RUN_NOT_FOUND");
+  });
+});
+
+describe("POST /api/runs/:id/retry", () => {
+  const runId = "44444444-4444-4444-8444-444444444444";
+
+  it("re-enters a stopped run through the existing orchestrator retry capability", async () => {
+    const { baseUrl, store } = await createStack();
+    await store.createRun({
+      id: runId,
+      state: { id: runId, status: "stopped", phase: "investigation", brief: TEST_BRIEF, prior: TEST_PRIOR }
+    });
+
+    const response = await postRetry(baseUrl, runId);
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { run: { id: string; status: string; prior?: unknown } };
+    expect(body.run.id).toBe(runId);
+    expect(["complete", "partial", "failed"]).toContain(body.run.status);
+    expect(body.run.prior).toEqual(TEST_PRIOR);
+  });
+
+  it("answers 404 RUN_NOT_FOUND for an unknown run id", async () => {
+    const { baseUrl } = await createStack();
+
+    const response = await postRetry(baseUrl, "55555555-5555-4555-8555-555555555555");
 
     expect(response.status).toBe(404);
     const body = (await response.json()) as { error: { code: string } };

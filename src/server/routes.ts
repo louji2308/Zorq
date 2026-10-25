@@ -47,6 +47,8 @@ export const UNIMPLEMENTED_MESSAGES = {
     "Live event streaming is unavailable because this server is running without its run store and event hub. See /healthz for configuration status.",
   stopRun:
     "Stopping a run is unavailable because this server is running without its run store and orchestrator. See /healthz for configuration status.",
+  retryRun:
+    "Retrying a run is unavailable because this server is running without its run store and orchestrator. See /healthz for configuration status.",
   unpinAnchor:
     "Unpinning an anchor is not part of this build. The agent's anchor selections are shown in the Agent Ledger; start a new brief to investigate with different anchors.",
   replaceComponent:
@@ -212,6 +214,25 @@ export function registerRoutes(app: Express, dependencies: RouteDependencies): v
       const reason = (req.body as { reason?: string } | undefined)?.reason;
       void orchestrator
         .stopRun(readRunId(req), reason)
+        .then((run) => {
+          res.status(200).json({ run });
+        })
+        .catch((error: unknown) => {
+          next(mapRouteError(error));
+        });
+    }
+  );
+
+  app.post(
+    "/api/runs/:id/retry",
+    validate({ params: runIdParamsSchema }),
+    (req, res, next) => {
+      if (orchestrator === undefined || store === undefined) {
+        unimplemented(UNIMPLEMENTED_MESSAGES.retryRun)(req, res, next);
+        return;
+      }
+      void orchestrator
+        .retryRun(readRunId(req))
         .then((run) => {
           res.status(200).json({ run });
         })

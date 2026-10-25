@@ -404,6 +404,29 @@ const STATUS_COPY: Record<string, string> = {
   failed: "The investigation failed"
 };
 
+export const RETRY_COPY = {
+  stopped:
+    "This investigation was stopped before the cultural pass finished. Retry to resume with the same frozen Prior.",
+  partial:
+    "This investigation stopped with partial results. Retry to continue from the same frozen Prior.",
+  failed: "This investigation failed before it could finish. Retry to try the cultural pass again."
+} as const;
+
+export type RunRetryableStatus = keyof typeof RETRY_COPY;
+
+export interface RunRecoveryModel {
+  readonly status: RunRetryableStatus;
+  readonly message: string;
+}
+
+export function isRunRetryable(status: string): status is RunRetryableStatus {
+  return status === "stopped" || status === "partial" || status === "failed";
+}
+
+export function buildRunRecoveryModel(status: string): RunRecoveryModel | null {
+  return isRunRetryable(status) ? { status, message: RETRY_COPY[status] } : null;
+}
+
 export function describeRunStatus(status: string): string {
   return STATUS_COPY[status] ?? status;
 }

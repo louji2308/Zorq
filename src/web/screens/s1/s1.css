@@ -352,6 +352,27 @@
   color: var(--zq-ink-600);
 }
 
+.s1-ledger-recovery {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--zq-space-12);
+  margin: var(--zq-space-16) 0;
+  padding: var(--zq-space-16);
+  border: var(--zq-l1) solid var(--zq-ink-350);
+  background: var(--zq-ink-50);
+  font-size: var(--zq-text-small);
+  color: var(--zq-ink-600);
+}
+
+.s1-ledger-recovery p {
+  margin: 0;
+}
+
+.s1-ledger-recovery-error {
+  color: var(--zq-ink);
+}
+
 .s1-ledger-list {
   list-style: none;
   display: flex;

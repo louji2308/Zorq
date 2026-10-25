@@ -20,6 +20,12 @@ export interface LedgerPanelProps {
   onStop: () => void;
   /** Rendered docked at the bottom edge (the single primary action slot). */
   docked?: ReactNode;
+  recovery?: {
+    readonly message: string;
+    readonly retrying: boolean;
+    readonly error: string | null;
+    readonly onRetry: () => void;
+  };
 }
 
 const STICKY_BOTTOM_PX = 48;
@@ -114,7 +120,7 @@ function LedgerRowView({ row }: { row: LedgerRowModel }) {
   );
 }
 
-export function LedgerPanel({ rows, stopVisible, stopping, onStop, docked }: LedgerPanelProps) {
+export function LedgerPanel({ rows, stopVisible, stopping, onStop, docked, recovery }: LedgerPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [atBottom, setAtBottom] = useState(true);
 
@@ -160,6 +166,20 @@ export function LedgerPanel({ rows, stopVisible, stopping, onStop, docked }: Led
         )}
       </header>
       <div className="s1-ledger-scroll" ref={scrollRef} onScroll={handleScroll}>
+        {recovery !== undefined && (
+          <div className="s1-ledger-recovery" role="status">
+            <p>{recovery.message}</p>
+            {recovery.error !== null && <p className="s1-ledger-recovery-error">{recovery.error}</p>}
+            <button
+              type="button"
+              className="s1-secondary"
+              onClick={recovery.onRetry}
+              disabled={recovery.retrying}
+            >
+              {recovery.retrying ? "Retrying investigation…" : "Retry investigation"}
+            </button>
+          </div>
+        )}
         {rows.length === 0 ? (
           <p className="s1-ledger-empty">
             Rows appear here as each real call finishes. Nothing has completed yet.

@@ -3,6 +3,7 @@
  *   POST /api/runs              -> create a Run (201 { run: created run })
  *   GET  /api/runs/:id          -> canonical RunState (200 { run })
  *   POST /api/runs/:id/stop     -> stop a run (200 { run })
+ *   POST /api/runs/:id/retry    -> retry a stopped/partial/failed run (200 { run })
  *   POST /api/runs/:id/replace  -> role-preserving replacement (200 ReplaceResponse)
  *   POST /api/runs/:id/challenge -> S4 challenge pass (200 { run, report })
  *   GET  /api/runs/:id/blueprint -> Place Blueprint, ?share= optional (200 { blueprint })
@@ -226,6 +227,28 @@ export async function stopRun(
     throw new ApiClientError(
       "INVALID_RESPONSE",
       "POST /api/runs/:id/stop response did not match the expected contract",
+      response.status
+    );
+  }
+  return parsed.data.run;
+}
+
+/** Retry a stopped, partial, or failed run without regenerating its Prior. */
+export async function retryRun(id: string, options?: ApiCallOptions): Promise<RunState> {
+  const response = await requestJson(
+    `/api/runs/${encodeURIComponent(id)}/retry`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({})
+    },
+    options
+  );
+  const parsed = runResponseSchema.safeParse(response.body);
+  if (!parsed.success) {
+    throw new ApiClientError(
+      "INVALID_RESPONSE",
+      "POST /api/runs/:id/retry response did not match the expected contract",
       response.status
     );
   }

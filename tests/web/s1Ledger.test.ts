@@ -268,6 +268,47 @@ describe("LedgerPanel rendering", () => {
     expect(html).toContain("Stopping…");
     expect(html).toContain("disabled");
   });
+
+  it("shows an honest retry affordance for a partial run", () => {
+    const html = renderToStaticMarkup(
+      createElement(LedgerPanel, {
+        rows: [],
+        stopVisible: false,
+        stopping: false,
+        onStop: noop,
+        recovery: {
+          message: "This investigation stopped with partial results. Retry to continue from the same frozen Prior.",
+          retrying: false,
+          error: null,
+          onRetry: noop
+        }
+      })
+    );
+
+    expect(html).toContain("This investigation stopped with partial results.");
+    expect(html).toContain("Retry investigation");
+    expect(html).not.toContain("disabled");
+  });
+
+  it("disables retry while the real retry request is in flight", () => {
+    const html = renderToStaticMarkup(
+      createElement(LedgerPanel, {
+        rows: [],
+        stopVisible: false,
+        stopping: false,
+        onStop: noop,
+        recovery: {
+          message: "This investigation failed before it could finish. Retry to try the cultural pass again.",
+          retrying: true,
+          error: null,
+          onRetry: noop
+        }
+      })
+    );
+
+    expect(html).toContain("Retrying investigation…");
+    expect(html).toContain("disabled");
+  });
 });
 
 describe("LedgerRowExpansion rendering", () => {
