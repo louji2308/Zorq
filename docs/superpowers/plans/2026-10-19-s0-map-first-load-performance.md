@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - Use MapLibre GL JS + MapTiler Free as the locked map stack.
-- The browser may contain only public `VITE_MAPTILER_KEY`; no Qloo, DeepSeek, Turso, or MCP secrets.
+- The browser may contain only public `VITE_MAPTILER_KEY`; no Qloo, Rapid Router, Turso, or MCP secrets.
 - Map/key failures must remain honest and must not block the S0 right column or preset path.
 - Existing marker, active-site, radius-ring, crosshair, anchors, heat, reduced-motion, and retry behavior must remain intact.
 - Production code must not fabricate map data or hide provider failures.

@@ -7,13 +7,13 @@ export interface TokenUsage {
   cachedPromptTokens?: number | undefined;
 }
 
-export interface DeepSeekFlashRate {
+export interface LlmRate {
   inputCacheMissUsdPerMTok: number;
   inputCacheHitUsdPerMTok: number;
   outputUsdPerMTok: number;
 }
 
-export const DEEPSEEK_FLASH_PRICING: { peak: DeepSeekFlashRate; offPeak: DeepSeekFlashRate } = {
+export const LLM_PRICING: { peak: LlmRate; offPeak: LlmRate } = {
   peak: {
     inputCacheMissUsdPerMTok: 0.3,
     inputCacheHitUsdPerMTok: 0.006,
@@ -29,7 +29,7 @@ export const DEEPSEEK_FLASH_PRICING: { peak: DeepSeekFlashRate; offPeak: DeepSee
 export const LLM_RESERVE_FRACTION = 0.2;
 export const LLM_SPEND_LIMIT_FRACTION = 1 - LLM_RESERVE_FRACTION;
 
-export function isDeepSeekPeakWindow(at: Date): boolean {
+export function isLlmPeakWindow(at: Date): boolean {
   const day = at.getUTCDay();
   if (day === 0 || day === 6) {
     return false;
@@ -43,7 +43,7 @@ function roundUsd(value: number): number {
 }
 
 export function usageCostUsd(usage: TokenUsage, at: Date): number {
-  const rates = isDeepSeekPeakWindow(at) ? DEEPSEEK_FLASH_PRICING.peak : DEEPSEEK_FLASH_PRICING.offPeak;
+  const rates = isLlmPeakWindow(at) ? LLM_PRICING.peak : LLM_PRICING.offPeak;
   const prompt = Math.max(0, usage.promptTokens);
   const completion = Math.max(0, usage.completionTokens);
   const reportedCached = usage.cachedPromptTokens;

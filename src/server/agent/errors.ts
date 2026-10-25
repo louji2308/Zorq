@@ -1,8 +1,8 @@
 import { ApiError, type ApiErrorCode, type ApiErrorDetail } from "../../shared/errors.js";
 
-export function missingDeepSeekConfiguration(): ApiError {
-  return new ApiError("SERVICE_UNAVAILABLE", "DeepSeek is not configured for use", [
-    { path: "DEEPSEEK_API_KEY", message: "required at first use" }
+export function missingRapidRouterConfiguration(): ApiError {
+  return new ApiError("SERVICE_UNAVAILABLE", "Rapid Router is not configured for use", [
+    { path: "RAPIDROUTER_API_KEY", message: "required at first use" }
   ]);
 }
 

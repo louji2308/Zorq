@@ -21,7 +21,7 @@ audit), `docs/qloo-removal-proof.md` (A/B mechanism), `IMPLEMENTATION_STATE.md` 
 | Claim | Evidence |
 |---|---|
 | Qloo data comes from Qloo transport | Single gateway (`src/server/qloo/`) MCP primary + REST fallback; no `urn:tag:`/`urn:entity:` literals in `src/web` (grep 0 hits) — the UI never invents tags. |
-| DeepSeek output comes from DeepSeek | `src/server/agent/llm.ts` is the only LLM client; agent authors prose/choices, never numbers. |
+| Rapid Router output comes from Rapid Router | `src/server/agent/llm.ts` is the only LLM client; agent authors prose/choices, never numbers. |
 | Map data comes from MapTiler | `src/web/lib/map.ts` (MapLibre) + build-inlined `VITE_MAPTILER_KEY`; no basemap baked into source. |
 | Deterministic metrics are computed, not canned | `src/server/engine/` has **zero** `Math.random`/`Date.now`/`randomUUID`; all metrics derive from normalized inputs. |
 | No preset-specific answers | Presets render brief text; Prior is generated per run by the LLM, not stored. |
@@ -58,7 +58,7 @@ gateway code proven; end-to-end live matrix deferred to the B-02 unblock.**
 
 Observation→diagnosis→tool loop, turn/budget caps and Prior-Lock preservation are unit/integration
 proven (`tests/agent/*`, `tests/orchestrator/*`). The **real-LLM adaptive run** that shows course
-changes on live evidence is deferred — it needs a funded DeepSeek balance (B-02). Not claimed from
+changes on live evidence is deferred — it needs a funded Rapid Router balance (B-02). Not claimed from
 fixtures.
 
 ## 10.6 Deterministic reproducibility — PASS
@@ -97,7 +97,7 @@ equivalents are covered by `e2e/judge-flow.spec.ts` + the Phase 8 fixture-browse
 
 | Check | Observed |
 |---|---|
-| Keys server-side only | `git grep 'QLOO_API_KEY=\|DEEPSEEK_API_KEY=\|TURSO_*='` → only the deploy tool's selftest literal; `src/web` bundle has **0** secret names/values |
+| Keys server-side only | `git grep 'QLOO_API_KEY=\|RAPIDROUTER_API_KEY=\|TURSO_*='` → only the deploy tool's selftest literal; `src/web` bundle has **0** secret names/values |
 | `.env` untracked | `git ls-files .env` → empty; `.gitignore` ignores `.env*` except `.env.example` |
 | Browser bundle clean | `dist/web/**` grep for secret names + value prefixes → **0** hits (only the documented-public MapTiler key) |
 | Helmet active | `src/server/app.ts:39` |
@@ -114,7 +114,7 @@ the first live funded run (B-02).
 ## 10.11 Full public-path browser suite — local PASS; deployed leg pending B-02
 
 `npm run test:e2e` → **11 passed / 4 skipped** (gallery-only) against the real production build.
-The deployed-URL pass and the run-dependent steps need a funded DeepSeek balance (B-02).
+The deployed-URL pass and the run-dependent steps need a funded Rapid Router balance (B-02).
 
 ## 10.12 Final submission surfaces — PRESENT
 
@@ -143,6 +143,6 @@ The deployed-URL pass and the run-dependent steps need a funded DeepSeek balance
 | Engineering (typecheck, lint, unit, integration, e2e, build, deploy, health) | ✅ all green + live |
 | Repository (no dupes, no mocks, no canned answers, no secrets, no debug, truthful history) | ✅ |
 
-**Single blocker:** every "pending B-02" row is the DeepSeek balance (`$0.00`), which prevents the
+**Single blocker:** every "pending B-02" row is the Rapid Router balance, which prevents the
 Prior and therefore any live run. All fixture/offline audits are PASS; the remaining work is
 proof-under-real-services, not capability.

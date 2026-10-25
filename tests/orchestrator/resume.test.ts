@@ -14,7 +14,7 @@ const PRIOR_EVENT: LedgerEntry = {
   event: {
     kind: "LLM",
     label: "prior:generate attempt 1",
-    summary: "model deepseek-flash | 1200 in / 480 out",
+    summary: "model qwen/qwen3.7-flash-2026-07-15 | 1200 in / 480 out",
     duration: 12,
     cacheState: "n/a",
     resultCount: 1

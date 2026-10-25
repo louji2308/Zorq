@@ -94,7 +94,13 @@ export async function runInvestigation(options: RunInvestigationOptions): Promis
   };
 }
 
-export { createDeepSeekLlmClient, completeBounded, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL } from "./llm.js";
+export {
+  createRapidRouterLlmClient,
+  completeBounded,
+  RAPIDROUTER_BASE_URL,
+  RAPIDROUTER_DEFAULT_MAX_OUTPUT_TOKENS,
+  RAPIDROUTER_MODEL
+} from "./llm.js";
 export type {
   LlmClient,
   LlmCompletionRequest,
@@ -105,11 +111,11 @@ export type {
   LlmUsage
 } from "./llm.js";
 export {
-  DEEPSEEK_FLASH_PRICING,
+  LLM_PRICING,
   LLM_RESERVE_FRACTION,
   LLM_SPEND_LIMIT_FRACTION,
   LlmBudget,
-  isDeepSeekPeakWindow,
+  isLlmPeakWindow,
   usageCostUsd
 } from "./budget.js";
 export type { LlmBudgetSnapshot, TokenUsage } from "./budget.js";
@@ -147,5 +153,5 @@ export {
   LlmBudgetError,
   PriorConflictError,
   PriorGenerationError,
-  missingDeepSeekConfiguration
+  missingRapidRouterConfiguration
 } from "./errors.js";

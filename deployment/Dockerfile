@@ -27,7 +27,7 @@ COPY src ./src
 # (render.com/docs/docker -> "Environment variable translation"), so declaring this ARG lets the
 # build see VITE_MAPTILER_KEY without shipping .env (excluded by .dockerignore). Declared last so
 # only this RUN layer's cache is invalidated when the key rotates. Undeclared secrets (QLOO_*,
-# DEEPSEEK_*, TURSO_*) that Render also passes as build args stay out of the build env and image.
+# RAPIDROUTER_*, TURSO_*) that Render also passes as build args stay out of the build env and image.
 ARG VITE_MAPTILER_KEY
 RUN npm run build && npm prune --omit=dev
 

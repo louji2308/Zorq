@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Brief } from "../../src/shared/brief.js";
 import { ApiError } from "../../src/shared/errors.js";
 import { runStateSchema } from "../../src/shared/run.js";
-import { createDeepSeekLlmClient } from "../../src/server/agent/llm.js";
+import { createRapidRouterLlmClient } from "../../src/server/agent/llm.js";
 import { runInvestigation, type InvestigationResult } from "../../src/server/agent/index.js";
 import { AgentStateError, PriorGenerationError } from "../../src/server/agent/errors.js";
 import { createInitialRun, transitionRun } from "../../src/server/agent/state.js";
@@ -49,7 +49,7 @@ describe("runInvestigation assembly (Phase 3 exit-gate chain)", () => {
     expectConforms(result);
     expect(result.prior).toBeDefined();
     expect(result.prior?.qlooUsed).toBe(false);
-    expect(result.prior?.model).toBe("deepseek-flash");
+    expect(result.prior?.model).toBe("qwen/qwen3.7-flash-2026-07-15");
     expect(result.run.prior).toEqual(result.prior);
     expect(result.run.status).toBe("complete");
     expect(result.run.phase).toBe("investigation");
@@ -114,12 +114,12 @@ describe("runInvestigation assembly (Phase 3 exit-gate chain)", () => {
     expectConforms(result);
   });
 
-  it("keeps the gateway untouched when the DeepSeek key is missing", async () => {
+  it("keeps the gateway untouched when the Rapid Router key is missing", async () => {
     const gateway = fakeGateway();
     const result = await runInvestigation({
       brief: TEST_BRIEF,
       gateway: gateway.gateway,
-      llm: createDeepSeekLlmClient({ apiKey: undefined }),
+      llm: createRapidRouterLlmClient({ apiKey: undefined }),
       now: () => TEST_NOW
     });
 

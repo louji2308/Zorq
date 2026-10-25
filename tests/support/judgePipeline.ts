@@ -638,7 +638,7 @@ export async function startJudgeFixtureServer(options: JudgeLlmOptions = {}): Pr
     NODE_ENV: options.nodeEnv ?? "test",
     APP_BASE_URL: "http://127.0.0.1:3999",
     QLOO_API_KEY: "fixture-key-never-used",
-    DEEPSEEK_API_KEY: "fixture-key-never-used"
+    RAPIDROUTER_API_KEY: "fixture-key-never-used"
   });
   const store = createMemoryStore();
   const hub = createEventHub();

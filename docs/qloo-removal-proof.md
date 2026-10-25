@@ -30,7 +30,7 @@ Because fabricated live evidence is worse than documented absence, the live reco
 from real runs at submission freeze with real keys, by this exact procedure:
 
 1. `LIVE_QLOO=1 npm test` (live Qloo gateway contract) and one real preset run through the
-   deployed app with real `QLOO_API_KEY` and `DEEPSEEK_API_KEY`.
+   deployed app with real `QLOO_API_KEY` and `RAPIDROUTER_API_KEY`.
 2. On two preset briefs — one likely Qloo-divergent, one control — capture:
    the frozen Prior card, the S5 compare modal ("With Qloo" final vs "Without Qloo" Prior+polish),
    and the ledger row count from Qloo (`Qloo` kind rows in S1).

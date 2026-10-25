@@ -29,7 +29,7 @@ Eleven responsibility domains (named verbatim by `IMPLEMENTATION_PLAN.md` Phase 
 │  │  │                                    (Helmet, per-IP rate limit, Zod validation, typed errors),
 │  │  │                                    route registration for exactly the 11 routes (§3), Pino logs.
 │  │  ├─ routes/                          one module per §3 route — HTTP shape only, no domain logic
-│  │  ├─ agent/         [agent]           one bounded DeepSeek tool-calling controller: Prior, anchor
+│  │  ├─ agent/         [agent]           one bounded Rapid Router-routed LLM controller: Prior, anchor
 │  │  │                                    selection, probe/mutation choice, stress emphasis, naming,
 │  │  │                                    rationale. Never authors numeric truth (AGENTS.md §13).
 │  │  ├─ qloo/           [qloo]           QlooGateway: transport-agnostic Qloo boundary (MCP primary,
@@ -148,7 +148,7 @@ Phase 2 implements this as the "typed error model" (`IMPLEMENTATION_PLAN.md` Pha
 | `SERVICE_UNAVAILABLE` | 503 | Required configuration absent / dependency check failed (Phase 2 gate: "fails clearly when required configuration is absent"). |
 | `INTERNAL` | 500 | Unexpected; logged with `requestId`, never leaks secrets. |
 
-Security baseline for **all** routes: Helmet; per-IP `express-rate-limit` (numeric limits are Phase 2 config recorded in `IMPLEMENTATION_STATE.md`; mutating routes use the stricter class); Zod validation at the boundary; `QLOO_API_KEY`/`DEEPSEEK_API_KEY`/Turso credentials server-side only; **Qloo is never called from the browser**; responses and SSE events never contain keys or raw Qloo payloads (field projection first) — `ProjectSpec/Architecture.md` §21, `Tools_and_Requirements.md` §12.
+Security baseline for **all** routes: Helmet; per-IP `express-rate-limit` (numeric limits are Phase 2 config recorded in `IMPLEMENTATION_STATE.md`; mutating routes use the stricter class); Zod validation at the boundary; `QLOO_API_KEY`/`RAPIDROUTER_API_KEY`/Turso credentials server-side only; **Qloo is never called from the browser**; responses and SSE events never contain keys or raw Qloo payloads (field projection first) — `ProjectSpec/Architecture.md` §21, `Tools_and_Requirements.md` §12.
 
 ---
 
@@ -357,7 +357,7 @@ Exit gates from `ProjectSpec/IMPLEMENTATION_PLAN.md`; near-verbatim.
 
 **Phase 2 — Repository Foundation & Typed Runtime:** "A fresh checkout installs, typechecks, lints, tests, builds, starts, responds to `/healthz`, and fails clearly when required configuration is absent."
 
-**Phase 3 — Real Qloo + DeepSeek Agent Core:** "A real brief produces a Prior, at least one real Qloo observation, a validated state mutation, a ledger event and an evidence record. Qloo outage yields an honest partial state."
+**Phase 3 — Real Qloo + Rapid Router Agent Core:** "A real brief produces a Prior, at least one real Qloo observation, a validated state mutation, a ledger event and an evidence record. Qloo outage yields an honest partial state."
 
 **Phase 4 — Deterministic Cultural Measurement Engine:** "A controlled candidate pool can produce a complete graph, ranked role-valid compositions, percentile, distinctiveness, weakest links and evidence classifications without LLM-generated numbers."
 
@@ -381,7 +381,7 @@ Visible, owned, tracked (full register in `IMPLEMENTATION_STATE.md` §Known Risk
 
 | ID | Blocker | Impact | Owner | Source |
 |---|---|---|---|---|
-| B-02 | DeepSeek API key + balance not yet available | Blocks Prior Lock, agent controller, every LLM-backed run; mitigated by Qloo-first sequencing (D-0.8) | **User** | `IMPLEMENTATION_STATE.md` §Known Risks |
+| B-02 | Rapid Router account/key availability | Blocks Prior Lock, agent controller, every LLM-backed run; mitigated by honest dependency errors and the gated live suite | **User** | `IMPLEMENTATION_STATE.md` §Known Risks |
 | Gate A (MCP half) | ~~`qloo mcp` + `qloo_capabilities` not yet proven~~ **PROVEN 2026-10-06** (W-1.2 + orchestrator re-run; `USABLE-WITH-CONDITIONS`, §4.2) | Gate A now fully open in the positive sense: REST path + MCP path both live. Remaining Phase 3 work: build `QlooGateway` on the proven MCP path with REST fallback for the four demonstrated capability gaps | **Closed — evidence in §4.2** | `IMPLEMENTATION_STATE.md` Gate A evidence; `Tools_and_Requirements.md` §19 Gate A |
 | B-06 | MapTiler key and Turso database not provisioned | Blocks map/geocoding (S0/S1) and durable Run state (Phase 5); not needed for Phases 1–2 | **User** | `IMPLEMENTATION_STATE.md` §Known Risks |
 | Quota | Organizer clarification on event quota / rate limits still pending — ask via **#api-help** on Discord if Spike 3/5 shows need; exact numbers currently measured empirically | Caps confidence in `MAX_QLOO_CALLS=180/≈200` and concurrency defaults until measured | **Orchestrator** | `Tools_and_Requirements.md` §13 (blocking prerequisite); `HACKATHON_TRACKER.md` quota row |

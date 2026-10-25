@@ -111,7 +111,7 @@ describe("loadConfig", () => {
       qlooApiKey: undefined,
       qlooBaseUrl: undefined,
       qlooTrustedBaseUrl: undefined,
-      deepseekApiKey: undefined,
+      rapidRouterApiKey: undefined,
       tursoDatabaseUrl: undefined,
       tursoAuthToken: undefined,
       viteMaptilerKey: undefined
@@ -124,14 +124,14 @@ describe("loadConfig", () => {
       ...BASE,
       NODE_ENV: "test",
       QLOO_API_KEY: "test-qloo-key",
-      DEEPSEEK_API_KEY: "",
+      RAPIDROUTER_API_KEY: "",
       TURSO_DATABASE_URL: "libsql://zorq.turso.io",
       TURSO_AUTH_TOKEN: "test-token",
       VITE_MAPTILER_KEY: "public-map-key"
     });
     expect(config.nodeEnv).toBe("test");
     expect(config.qlooApiKey).toBe("test-qloo-key");
-    expect(config.deepseekApiKey).toBeUndefined();
+    expect(config.rapidRouterApiKey).toBeUndefined();
     expect(config.tursoDatabaseUrl).toBe("libsql://zorq.turso.io");
     expect(config.tursoAuthToken).toBe("test-token");
     expect(config.viteMaptilerKey).toBe("public-map-key");

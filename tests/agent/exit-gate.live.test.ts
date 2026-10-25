@@ -2,13 +2,13 @@ import { afterAll, describe, expect, it } from "vitest";
 import { loadConfig } from "../../src/server/config.js";
 import { createQlooGateway, type QlooGateway } from "../../src/server/qloo/gateway.js";
 import { runInvestigation } from "../../src/server/agent/index.js";
-import { DEEPSEEK_MODEL } from "../../src/server/agent/llm.js";
+import { RAPIDROUTER_MODEL } from "../../src/server/agent/llm.js";
 import { fakeLlm, TEST_BRIEF } from "../agent/support/fakes.js";
 
 const enabled = process.env.LIVE_QLOO === "1" && Boolean(process.env.QLOO_API_KEY);
 
 describe.skipIf(!enabled)(
-  "Phase 3 exit gate against a live Qloo gateway (LIVE_QLOO=1; LLM scripted — real DeepSeek deferred until balance)",
+  "Phase 3 exit gate against a live Qloo gateway (LIVE_QLOO=1; LLM scripted — real Rapid Router deferred until balance)",
   () => {
     let gateway: QlooGateway | undefined;
 
@@ -63,7 +63,7 @@ describe.skipIf(!enabled)(
 
         expect(result.prior).toBeDefined();
         expect(result.prior?.qlooUsed).toBe(false);
-        expect(result.prior?.model).toBe(DEEPSEEK_MODEL);
+        expect(result.prior?.model).toBe(RAPIDROUTER_MODEL);
         expect(Object.isFrozen(result.prior)).toBe(true);
         expect(result.run.prior).toBe(result.prior);
 

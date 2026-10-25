@@ -10,7 +10,7 @@ import { briefSchema } from "../../src/shared/brief.js";
 import { priorSchema, runStateSchema, type RunState } from "../../src/shared/run.js";
 import { buildPriorModel, extractPriorComponents } from "../../src/web/screens/s1/s1Model.js";
 
-/** Realistic DeepSeek Prior draft per PRIOR_SYSTEM_PROMPT (src/server/agent/prior.ts):
+/** Realistic Rapid Router Prior draft per PRIOR_SYSTEM_PROMPT (src/server/agent/prior.ts):
  *  a thesis plus members grouped by roles, each with a short rationale. */
 const REAL_COMPOSITION = {
   thesis: "A ground-floor hub where downtown locals and visitors both feel they belong.",

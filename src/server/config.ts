@@ -11,7 +11,7 @@ export interface ZorqConfig {
   qlooApiKey: string | undefined;
   qlooBaseUrl: string | undefined;
   qlooTrustedBaseUrl: string | undefined;
-  deepseekApiKey: string | undefined;
+  rapidRouterApiKey: string | undefined;
   tursoDatabaseUrl: string | undefined;
   tursoAuthToken: string | undefined;
   viteMaptilerKey: string | undefined;
@@ -321,7 +321,7 @@ export function loadConfig(env: Record<string, string | undefined>): ZorqConfig 
     qlooApiKey: readOptionalSecret(env, "QLOO_API_KEY"),
     qlooBaseUrl,
     qlooTrustedBaseUrl,
-    deepseekApiKey: readOptionalSecret(env, "DEEPSEEK_API_KEY"),
+    rapidRouterApiKey: readOptionalSecret(env, "RAPIDROUTER_API_KEY"),
     tursoDatabaseUrl,
     tursoAuthToken: readOptionalSecret(env, "TURSO_AUTH_TOKEN"),
     viteMaptilerKey: readOptionalSecret(env, "VITE_MAPTILER_KEY")

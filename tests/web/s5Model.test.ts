@@ -127,7 +127,7 @@ function fixtureRun(overrides?: Partial<RunState>): RunState {
         ]
       },
       generatedAt: "2026-10-11T00:00:00.000Z",
-      model: "deepseek-chat",
+      model: "qwen/qwen3.7-flash-2026-07-15",
       qlooUsed: false,
       polish: "A late-night cinema bar anchors the block with a quiet social edge."
     },

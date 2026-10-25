@@ -48,7 +48,7 @@ Separation of powers (non-negotiable):
 |---|---|---|
 | **Qloo** (official `qloo mcp` + REST fallback) | cultural measurement: locality, place→culture, culture→place, site-vs-city reads, explainability where supported | any Zorq number |
 | **Zorq deterministic code** | validation, taste neighborhoods, IDF-weighted edges, mean coherence, exact percentile over role-valid subsets, distinctiveness, weakest link, triangulation classification, evidence grades, constraint fit, budgets, Prior→Final diff | subjective prose |
-| **LLM (DeepSeek `deepseek-flash`)** | Prior generation, anchor/probe/attack selection, naming, rationale, downshift wording | any numeric truth, any evidence ID |
+| **LLM (Rapid Router → Qwen `qwen/qwen3.7-flash-2026-07-15`)** | Prior generation, anchor/probe/attack selection, naming, rationale, downshift wording | any numeric truth, any evidence ID |
 
 Every claim in the UI carries one of three provenance badges — `[Qloo]`, `[Zorq heuristic]`,
 `[LLM]` — and every `[Qloo]` claim opens evidence that traces claim → evidence ID → ledger event
@@ -93,9 +93,9 @@ curl http://localhost:3000/healthz
 ```
 
 `/` gives three preset briefs; create a run and the workspace streams the investigation over
-SSE. Creating a run without Qloo/DeepSeek keys answers a *typed* `DEPENDENCY_UNAVAILABLE`
+SSE. Creating a run without Qloo/Rapid Router keys answers a *typed* `DEPENDENCY_UNAVAILABLE`
 envelope — degraded behavior is state, not a crash. Real runs require the server-side keys
-(`QLOO_API_KEY`, `DEEPSEEK_API_KEY`; optional `TURSO_*` persistence, `VITE_MAPTILER_KEY`).
+(`QLOO_API_KEY`, `RAPIDROUTER_API_KEY`; optional `TURSO_*` persistence, `VITE_MAPTILER_KEY`).
 
 Repositories detail: [`ARCHITECTURE.md`](./ARCHITECTURE.md) is the repository contract and
 [`HACKATHON_TRACKER.md`](./HACKATHON_TRACKER.md) tracks competition requirements and gates.
@@ -139,7 +139,7 @@ required variables otherwise; a ten-minute scheduled GitHub Actions ping keeps t
 
 ## Security notes
 
-- Qloo, DeepSeek, Turso and MapTiler credentials live only in server-side environment
+- Qloo, Rapid Router, Turso and MapTiler credentials live only in server-side environment
   variables; never in the browser bundle, Git history, logs, screenshots or this README.
 - Qloo is never called from the browser; Qloo and LLM output are treated as untrusted input and
   validated at the boundary.

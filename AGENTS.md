@@ -119,7 +119,7 @@ Do not duplicate APIs, state stores, Qloo gateways, scoring engines, format libr
 ---
 # 4. AGENT ROLES
 The implementation process uses **one Orchestrator plus temporary specialist Workers**.
-This is an implementation methodology only. It does **not** mean Zorq itself should contain a multi-agent runtime. The product architecture remains the locked single bounded DeepSeek controller unless a real blocker proves otherwise.
+This is an implementation methodology only. It does **not** mean Zorq itself should contain a multi-agent runtime. The product architecture remains the locked single bounded LLM controller routed through Rapid Router unless a real blocker proves otherwise.
 ## 4.1 Orchestrator
 The Orchestrator is the phase owner and acts as the lead engineer / technical program manager.
 It owns:
@@ -559,7 +559,7 @@ Treat all external inputs as untrusted:
 user input
 Qloo data
 Qloo MCP output
-DeepSeek output
+Rapid Router model output
 map/geocoder output
 persisted run state
 browser state
@@ -568,7 +568,7 @@ Validate and sanitize at boundaries.
 Never expose in frontend code:
 ```text
 QLOO_API_KEY
-DEEPSEEK_API_KEY
+RAPIDROUTER_API_KEY
 Turso credentials
 MCP secrets
 ```
@@ -790,7 +790,7 @@ Never hide failures behind:
 - suppressed exceptions;
 - weakened assertions;
 - disabled validation.
-For Qloo / DeepSeek outages, return the project's defined **honest partial state / best defensible state** behavior.
+For Qloo / Rapid Router outages, return the project's defined **honest partial state / best defensible state** behavior.
 ---
 # 21. Context & Memory Discipline
 Agents are powerful but context is finite.
@@ -990,7 +990,7 @@ Zorq is release-ready only when the full locked product path is verified:
 ```text
 REAL QLOO
 +
-REAL DEEPSEEK
+REAL RAPID ROUTER LLM
 +
 REAL DETERMINISTIC MEASUREMENT
 +

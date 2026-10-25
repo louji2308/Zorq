@@ -3,7 +3,7 @@ import { ApiError } from "../../src/shared/errors.js";
 import { priorSchema, type Prior } from "../../src/shared/run.js";
 import { LlmBudget } from "../../src/server/agent/budget.js";
 import { LlmBudgetError, PriorConflictError, PriorGenerationError } from "../../src/server/agent/errors.js";
-import { createDeepSeekLlmClient } from "../../src/server/agent/llm.js";
+import { RAPIDROUTER_MODEL, createRapidRouterLlmClient } from "../../src/server/agent/llm.js";
 import { createLedger } from "../../src/server/agent/ledger.js";
 import { generatePrior, persistPrior } from "../../src/server/agent/prior.js";
 import { createInitialRun } from "../../src/server/agent/state.js";
@@ -39,7 +39,7 @@ describe("generatePrior", () => {
     expect(prior).toEqual({
       composition: { thesis: "daytime cultural corner", members: [{ role: "Anchor", name: "coffee roastery" }] },
       generatedAt: new Date(TEST_NOW).toISOString(),
-      model: "deepseek-flash",
+      model: RAPIDROUTER_MODEL,
       qlooUsed: false
     });
     expect(priorSchema.parse(prior)).toEqual(prior);
@@ -156,7 +156,7 @@ describe("generatePrior", () => {
     });
 
     expect(prior.qlooUsed).toBe(false);
-    expect(prior.model).toBe("deepseek-flash");
+    expect(prior.model).toBe(RAPIDROUTER_MODEL);
     expect(prior.generatedAt).toBe(new Date(TEST_NOW).toISOString());
   });
 
@@ -202,8 +202,8 @@ describe("generatePrior", () => {
     expect(budget.spentUsd).toBeGreaterThan(0);
   });
 
-  it("fails typed when the DeepSeek key is missing instead of crashing", async () => {
-    const llm = createDeepSeekLlmClient({ apiKey: undefined });
+  it("fails typed when the Rapid Router key is missing instead of crashing", async () => {
+    const llm = createRapidRouterLlmClient({ apiKey: undefined });
     const budget = new LlmBudget({ ceilingUsd: 2, now: () => TEST_NOW });
     const ledger = createLedger();
 
@@ -248,7 +248,7 @@ describe("persistPrior", () => {
     expect(Reflect.set(stored.prior as object, "qlooUsed", true)).toBe(false);
     expect(Reflect.set(stored.prior as object, "model", "other")).toBe(false);
     expect(stored.prior?.qlooUsed).toBe(false);
-    expect(stored.prior?.model).toBe("deepseek-flash");
+    expect(stored.prior?.model).toBe(RAPIDROUTER_MODEL);
 
     const overwrite = { ...TEST_PRIOR, composition: { thesis: "second guess" } };
     expect(() => persistPrior(stored, overwrite)).toThrow(PriorConflictError);
@@ -259,7 +259,7 @@ describe("persistPrior", () => {
   it("rejects a prior that does not satisfy priorSchema", () => {
     const run = createInitialRun(TEST_BRIEF);
     expect(() =>
-      persistPrior(run, { composition: {}, generatedAt: "", model: "deepseek-flash", qlooUsed: true } as unknown as Prior)
+      persistPrior(run, { composition: {}, generatedAt: "", model: RAPIDROUTER_MODEL, qlooUsed: true } as unknown as Prior)
     ).toThrow();
     expect(run.prior).toBeUndefined();
   });

@@ -69,7 +69,7 @@ and the reason the Prior changed.
 
 ## What the agent does
 
-A single bounded DeepSeek controller (`deepseek-flash`) — not a swarm — runs an
+A single bounded Rapid Router controller using Qwen (`qwen/qwen3.7-flash-2026-07-15`) — not a swarm — runs an
 observation → diagnosis → tool-selection loop with hard limits (≤ 3 planner turns per phase,
 ≤ 2 mutation rounds). It chooses which Qloo probes to run from what it observes, selects the
 anchor set, then turns on its own output in **Challenge the Plan**: it names the strongest
@@ -101,7 +101,7 @@ that moved, and the measured reading that moved it). Do not hand-write numbers.
   edges, mean composition coherence, exact percentile over role-valid subsets vs a null model,
   local-vs-city distinctiveness, weakest-link, triangulation classification, evidence grades,
   constraint/format fit, Prior→Final diff, budgets. Byte-identical across reruns.
-- **Agent:** bounded DeepSeek controller, write-once Prior Lock, price-derived LLM budget
+- **Agent:** bounded Rapid Router controller, write-once Prior Lock, price-derived LLM budget
   (≤ $2/run).
 - **State & reliability:** durable RunStore (in-memory + Turso), SSE with Last-Event-ID replay,
   stop/resume/recovery; provider outage → typed honest partial state, not a fake success.

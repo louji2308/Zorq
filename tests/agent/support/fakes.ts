@@ -6,7 +6,7 @@ import type {
   QlooGateway,
   QlooOperation
 } from "../../../src/server/qloo/index.js";
-import { DEEPSEEK_MODEL } from "../../../src/server/agent/llm.js";
+import { RAPIDROUTER_MODEL } from "../../../src/server/agent/llm.js";
 import type {
   LlmClient,
   LlmCompletionRequest,
@@ -34,7 +34,7 @@ export const TEST_PRIOR: Prior = {
     ]
   },
   generatedAt: "2026-10-08T12:00:00.000Z",
-  model: DEEPSEEK_MODEL,
+  model: RAPIDROUTER_MODEL,
   qlooUsed: false
 };
 
@@ -84,7 +84,7 @@ export function fakeLlm(
       const response = typeof scripted === "function" ? scripted(request) : scripted;
       const toolCalls = response.toolCalls ?? [];
       return {
-        model: DEEPSEEK_MODEL,
+        model: RAPIDROUTER_MODEL,
         content: response.content ?? null,
         toolCalls,
         usage: response.usage ?? { promptTokens: 1200, completionTokens: 480, totalTokens: 1680 },

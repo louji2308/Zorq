@@ -3,7 +3,7 @@ import { briefSchema, type Brief } from "../../shared/brief.js";
 import { priorPolishTextSchema, priorSchema, type Prior, type RunState } from "../../shared/run.js";
 import type { LlmBudget } from "./budget.js";
 import { PriorConflictError, PriorGenerationError } from "./errors.js";
-import { completeBounded, DEEPSEEK_MODEL, formatZodIssues, type LlmClient, type LlmMessage } from "./llm.js";
+import { completeBounded, RAPIDROUTER_MODEL, formatZodIssues, type LlmClient, type LlmMessage } from "./llm.js";
 import type { Ledger } from "./ledger.js";
 
 export const MAX_PRIOR_ATTEMPTS = 2;
@@ -41,7 +41,7 @@ export interface GeneratePriorOptions {
 
 function parsePriorDraft(content: string | null): z.infer<typeof priorDraftSchema> {
   if (content === null || content.trim() === "") {
-    throw new PriorGenerationError("DeepSeek returned an empty Prior response");
+    throw new PriorGenerationError("Rapid Router returned an empty Prior response");
   }
   const trimmed = content.trim();
   let raw: unknown;
@@ -107,7 +107,7 @@ export async function generatePrior(options: GeneratePriorOptions): Promise<Prio
       const prior = priorSchema.parse({
         composition: draft.composition,
         generatedAt: new Date(now()).toISOString(),
-        model: DEEPSEEK_MODEL,
+        model: RAPIDROUTER_MODEL,
         qlooUsed: false,
         ...(polish !== undefined ? { polish } : {})
       });
@@ -125,7 +125,7 @@ export async function generatePrior(options: GeneratePriorOptions): Promise<Prio
   }
 
   throw new PriorGenerationError(
-    `DeepSeek produced an unusable Prior after ${MAX_PRIOR_ATTEMPTS} attempts: ${lastProblem}`,
+    `Rapid Router produced an unusable Prior after ${MAX_PRIOR_ATTEMPTS} attempts: ${lastProblem}`,
     [{ path: "prior", message: lastProblem }]
   );
 }

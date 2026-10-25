@@ -8,7 +8,7 @@ keys or the deployed URL are listed as pending live evidence, never claimed as p
 
 | Check | Result | Evidence |
 |---|---|---|
-| No credentials in source | Pass | `QLOO_API_KEY` / `DEEPSEEK_API_KEY` / `TURSO_AUTH_TOKEN` appear in `src/server/*` as env-var *reads* only (config, gateway, agent errors); `VITE_MAPTILER_KEY` is documented public-by-design (D-6.1) and is the only secret-shaped identifier in the web bundle. |
+| No credentials in source | Pass | `QLOO_API_KEY` / `RAPIDROUTER_API_KEY` / `TURSO_AUTH_TOKEN` appear in `src/server/*` as env-var *reads* only (config, gateway, agent errors); `VITE_MAPTILER_KEY` is documented public-by-design (D-6.1) and is the only secret-shaped identifier in the web bundle. |
 | `.env` is not tracked | Pass | `git ls-files .env` returns nothing; only `.env.example` (placeholders) is committed. |
 | Live gates are credential-gated | Pass | `tests/qloo/live.test.ts` and related live suites run only with `LIVE_QLOO=1` plus a real key; otherwise skipped, never faked. |
 

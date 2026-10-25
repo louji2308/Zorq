@@ -54,7 +54,7 @@ const PRIOR = {
     ]
   },
   generatedAt: "2026-10-08T12:00:00.000Z",
-  model: "deepseek-flash",
+  model: "qwen/qwen3.7-flash-2026-07-15",
   qlooUsed: false as const
 };
 

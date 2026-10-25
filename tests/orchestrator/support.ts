@@ -1,4 +1,4 @@
-import { DEEPSEEK_MODEL } from "../../src/server/agent/llm.js";
+import { RAPIDROUTER_MODEL } from "../../src/server/agent/llm.js";
 import type { LlmCompletionResult, LlmToolCall } from "../../src/server/agent/llm.js";
 
 export const PRIOR_RESPONSE = JSON.stringify({
@@ -15,7 +15,7 @@ export const FINAL_TURN = { content: "Evidence: one real anchor measured; everyt
 
 export function completion(content: string, toolCalls: LlmToolCall[] = []): LlmCompletionResult {
   return {
-    model: DEEPSEEK_MODEL,
+    model: RAPIDROUTER_MODEL,
     content,
     toolCalls,
     usage: { promptTokens: 1200, completionTokens: 480, totalTokens: 1680 },

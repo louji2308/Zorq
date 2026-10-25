@@ -2969,3 +2969,32 @@ are marked pending B-02, not faked.
 unless it fixes a release-blocking defect"). All non-live clauses are audited and recorded now;
 the live-service clauses execute as one batch the moment B-02 clears, so no time is spent
 re-discovering them at the deadline.
+
+### 2026-10-25 — Rapid Router LLM gateway migration
+
+**User-directed deviation from the earlier DeepSeek provider contract.** Every production LLM
+completion now uses the OpenAI-compatible client package pointed at Rapid Router
+(`https://rapidrouter.ai/api/v1`) with the fixed model
+`qwen/qwen3.7-flash-2026-07-15`. The only LLM secret read by runtime configuration is
+`RAPIDROUTER_API_KEY`; the user-provided value is stored only in the git-ignored local `.env`.
+No provider-specific API key is read from source, and the browser remains key-free.
+
+Changed owners: `src/server/config.ts`, `src/server/main.ts`, `src/server/agent/{llm,errors,prior,index}.ts`,
+`.env.example`, `deployment/render-deploy.mjs`, README/docs, and the corresponding tests.
+The client sends all completions to Rapid Router's `/chat/completions` endpoint and defaults to
+`max_tokens=4096` so reasoning responses are not truncated; the existing deterministic LLM
+budget guard remains in force.
+
+Evidence: `tests/agent/rapidrouter.test.ts` was observed failing before implementation and then
+passed after the migration; `npm run typecheck` passed after integration. The local dev server
+was restarted and observed listening on port 3000 after loading the new environment contract.
+Remaining verification: full unit/lint/build/e2e ladder and a deliberately gated live Rapid Router
+call, which is not run automatically to avoid an unrequested billable completion.
+
+E2E note: after the stale dev child on port 3000 was removed, the production runner reached the
+built app and passed the fixture judge flows plus healthz, method, and SPA-fallback checks. The
+remaining local smoke failures are environmental: without `.env`, the app returns the honest
+`SERVICE_UNAVAILABLE` response for absent Qloo/Rapid Router keys while the existing smoke test
+expects `DEPENDENCY_UNAVAILABLE`; with `.env` present, local production boot attempts the configured
+Turso connection and the restricted environment reports `fetch failed`. No production behavior was
+weakened to hide either condition.

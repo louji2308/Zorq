@@ -2,21 +2,21 @@ import { describe, expect, it } from "vitest";
 import { loadConfig } from "../../src/server/config.js";
 import { ApiError } from "../../src/shared/errors.js";
 import { LlmBudget } from "../../src/server/agent/budget.js";
-import { createDeepSeekLlmClient } from "../../src/server/agent/llm.js";
+import { RAPIDROUTER_MODEL, createRapidRouterLlmClient } from "../../src/server/agent/llm.js";
 import { createLedger } from "../../src/server/agent/ledger.js";
 import { generatePrior } from "../../src/server/agent/prior.js";
 import { TEST_BRIEF } from "./support/fakes.js";
 
-const enabled = process.env.LIVE_DEEPSEEK === "1" && Boolean(process.env.DEEPSEEK_API_KEY);
+const enabled = process.env.LIVE_RAPIDROUTER === "1" && Boolean(process.env.RAPIDROUTER_API_KEY);
 
-describe.skipIf(!enabled)("live DeepSeek prior (LIVE_DEEPSEEK=1 with DEEPSEEK_API_KEY set)", () => {
-  it("generates a real Prior or surfaces a typed DeepSeek failure", async () => {
+describe.skipIf(!enabled)("live Rapid Router prior (LIVE_RAPIDROUTER=1 with RAPIDROUTER_API_KEY set)", () => {
+  it("generates a real Prior or surfaces a typed Rapid Router failure", async () => {
     const config = loadConfig({
       ...process.env,
       NODE_ENV: process.env.NODE_ENV ?? "test",
       APP_BASE_URL: process.env.APP_BASE_URL ?? "http://localhost:3000"
     });
-    const llm = createDeepSeekLlmClient({ apiKey: config.deepseekApiKey });
+    const llm = createRapidRouterLlmClient({ apiKey: config.rapidRouterApiKey });
     const budget = new LlmBudget({ ceilingUsd: config.llmBudgetUsd });
     const ledger = createLedger();
 
@@ -29,7 +29,7 @@ describe.skipIf(!enabled)("live DeepSeek prior (LIVE_DEEPSEEK=1 with DEEPSEEK_AP
       expect(outcome.error).toBeInstanceOf(ApiError);
       const apiError = outcome.error as ApiError;
       expect(["DEPENDENCY_UNAVAILABLE", "SERVICE_UNAVAILABLE", "RATE_LIMITED"]).toContain(apiError.code);
-      const key = config.deepseekApiKey ?? "";
+      const key = config.rapidRouterApiKey ?? "";
       if (key.length >= 8) {
         expect(apiError.message.includes(key)).toBe(false);
       }
@@ -38,7 +38,7 @@ describe.skipIf(!enabled)("live DeepSeek prior (LIVE_DEEPSEEK=1 with DEEPSEEK_AP
 
     const prior = outcome.prior;
     expect(prior.qlooUsed).toBe(false);
-    expect(prior.model).toBe("deepseek-flash");
+    expect(prior.model).toBe(RAPIDROUTER_MODEL);
     expect(Object.keys(prior.composition as Record<string, unknown>).length).toBeGreaterThan(0);
     expect(budget.spentUsd).toBeGreaterThan(0);
     expect(ledger.size()).toBe(1);

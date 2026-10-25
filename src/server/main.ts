@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { createDeepSeekLlmClient } from "./agent/llm.js";
+import { createRapidRouterLlmClient } from "./agent/llm.js";
 import { createApp } from "./app.js";
 import { createLogger } from "./logger.js";
 import { ConfigError, loadConfig, resolveListenPort, type ZorqConfig } from "./config.js";
@@ -76,7 +76,7 @@ async function bootstrap(): Promise<void> {
     );
   }
   const gateway = config !== undefined ? createQlooGateway({ config }) : unconfiguredGateway();
-  const llm = createDeepSeekLlmClient({ apiKey: config?.deepseekApiKey });
+  const llm = createRapidRouterLlmClient({ apiKey: config?.rapidRouterApiKey });
   const orchestrator = createOrchestrator({
     store,
     gateway,

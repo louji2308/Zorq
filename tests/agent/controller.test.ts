@@ -328,7 +328,7 @@ describe("bounded controller", () => {
   it("stops honestly when the model itself becomes unreachable", async () => {
     const s = setup({ responses: [] });
     s.llm.client.complete = async () => {
-      throw new ApiError("DEPENDENCY_UNAVAILABLE", "DeepSeek request failed: connection refused");
+      throw new ApiError("DEPENDENCY_UNAVAILABLE", "Rapid Router request failed: connection refused");
     };
 
     const result = await runController(baseOptions(s));

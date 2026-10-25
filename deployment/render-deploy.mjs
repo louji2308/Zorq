@@ -20,7 +20,7 @@ const API_BASE = "https://api.render.com/v1";
 
 // The env contract this tool manages. Required keys must exist locally; optional keys are
 // synced only when present. APP_BASE_URL and NODE_ENV are always derived, never read.
-const REQUIRED_ENV_KEYS = ["QLOO_API_KEY", "DEEPSEEK_API_KEY", "TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN"];
+const REQUIRED_ENV_KEYS = ["QLOO_API_KEY", "RAPIDROUTER_API_KEY", "TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN"];
 const OPTIONAL_ENV_KEYS = [
   "LLM_BUDGET_USD",
   "MAX_QLOO_CALLS",
@@ -237,19 +237,19 @@ function runSelfTest() {
   };
 
   const dotenv = parseDotenv(
-    ["# comment", "QLOO_API_KEY=abc123", 'DEEPSEEK_API_KEY="quoted value"', "", "EMPTY=", " X = y "].join(
+    ["# comment", "QLOO_API_KEY=abc123", 'RAPIDROUTER_API_KEY="quoted value"', "", "EMPTY=", " X = y "].join(
       "\n",
     ),
   );
   assert(dotenv.QLOO_API_KEY === "abc123", "plain value parsed");
-  assert(dotenv.DEEPSEEK_API_KEY === "quoted value", "quoted value unwrapped");
+  assert(dotenv.RAPIDROUTER_API_KEY === "quoted value", "quoted value unwrapped");
   assert(dotenv.EMPTY === "", "empty value kept");
   assert(dotenv.X === "y", "whitespace around key trimmed");
 
   const envList = buildEnvList(
     {
       QLOO_API_KEY: "q",
-      DEEPSEEK_API_KEY: "d",
+      RAPIDROUTER_API_KEY: "d",
       TURSO_DATABASE_URL: "t",
       TURSO_AUTH_TOKEN: "a",
       LLM_BUDGET_USD: "2.00",
@@ -279,7 +279,7 @@ function runSelfTest() {
   try {
     buildEnvList({ QLOO_API_KEY: "q" }, "https://x");
   } catch (err) {
-    threw = /DEEPSEEK_API_KEY/.test(err.message);
+    threw = /RAPIDROUTER_API_KEY/.test(err.message);
   }
   if (!threw) throw new Error("missing required key was not reported");
 }

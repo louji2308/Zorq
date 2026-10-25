@@ -11,11 +11,12 @@ import {
   type ZodIssueLike
 } from "../../shared/errors.js";
 import type { LlmBudget } from "./budget.js";
-import { missingDeepSeekConfiguration } from "./errors.js";
+import { missingRapidRouterConfiguration } from "./errors.js";
 import type { Ledger } from "./ledger.js";
 
-export const DEEPSEEK_BASE_URL = "https://api.deepseek.com";
-export const DEEPSEEK_MODEL = "deepseek-flash";
+export const RAPIDROUTER_BASE_URL = "https://rapidrouter.ai/api/v1";
+export const RAPIDROUTER_MODEL = "qwen/qwen3.7-flash-2026-07-15";
+export const RAPIDROUTER_DEFAULT_MAX_OUTPUT_TOKENS = 4096;
 
 export interface LlmToolCall {
   id: string;
@@ -87,15 +88,15 @@ function toLlmApiError(error: unknown, secrets: ReadonlyArray<string | undefined
   const status = extractStatus(error);
   const raw = error instanceof Error ? error.message : String(error);
   const message = redact(raw, secrets);
-  const details: ApiErrorDetail[] = [{ path: "deepseek", message }];
+  const details: ApiErrorDetail[] = [{ path: "rapidrouter", message }];
   let code: ApiErrorCode = "DEPENDENCY_UNAVAILABLE";
   if (status === 429) {
     code = "RATE_LIMITED";
   } else if (status === 401 || status === 403) {
     code = "SERVICE_UNAVAILABLE";
   }
-  const balanceHint = status === 402 ? " (HTTP 402: DeepSeek balance is insufficient)" : "";
-  return new ApiError(code, `DeepSeek request failed${balanceHint}: ${message}`, details);
+  const balanceHint = status === 402 ? " (HTTP 402: Rapid Router balance is insufficient)" : "";
+  return new ApiError(code, `Rapid Router request failed${balanceHint}: ${message}`, details);
 }
 
 function toWireMessages(messages: readonly LlmMessage[]): ChatCompletionMessageParam[] {
@@ -208,12 +209,13 @@ function normalizeUsage(usage: unknown): LlmUsage {
   };
 }
 
-export interface DeepSeekLlmOptions {
+export interface RapidRouterLlmOptions {
   apiKey: string | undefined;
+  fetch?: typeof fetch;
   now?: () => number;
 }
 
-export function createDeepSeekLlmClient(options: DeepSeekLlmOptions): LlmClient {
+export function createRapidRouterLlmClient(options: RapidRouterLlmOptions): LlmClient {
   const now = options.now ?? Date.now;
   let client: OpenAI | undefined;
 
@@ -221,11 +223,16 @@ export function createDeepSeekLlmClient(options: DeepSeekLlmOptions): LlmClient 
     async complete(request: LlmCompletionRequest): Promise<LlmCompletionResult> {
       const apiKey = options.apiKey?.trim();
       if (apiKey === undefined || apiKey === "") {
-        throw missingDeepSeekConfiguration();
+        throw missingRapidRouterConfiguration();
       }
-      client ??= new OpenAI({ apiKey, baseURL: DEEPSEEK_BASE_URL, maxRetries: 0 });
+      client ??= new OpenAI({
+        apiKey,
+        baseURL: RAPIDROUTER_BASE_URL,
+        maxRetries: 0,
+        ...(options.fetch !== undefined ? { fetch: options.fetch } : {})
+      });
       const payload: ChatCompletionCreateParamsNonStreaming = {
-        model: DEEPSEEK_MODEL,
+        model: RAPIDROUTER_MODEL,
         messages: toWireMessages(request.messages),
         ...(request.tools !== undefined && request.tools.length > 0
           ? {
@@ -236,7 +243,7 @@ export function createDeepSeekLlmClient(options: DeepSeekLlmOptions): LlmClient 
               tool_choice: "auto" as const
             }
           : {}),
-        ...(request.maxOutputTokens !== undefined ? { max_tokens: request.maxOutputTokens } : {})
+        max_tokens: request.maxOutputTokens ?? RAPIDROUTER_DEFAULT_MAX_OUTPUT_TOKENS
       };
       const startedAt = now();
       let response: Awaited<ReturnType<OpenAI["chat"]["completions"]["create"]>>;
@@ -249,7 +256,7 @@ export function createDeepSeekLlmClient(options: DeepSeekLlmOptions): LlmClient 
       const choice = Array.isArray(response.choices) ? response.choices[0] : undefined;
       const message = choice?.message;
       return {
-        model: typeof response.model === "string" && response.model !== "" ? response.model : DEEPSEEK_MODEL,
+        model: typeof response.model === "string" && response.model !== "" ? response.model : RAPIDROUTER_MODEL,
         content: normalizeContent(message?.content),
         toolCalls: normalizeToolCalls(message?.tool_calls),
         usage: normalizeUsage(response.usage),

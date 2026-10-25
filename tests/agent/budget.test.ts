@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  DEEPSEEK_FLASH_PRICING,
+  LLM_PRICING,
   LLM_SPEND_LIMIT_FRACTION,
   LlmBudget,
-  isDeepSeekPeakWindow,
+  isLlmPeakWindow,
   usageCostUsd
 } from "../../src/server/agent/budget.js";
 import { LlmBudgetError } from "../../src/server/agent/errors.js";
@@ -18,18 +18,18 @@ function budgetWith(clockIso: string, ceilingUsd: number): LlmBudget {
   return new LlmBudget({ ceilingUsd, now: () => at });
 }
 
-describe("deepseek-flash pricing windows", () => {
+describe("LLM pricing windows", () => {
   it("treats weekday 01:00-04:00 and 06:00-10:00 UTC as peak and everything else off-peak", () => {
-    expect(isDeepSeekPeakWindow(new Date("2026-10-08T00:59:00Z"))).toBe(false);
-    expect(isDeepSeekPeakWindow(new Date("2026-10-08T01:00:00Z"))).toBe(true);
-    expect(isDeepSeekPeakWindow(new Date("2026-10-08T03:59:00Z"))).toBe(true);
-    expect(isDeepSeekPeakWindow(new Date("2026-10-08T04:00:00Z"))).toBe(false);
-    expect(isDeepSeekPeakWindow(new Date("2026-10-08T05:59:00Z"))).toBe(false);
-    expect(isDeepSeekPeakWindow(new Date("2026-10-08T06:00:00Z"))).toBe(true);
-    expect(isDeepSeekPeakWindow(new Date("2026-10-08T09:59:00Z"))).toBe(true);
-    expect(isDeepSeekPeakWindow(new Date("2026-10-08T10:00:00Z"))).toBe(false);
-    expect(isDeepSeekPeakWindow(new Date("2026-10-10T02:00:00Z"))).toBe(false);
-    expect(isDeepSeekPeakWindow(new Date("2026-10-11T07:00:00Z"))).toBe(false);
+    expect(isLlmPeakWindow(new Date("2026-10-08T00:59:00Z"))).toBe(false);
+    expect(isLlmPeakWindow(new Date("2026-10-08T01:00:00Z"))).toBe(true);
+    expect(isLlmPeakWindow(new Date("2026-10-08T03:59:00Z"))).toBe(true);
+    expect(isLlmPeakWindow(new Date("2026-10-08T04:00:00Z"))).toBe(false);
+    expect(isLlmPeakWindow(new Date("2026-10-08T05:59:00Z"))).toBe(false);
+    expect(isLlmPeakWindow(new Date("2026-10-08T06:00:00Z"))).toBe(true);
+    expect(isLlmPeakWindow(new Date("2026-10-08T09:59:00Z"))).toBe(true);
+    expect(isLlmPeakWindow(new Date("2026-10-08T10:00:00Z"))).toBe(false);
+    expect(isLlmPeakWindow(new Date("2026-10-10T02:00:00Z"))).toBe(false);
+    expect(isLlmPeakWindow(new Date("2026-10-11T07:00:00Z"))).toBe(false);
   });
 
   it("reproduces the official illustrative off-peak economics", () => {
@@ -40,8 +40,8 @@ describe("deepseek-flash pricing windows", () => {
   it("doubles the rate during peak windows", () => {
     expect(usageCostUsd({ promptTokens: 1_000_000, completionTokens: 500_000 }, PEAK_NIGHT)).toBe(0.9);
     expect(usageCostUsd({ promptTokens: 1_000_000, completionTokens: 500_000 }, PEAK_MORNING)).toBe(0.9);
-    expect(DEEPSEEK_FLASH_PRICING.peak.inputCacheMissUsdPerMTok).toBe(
-      DEEPSEEK_FLASH_PRICING.offPeak.inputCacheMissUsdPerMTok * 2
+    expect(LLM_PRICING.peak.inputCacheMissUsdPerMTok).toBe(
+      LLM_PRICING.offPeak.inputCacheMissUsdPerMTok * 2
     );
   });
 
