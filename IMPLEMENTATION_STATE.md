@@ -2249,7 +2249,11 @@ verification must be repeated when the server dependency/network path is availab
 
 ## Last Verified Commit
 
-`f682eb1` — **accumulate Qloo tag suggestions** (2026-10-25; Qloo fragment-resolution
+`6378d89` — **make Qloo preview degradation in-band** (2026-10-25; route regression
+observed red then green, full 772-pass unit suite / 6 skips, typecheck, lint, build, and
+live browser flow with two 200 Qloo preview responses, 8 initial tags, 1 unique appended
+tag, and zero console/request/page errors). Previous verified commit is `f682eb1` —
+**accumulate Qloo tag suggestions** (2026-10-25; Qloo fragment-resolution
 regression, incremental merge regression, full 772-pass unit suite / 6 skips, typecheck,
 lint, build, and live `/api/qloo/tags` response verified). Previous verified commit is
 `2947ea1` — **make S0 preferences adaptive and viewport locked** (2026-10-19; focused
@@ -3040,3 +3044,22 @@ the incremental merge test was red before implementation and green after; focuse
 39/39 passed; full unit suite 772 passed / 6 skipped across 76 files; typecheck, lint, and build
 passed. The existing smoke command still has three unrelated 404 failures when it reuses the
 development API-only port-3000 server; its healthz and POST contract tests passed (2/5).
+
+### 2026-10-25 — Qloo preview degraded-runtime patch
+
+Root cause: when the local API was launched inside a restricted terminal, its server-side Qloo
+request failed with `fetch failed`; the S0 browser request then received HTTP 502 and Chrome
+reported a failed resource. This was an environment/network-boundary failure, not fabricated-tag
+logic or a browser secret leak.
+
+Fix: the optional `POST /api/qloo/tags` preview now translates missing gateway configuration,
+Qloo dependency failures, and rate limiting into HTTP 200 with the existing typed
+`status: "degraded"`, an empty tag list, and safe explanatory copy. It does not manufacture
+tags. `/healthz` still exposes configuration health, and the actual run/investigation routes
+retain their operational error semantics. README now documents that the API dev process needs
+outbound HTTPS access to Qloo.
+
+Evidence: route tests were changed first and observed red (503/502), then passed after the
+patch (15/15); live network-enabled browser flow returned two 200 preview responses, rendered
+8 initial tags then appended 1 unique tag after selection, with zero failed requests, console
+errors/warnings, or page errors. Full unit suite, typecheck, lint, and build passed afterward.

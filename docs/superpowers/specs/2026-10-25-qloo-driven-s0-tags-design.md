@@ -49,9 +49,12 @@ server-only secret boundary.
 
 - Empty or low-signal Qloo responses return an empty typed result and a muted
   explanation; they do not fall back to hardcoded tags.
-- Missing Qloo configuration or an upstream failure returns the existing typed
-  API error. The UI keeps the form usable and says that Qloo-driven tags are
-  unavailable.
+- Missing Qloo configuration or an upstream failure returns an in-band typed
+  `status: "degraded"` preview with no tags. The UI keeps the form usable and
+  explains that adaptive tags are unavailable without turning an optional
+  preview into a browser-visible 5xx failure. `/healthz` remains the operational
+  configuration signal, and the actual run/investigation routes keep their
+  existing typed API errors and Prior-before-Qloo behavior.
 - The browser waits 650 ms after Goal or selected-tag changes before calling;
   stale responses are ignored. The existing server rate limit and Qloo cache
   provide the second guard.
@@ -65,8 +68,8 @@ server-only secret boundary.
   projection.
 - Preview service tests cover resolution, selected-tag exclusion, dedupe,
   empty results, and degraded envelopes.
-- Route tests cover a successful preview, missing gateway, and typed upstream
-  failure without exposing the key.
+- Route tests cover a successful preview, missing gateway, and in-band degraded
+  upstream failure without exposing the key.
 - Web tests cover the pure state transition for selecting/removing a Qloo tag
   and submission of its label as a Brief constraint.
 - Run typecheck, lint, focused tests, full unit tests, production build, and a

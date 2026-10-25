@@ -92,6 +92,24 @@ npm start              # serves the built SPA + API on one origin
 curl http://localhost:3000/healthz
 ```
 
+For the live Qloo tag preview during development, run the API in a terminal with
+outbound HTTPS access and run Vite separately:
+
+```bash
+# Terminal 1 — must be able to reach hackathon.api.qloo.com
+npm run dev:server
+
+# Terminal 2
+npm run dev:web
+
+curl http://localhost:3000/healthz
+```
+
+If the API process cannot reach Qloo, `/api/qloo/tags` returns an honest typed
+`status: "degraded"` preview with no fabricated tags; `/healthz` and the server
+logs remain the operational signals to fix the environment. The S0 form stays
+usable, and existing tags are preserved during later preview failures.
+
 `/` gives three preset briefs; create a run and the workspace streams the investigation over
 SSE. Creating a run without Qloo/Rapid Router keys answers a *typed* `DEPENDENCY_UNAVAILABLE`
 envelope — degraded behavior is state, not a crash. Real runs require the server-side keys
