@@ -3063,3 +3063,22 @@ Evidence: route tests were changed first and observed red (503/502), then passed
 patch (15/15); live network-enabled browser flow returned two 200 preview responses, rendered
 8 initial tags then appended 1 unique tag after selection, with zero failed requests, console
 errors/warnings, or page errors. Full unit suite, typecheck, lint, and build passed afterward.
+
+### 2026-10-25 — S1 screenshot runtime fixes
+
+The supplied `Downloads/for codex.jpg` screenshot exposed two real UI defects in the partial-run
+surface: Challenge and Blueprint remained visually enabled before their required state existed,
+and the Prior footer could scroll out of view. The blank map was separately reproduced in a real
+browser: MapLibre's map wrapper collapsed to 0px because the CSS override targeted the outer grid
+cell instead of the `.s1-map-panel` child; its canvas therefore stayed at the 300px default.
+
+Fixes: centralize downstream tab readiness from persisted run state; disable Challenge until a
+ranked leader is challengeable and Blueprint until a challenge report exists; reset a stale view
+back to Investigate if its data disappears; keep the Prior body scrollable while pinning
+"No cultural data used." outside that scroll region; and size the MapLibre wrapper/canvas to the
+full visible map panel.
+
+Evidence: the new tab and Prior tests passed; the new browser regression first failed with a
+135px map height deficit, then passed after the CSS fix with canvas height 615px matching the
+615px panel. A post-fix browser screenshot showed the full Williamsburg map, site marker, radius,
+and controls; browser verification reported zero console errors, page errors, or failed requests.

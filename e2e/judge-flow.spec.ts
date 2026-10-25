@@ -246,6 +246,40 @@ test("S4 challenge runs five attacks and reports the agent's order without inven
   );
 });
 
+test("downstream tabs stay disabled until their required run state exists", async ({ page }) => {
+  await withFixture(async (server) => {
+    await gotoRun(page, server);
+
+    await expect(page.getByRole("button", { name: "Challenge", exact: true })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Blueprint", exact: true })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Blueprint", exact: true })).toHaveAttribute(
+      "title",
+      "Blueprint appears after the plan has been challenged."
+    );
+
+    const rendered = await page.locator("body").innerText();
+    expectHonestRenderedText(rendered);
+  });
+});
+
+test("S1 map canvas fills the visible map panel", async ({ page }) => {
+  await withFixture(async (server) => {
+    await gotoRun(page, server);
+
+    const panel = page.getByRole("region", { name: "Site map" });
+    const canvas = panel.locator("canvas");
+    await expect(canvas).toHaveCount(1);
+    await expect
+      .poll(async () => {
+        const panelBox = await panel.boundingBox();
+        const canvasBox = await canvas.boundingBox();
+        if (panelBox === null || canvasBox === null) return Number.NEGATIVE_INFINITY;
+        return Math.round(canvasBox.height - panelBox.height);
+      })
+      .toBeGreaterThanOrEqual(-1);
+  });
+});
+
 test("S5 blueprint cites stored evidence, drops the invented id, and the share view is read-only", async ({
   page,
   browser

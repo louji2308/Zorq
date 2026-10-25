@@ -50,6 +50,7 @@ import { buildS3Model, pairKey } from "../screens/s3/s3Model.js";
 import { ChallengePanel } from "../screens/s4/ChallengePanel.js";
 import { buildS4Model } from "../screens/s4/s4Model.js";
 import { BlueprintPanel } from "../screens/s5/BlueprintPanel.js";
+import { getRunTabReadiness } from "./runTabs.js";
 import "../screens/s1/s1.css";
 import "../screens/s2/s2.css";
 import "../screens/s3/s3.css";
@@ -218,8 +219,32 @@ export function RunRoute() {
   const ready = run !== null;
   const s2Available = s2Model !== null && hasCompositions(run);
   const s3Available = s3Model !== null;
-  const showS2 = view === "compositions" && s2Available && s2Model !== null;
-  const showS3 = view === "connections" && s3Model !== null;
+  const tabReadiness = getRunTabReadiness({
+    hasCompositions: s2Available,
+    hasConnections: s3Available,
+    challengeReady: s4Model?.challengeReady === true,
+    hasChallengeReport: run?.challengeReport !== undefined
+  });
+  const showS2 = view === "compositions" && tabReadiness.compositions && s2Model !== null;
+  const showS3 = view === "connections" && tabReadiness.connections && s3Model !== null;
+
+  useEffect(() => {
+    const viewAvailable =
+      view === "investigate" ||
+      (view === "compositions" && tabReadiness.compositions) ||
+      (view === "connections" && tabReadiness.connections) ||
+      (view === "challenge" && tabReadiness.challenge) ||
+      (view === "blueprint" && tabReadiness.blueprint);
+    if (!viewAvailable) {
+      setView("investigate");
+    }
+  }, [
+    tabReadiness.blueprint,
+    tabReadiness.challenge,
+    tabReadiness.compositions,
+    tabReadiness.connections,
+    view
+  ]);
 
   const handleStop = useCallback(() => {
     if (runId === "" || stopping) {
@@ -286,8 +311,10 @@ export function RunRoute() {
             <nav className="s1-tabs" aria-label="Run views" ref={tabsRef}>
               {RUN_TABS.map((tab) => {
                 const disabled =
-                  (tab.id === "compositions" && !s2Available) ||
-                  (tab.id === "connections" && !s3Available);
+                  (tab.id === "compositions" && !tabReadiness.compositions) ||
+                  (tab.id === "connections" && !tabReadiness.connections) ||
+                  (tab.id === "challenge" && !tabReadiness.challenge) ||
+                  (tab.id === "blueprint" && !tabReadiness.blueprint);
                 return (
                   <button
                     key={tab.id}
@@ -298,8 +325,13 @@ export function RunRoute() {
                     title={
                       tab.id === "compositions" && !s2Available
                         ? "Compositions appear once the run measures the candidate pool."
-                        : tab.id === "connections" && !s3Available
+                        : tab.id === "connections" && !tabReadiness.connections
                           ? "Connections appear once compositions are measured."
+                          : tab.id === "challenge" && !tabReadiness.challenge
+                            ? (s4Model?.blockedReason ??
+                              "Challenge appears once a ranked composition is ready.")
+                            : tab.id === "blueprint" && !tabReadiness.blueprint
+                              ? "Blueprint appears after the plan has been challenged."
                           : undefined
                     }
                     onClick={() => setView(tab.id)}
@@ -382,7 +414,7 @@ export function RunRoute() {
                 setView("connections");
               }}
             />
-          ) : view === "challenge" && s4Model !== null ? (
+          ) : view === "challenge" && tabReadiness.challenge && s4Model !== null ? (
             <ChallengePanel
               model={s4Model}
               challenging={challenging}

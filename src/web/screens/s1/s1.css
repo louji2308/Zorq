@@ -140,12 +140,13 @@
   inset: 0;
 }
 
-/* MapLibre adds .maplibregl-map to this same node and loads its CSS later. */
-.s1-map > .s1-map-canvas {
+/* MapLibre adds .maplibregl-map to this same node and loads its CSS later.
+ * The canvas is a child of the panel, not the outer grid cell. */
+.s1-map-panel > .s1-map-canvas {
   position: absolute;
   inset: 0;
-  width: auto;
-  height: auto;
+  width: 100%;
+  height: 100%;
 }
 
 .s1-map-veil {
@@ -208,7 +209,9 @@
   width: 320px;
   max-width: calc(100% - var(--zq-space-32));
   max-height: calc(100% - var(--zq-space-32));
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: var(--zq-paper);
   border: var(--zq-l2) dashed var(--zq-ink);
 }
@@ -239,6 +242,8 @@
 }
 
 .s1-prior-body {
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: var(--zq-space-8);
@@ -282,7 +287,9 @@
 }
 
 .s1-prior-footer {
-  padding-top: var(--zq-space-4);
+  flex: 0 0 auto;
+  margin: 0;
+  padding: var(--zq-space-4) var(--zq-space-12) var(--zq-space-12);
   border-top: var(--zq-l1) solid var(--zq-ink-200);
   font-size: var(--zq-text-micro);
   font-weight: var(--zq-weight-strong);

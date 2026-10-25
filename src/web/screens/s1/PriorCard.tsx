@@ -55,24 +55,26 @@ export function PriorCard({ model, collapsed, onToggle }: PriorCardProps) {
         </span>
       </button>
       {!collapsed && (
-        <div className="s1-prior-body">
-          <p className="s1-prior-locktime zq-nums">Locked {model.lockedAtLabel}</p>
-          {model.components.length > 0 ? (
-            <ul className="s1-prior-components">
-              {model.components.map((component) => (
-                <li key={component.label}>
-                  <span className="s1-prior-component-label">{component.label}</span>
-                  {component.detail !== null && (
-                    <span className="s1-prior-component-detail">{component.detail}</span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="s1-prior-note">The first guess listed no readable components.</p>
-          )}
+        <>
+          <div className="s1-prior-body">
+            <p className="s1-prior-locktime zq-nums">Locked {model.lockedAtLabel}</p>
+            {model.components.length > 0 ? (
+              <ul className="s1-prior-components">
+                {model.components.map((component) => (
+                  <li key={component.label}>
+                    <span className="s1-prior-component-label">{component.label}</span>
+                    {component.detail !== null && (
+                      <span className="s1-prior-component-detail">{component.detail}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="s1-prior-note">The first guess listed no readable components.</p>
+            )}
+          </div>
           <p className="s1-prior-footer">{model.footer}</p>
-        </div>
+        </>
       )}
     </section>
   );

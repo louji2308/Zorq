@@ -6,8 +6,11 @@
  * never a fabricated prior — AGENTS §12).
  */
 import { describe, expect, it } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { briefSchema } from "../../src/shared/brief.js";
 import { priorSchema, runStateSchema, type RunState } from "../../src/shared/run.js";
+import { PriorCard } from "../../src/web/screens/s1/PriorCard.js";
 import { buildPriorModel, extractPriorComponents } from "../../src/web/screens/s1/s1Model.js";
 
 /** Realistic Rapid Router Prior draft per PRIOR_SYSTEM_PROMPT (src/server/agent/prior.ts):
@@ -112,5 +115,23 @@ describe("buildPriorModel", () => {
       phase: "prior"
     });
     expect(buildPriorModel(priorless)).toBeNull();
+  });
+});
+
+describe("PriorCard structure", () => {
+  it("keeps the no-cultural-data footer outside the scrollable component body", () => {
+    const model = buildPriorModel(runWithPrior());
+    expect(model).not.toBeNull();
+
+    const markup = renderToStaticMarkup(
+      createElement(PriorCard, { model, collapsed: false, onToggle: () => undefined })
+    );
+    const bodyStart = markup.indexOf('class="s1-prior-body"');
+    const bodyEnd = markup.indexOf("</div>", bodyStart);
+    const footer = markup.indexOf('class="s1-prior-footer"');
+
+    expect(bodyStart).toBeGreaterThanOrEqual(0);
+    expect(bodyEnd).toBeGreaterThan(bodyStart);
+    expect(footer).toBeGreaterThan(bodyEnd);
   });
 });
