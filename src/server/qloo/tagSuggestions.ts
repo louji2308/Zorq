@@ -78,10 +78,20 @@ export async function buildQlooTagSuggestions(
   gateway: QlooGateway,
   request: QlooTagSuggestionsRequest
 ): Promise<QlooTagSuggestionsResponse> {
+  // Measured live before this change: the objective queries ran one after
+  // another (~0.6-0.8 s each, 2-4 of them), so the preview spent ~2.5-3 s
+  // resolving signals before it could even ask for insights. They are
+  // independent reads of the same objective, so they run together now and are
+  // merged in query order below — same dedupe, same cap, same envelope as the
+  // sequential loop, one upstream round trip instead of up to four.
+  const queries = buildObjectiveTagQueries(request.objective);
+  const resolutions = await Promise.all(
+    queries.map((query) => gateway.resolveTags({ query, take: 6 }, { transport: "rest" }))
+  );
+
   const objectiveSignalIds: string[] = [];
   let resolutionDegraded = false;
-  for (const query of buildObjectiveTagQueries(request.objective)) {
-    const resolved = await gateway.resolveTags({ query, take: 6 }, { transport: "rest" });
+  for (const resolved of resolutions) {
     if (resolved.status === "degraded" || resolved.status === "needs_input" || resolved.status === "partial") {
       resolutionDegraded = true;
     }

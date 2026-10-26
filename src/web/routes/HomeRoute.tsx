@@ -58,7 +58,14 @@ function readMapApiKey(): string | null {
 }
 
 const MAP_API_KEY = readMapApiKey();
-const QLOO_TAG_DEBOUNCE_MS = 650;
+/**
+ * How long the goal/site draft must settle before the preview is requested.
+ * 650 ms made the rail feel dead: it added half a second on top of the server's
+ * Qloo round trips (measured ~5.3 s live before parallelising tag resolution).
+ * 300 ms still coalesces normal typing, and later edits only append new signals
+ * because the request is aborted and superseded by the effect cleanup below.
+ */
+const QLOO_TAG_DEBOUNCE_MS = 300;
 const QLOO_TAG_UNAVAILABLE = "Qloo-driven tags are unavailable right now. You can continue without them.";
 
 export function HomeRoute() {

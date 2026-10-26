@@ -8,6 +8,14 @@
       content="Zorq - cultural composition intelligence for physical places. Evidence-bound Place Blueprints, measured with Qloo."
     />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <!--
+      MapTiler serves the map style, sprites, glyphs, vector tiles and the
+      forward-geocoding API from one origin. Warming that connection during HTML
+      parse (instead of when the map module asks for the style, or when the
+      address field first searches) removes a DNS+TCP+TLS handshake from the two
+      slowest first-load paths.
+    -->
+    <link rel="preconnect" href="https://api.maptiler.com" crossorigin />
     <title>Zorq</title>
   </head>
   <body>

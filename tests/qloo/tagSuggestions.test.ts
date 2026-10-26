@@ -94,6 +94,58 @@ describe("buildQlooTagSuggestions", () => {
     });
   });
 
+  it("issues every objective tag query in one round trip, merged in query order", async () => {
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const resolveTags = vi.fn(async ({ query }: { query: string }) => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      // Completion order is deliberately reversed: the full objective resolves
+      // last, so any ordering that depends on arrival would scramble the merge.
+      const delay = query === REQUEST.objective ? 20 : 1;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      inFlight -= 1;
+      return {
+        status: "ok" as const,
+        operation: "resolveTags" as const,
+        transport: "rest" as const,
+        cache: "live" as const,
+        resultCount: 1,
+        results: { tags: [{ id: `t-${query.length}`, name: `tag ${query}` }] },
+        provenance: {
+          transport: "rest" as const,
+          operation: "resolveTags" as const,
+          endpoint: "fake://qloo",
+          durationMs: 1
+        }
+      };
+    });
+    const insights = vi.fn(async () => ({
+      status: "ok" as const,
+      operation: "insights" as const,
+      transport: "rest" as const,
+      cache: "live" as const,
+      resultCount: 1,
+      results: { tags: [{ id: "t-from-insights", name: "Insight", score: 0.5 }] },
+      provenance: { transport: "rest" as const, operation: "insights" as const, endpoint: "fake://qloo", durationMs: 1 }
+    }));
+    const qloo = gateway({ resolveTags, insights });
+
+    const result = await buildQlooTagSuggestions(qloo, { ...REQUEST, selectedTagIds: [] });
+
+    const queries = resolveTags.mock.calls.map(([request]) => request.query);
+    expect(queries).toEqual([
+      "A daytime cultural corner",
+      "daytime cultural corner",
+      "daytime",
+      "cultural"
+    ]);
+    // A sequential loop can never have more than one call open; the preview
+    // must open them together so the preview costs one round trip, not four.
+    expect(maxInFlight).toBe(queries.length);
+    expect(result.status).toBe("ok");
+  });
+
   it("returns an honest empty result when Qloo resolves no usable signals", async () => {
     const qloo = gateway({
       resolveTags: vi.fn(async () => ({

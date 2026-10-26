@@ -3,7 +3,7 @@
  * (Product Spec §7 S0: address/place search, autocomplete; NO Qloo calls).
  *
  * Behaviour:
- *  - typing fetches suggestions after a 300 ms debounce (silent);
+ *  - typing fetches suggestions after a 150 ms debounce (silent);
  *  - Enter or the search glyph commits: it picks the highlighted (or first)
  *    suggestion, and if nothing could be placed it reports "empty"/"failed" so
  *    the screen can show the spec copy and open map point-pick mode.
@@ -14,7 +14,13 @@ import { geocode, type GeocodeSuggestion } from "../../lib/geocode.js";
 export type GeocodeState = "idle" | "searching" | "empty" | "failed";
 
 const LISTBOX_ID = "s0-address-listbox";
-const DEBOUNCE_MS = 300;
+/**
+ * Short on purpose: the wait the user feels is debounce + geocode round trip,
+ * and the round trip (MapTiler, cold TLS handshake on first use) is already the
+ * larger half. 150 ms still collapses a typing burst into one request while
+ * keeping the pause before the lookup starts imperceptible.
+ */
+const DEBOUNCE_MS = 150;
 
 export interface AddressSearchProps {
   value: string;
