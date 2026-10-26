@@ -3110,3 +3110,38 @@ Evidence: route/client TDD was red (404 / missing function) then green; recovery
 red then green; full unit suite passed 783 tests / 6 skips, typecheck, lint, and build passed;
 the partial screenshot browser regression and all 9 judge-flow tests passed. No browser console
 errors, page errors, or failed requests were observed.
+
+### 2026-10-26 — S0 first-load latency: map, address search, Qloo tag preview
+
+Diagnosis, measured against a production build (`NODE_ENV=production`, :3100, cold Qloo cache):
+
+- Map: `MapPanel`/`InvestigateMap` waited behind a 350 ms idle ceiling before the map chunk and
+  the style request could even start; everything after that is upstream MapTiler fetches.
+- Address search: 300 ms debounce plus the first DNS+TCP+TLS handshake to `api.maptiler.com` —
+  1851 ms median from the last keystroke to a visible suggestion list.
+- Qloo tag preview: 650 ms debounce plus up to four **sequential** `resolveTags` round trips
+  (~0.6-0.8 s each) before the single `insights` call — 6914 ms from goal fill to chips, of which
+  5326 ms was server-side.
+
+Changes (commit `72b2a64`): `<link rel="preconnect" crossorigin>` to `api.maptiler.com` (style,
+sprites, glyphs, tiles and geocoding share that origin); both map panels' idle deadline 350 →
+60 ms; geocode debounce 300 → 150 ms; `QLOO_TAG_DEBOUNCE_MS` 650 → 300 ms; and
+`buildQlooTagSuggestions` now runs the objective queries with `Promise.all`, merging results in
+query order — same dedupe, cap, degraded handling and envelope as the sequential loop.
+
+Evidence: `tests/qloo/tagSuggestions.test.ts` gained a concurrency case that is red against the
+sequential loop (`maxInFlight` 1 ≠ 4) and green after; gates independently re-run — typecheck 0,
+lint 0, unit **784 pass / 6 skip**, build PASS, `e2e/judge-flow` **9/9**, and a landing DOM/console
+check 14/14 (map fired `load`, one canvas rendered, no console or page errors). Measured after:
+address suggestions 315-537 ms after the last keystroke (debounce ~120 ms, geocode RTT 67-679 ms),
+tag preview **3422 ms** (debounce 305 ms, server 2.5 s, 8 chips), map median 2273 ms with FCP
+284-424 ms. Harness kept in `tmp/` (gitignored): `measure-perf.mjs`, `verify-landing.mjs`.
+
+Known limits and risks: map end-to-end time is dominated by upstream MapTiler
+style/sprite/glyph/tile fetches (1.7 s to 17.9 s observed across runs in this environment), so the
+code-side win is bounded; constructing the map without the idle gate was tried and regressed FCP
+by ~300 ms, so paint-first deferral stays. Client aborts do not cancel server work, so the shorter
+preview debounce issues more preview calls against the shared `MAX_QLOO_CALLS` budget (the
+gateway envelope cache absorbs exact repeats). Preview results also depend on the geocoder's
+location string: some labels honestly return `empty`, and that empty envelope is cached for
+`QLOO_CACHE_TTL_SEC`. No Prior-before-Qloo, budget, run-flow or map-design invariant changed.
