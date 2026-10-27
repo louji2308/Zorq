@@ -63,7 +63,16 @@ export function mergeQlooTagSuggestions(
     const label = tag.label.trim();
     const normalizedLabel = label.toLocaleLowerCase();
     if (id === "" || label === "" || ids.has(id) || labels.has(normalizedLabel)) continue;
-    if (tags.length >= MAX_QLOO_TAG_SUGGESTIONS) break;
+    // A full rail must still accept fresh signals: retire the oldest unselected
+    // suggestion instead of ignoring the click. Selected chips live in the form
+    // state, so retiring their suggestion row never drops the choice.
+    if (tags.length >= MAX_QLOO_TAG_SUGGESTIONS) {
+      const retired = tags.shift();
+      if (retired !== undefined) {
+        ids.delete(retired.id);
+        labels.delete(retired.label.trim().toLocaleLowerCase());
+      }
+    }
     tags.push(tag);
     ids.add(id);
     labels.add(normalizedLabel);

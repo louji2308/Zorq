@@ -108,6 +108,20 @@ export function RunRoute() {
   const tabsRef = useRef<HTMLElement | null>(null);
   const activeTabRef = useRef<HTMLButtonElement | null>(null);
   const [indicator, setIndicator] = useState({ left: 0, width: 0 });
+  const [panelMotion, setPanelMotion] = useState(false);
+  const lastAnimatedView = useRef<RunView | null>(null);
+
+  useEffect(() => {
+    if (lastAnimatedView.current === null) {
+      lastAnimatedView.current = view;
+      return;
+    }
+    if (lastAnimatedView.current === view) return;
+    lastAnimatedView.current = view;
+    setPanelMotion(true);
+    const timer = window.setTimeout(() => setPanelMotion(false), 180);
+    return () => window.clearTimeout(timer);
+  }, [view]);
 
   useEffect(() => {
     const el = activeTabRef.current;
@@ -332,7 +346,15 @@ export function RunRoute() {
   }, [runId, challenging]);
 
   return (
-    <div className={view === "blueprint" ? "s1 is-reading" : "s1"}>
+    <div
+      className={[
+        "s1",
+        view === "blueprint" ? "is-reading" : "",
+        panelMotion ? "is-panel-motion" : ""
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <div className="s1-top">
         {(apiError !== null || streamNotice !== null || stopError !== null || refreshError !== null) && (
           <div className="s1-banner" role="alert">
@@ -341,7 +363,9 @@ export function RunRoute() {
         )}
         <header className="s1-topbar">
           <h1 className="s1-wordmark">
-            <Link to="/">Zorq</Link>
+            <Link to="/" viewTransition>
+              Zorq
+            </Link>
           </h1>
           {ready && (
             <nav className="s1-tabs" aria-label="Run views" ref={tabsRef}>

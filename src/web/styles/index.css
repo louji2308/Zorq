@@ -1,3 +1,57 @@
 /* Single stylesheet entry point: import this one file from main.tsx. */
 @import "./tokens.css";
 @import "./base.css";
+
+/*
+ * Route + tab motion. Both are short, ink-preserving opacity/position changes:
+ * no zoom, no blur, no color flash, and fully disabled for reduced motion.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root) {
+    animation: zq-route-out 140ms cubic-bezier(0.4, 0, 1, 1) both;
+  }
+
+  ::view-transition-new(root) {
+    animation: zq-route-in 220ms cubic-bezier(0, 0, 0.2, 1) both;
+  }
+
+  /* Panels are direct grid children; animating them keeps .s1 layout intact.
+     The class is only set for in-page view switches, never for the initial
+     route paint (that would fight the view-transition snapshot). */
+  .s1.is-panel-motion > section {
+    animation: zq-panel-in 180ms cubic-bezier(0, 0, 0.2, 1) both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(root),
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+
+  .s1.is-panel-motion > section {
+    animation: none;
+  }
+}
+
+@keyframes zq-route-out {
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes zq-route-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes zq-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}

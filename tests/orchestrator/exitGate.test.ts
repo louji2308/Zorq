@@ -9,7 +9,15 @@ import { createMemoryStore, type StoredRun } from "../../src/server/persistence/
 import { createEventHub } from "../../src/server/sse/index.js";
 import type { RunState } from "../../src/shared/run.js";
 import { TEST_BRIEF, TEST_NOW, fakeGateway, fakeLlm } from "../agent/support/fakes.js";
-import { FINAL_TURN, PRIOR_RESPONSE, TURN_ONE, completion, deferred } from "../orchestrator/support.js";
+import {
+  FINAL_TURN,
+  PRIOR_RESPONSE,
+  TURN_ONE,
+  completion,
+  deferred,
+  retryWhenIdle,
+  waitForTerminalRun
+} from "../orchestrator/support.js";
 import { startServer } from "../support/http.js";
 
 const TEST_CONFIG = loadConfig({ NODE_ENV: "test", APP_BASE_URL: "http://localhost:3000" });
@@ -216,7 +224,7 @@ async function runExitGateScenario(): Promise<ExitGateScenario> {
   cleanups.push(server.close);
   const eventsUrl = (runId: string): string => `${server.baseUrl}/api/runs/${runId}/events`;
 
-  const runPromise = orchestrator.startRun({ brief: TEST_BRIEF });
+  void orchestrator.startRun({ brief: TEST_BRIEF });
   const started = await firstState.promise;
   await investigating.promise;
   const runId = started.id;
@@ -278,12 +286,12 @@ async function runExitGateScenario(): Promise<ExitGateScenario> {
   // stop lands while the third investigation turn is still gated; the gated pass never fabricates completion
   const stoppedState = await orchestrator.stopRun(runId, "exit gate stop");
   gateThree.resolve();
-  const afterGateState = await runPromise;
+  const afterGateState = await waitForTerminalRun(store, runId);
   const ledgerAfterGate = await store.listLedgerEvents(runId);
 
   const doubleStopState = await orchestrator.stopRun(runId, "exit gate second stop");
 
-  const retryState = await orchestrator.retryRun(runId);
+  const retryState = await retryWhenIdle(orchestrator, runId);
   const llmCallsAfterRetry = llm.calls.length;
 
   const resumeState = await orchestrator.resumeRun(runId);

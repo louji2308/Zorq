@@ -79,8 +79,30 @@ async function postRetry(baseUrl: string, runId: string): Promise<Response> {
   });
 }
 
+const TERMINAL_STATUSES = new Set(["complete", "partial", "failed", "stopped"]);
+
+async function getRun(baseUrl: string, runId: string): Promise<RunState> {
+  const response = await fetch(`${baseUrl}/api/runs/${runId}`);
+  expect(response.status).toBe(200);
+  return runResponseSchema.parse(await response.json()).run;
+}
+
+async function waitForTerminal(baseUrl: string, runId: string, timeoutMs = 2_000): Promise<RunState> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const run = await getRun(baseUrl, runId);
+    if (TERMINAL_STATUSES.has(run.status)) {
+      return run;
+    }
+    if (Date.now() > deadline) {
+      throw new Error(`run ${runId} did not reach a terminal state; last status: ${run.status}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+}
+
 describe("POST /api/runs", () => {
-  it("creates a run, executes the pipeline, and returns the terminal run with a frozen Prior", async () => {
+  it("returns as soon as the frozen Prior is durable, then executes the pipeline in the background", async () => {
     const { baseUrl } = await createStack();
 
     const response = await postBrief(baseUrl);
@@ -98,7 +120,11 @@ describe("POST /api/runs", () => {
     expect(run.prior).toBeDefined();
     expect(run.prior?.qlooUsed).toBe(false);
     expect(run.prior?.generatedAt).toBe(new Date(TEST_NOW).toISOString());
-    expect(["complete", "partial", "failed"]).toContain(run.status);
+    expect(run.status).toBe("investigating");
+
+    const terminal = await waitForTerminal(baseUrl, run.id);
+    expect(["complete", "partial", "failed"]).toContain(terminal.status);
+    expect(terminal.prior).toEqual(run.prior);
   });
 
   it("rejects a brief that fails schema validation with 400 VALIDATION_FAILED", async () => {
@@ -167,6 +193,7 @@ describe("GET /api/runs/:id", () => {
     const created = await postBrief(baseUrl);
     const createdBody = (await created.json()) as { run: { id: string } };
     const runId = createdBody.run.id;
+    await waitForTerminal(baseUrl, runId);
 
     const stored = await store.loadRun(runId);
     expect(stored).not.toBeNull();

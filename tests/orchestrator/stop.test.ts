@@ -5,7 +5,7 @@ import { RunBusyError, createOrchestrator } from "../../src/server/orchestrator/
 import { RunNotFound, createMemoryStore } from "../../src/server/persistence/index.js";
 import type { RunState } from "../../src/shared/run.js";
 import { TEST_BRIEF, TEST_NOW, fakeGateway, fakeLlm } from "../agent/support/fakes.js";
-import { FINAL_TURN, PRIOR_RESPONSE, TURN_ONE, completion, deferred } from "./support.js";
+import { FINAL_TURN, PRIOR_RESPONSE, TURN_ONE, completion, deferred, waitForTerminalRun } from "./support.js";
 
 function gatedLlm(gate: Promise<void>, onInvestigate?: () => void): LlmClient {
   return {
@@ -36,7 +36,7 @@ describe("orchestrator stopRun", () => {
       }
     });
 
-    const runPromise = orchestrator.startRun({ brief: TEST_BRIEF });
+    void orchestrator.startRun({ brief: TEST_BRIEF });
     const started = await firstState.promise;
     await reached.promise;
 
@@ -47,7 +47,7 @@ describe("orchestrator stopRun", () => {
     expect(Object.isFrozen(stopped.prior)).toBe(true);
 
     gate.resolve();
-    const final = await runPromise;
+    const final = await waitForTerminalRun(store, started.id);
     expect(final.status).toBe("stopped");
     expect(final.phase).toBe("investigation");
 
@@ -75,7 +75,8 @@ describe("orchestrator stopRun", () => {
       now: () => TEST_NOW
     });
 
-    const done = await orchestrator.startRun({ brief: TEST_BRIEF });
+    const created = await orchestrator.startRun({ brief: TEST_BRIEF });
+    const done = await waitForTerminalRun(store, created.id);
     expect(done.status).toBe("complete");
     const before = await store.listLedgerEvents(done.id);
 
@@ -104,7 +105,7 @@ describe("orchestrator stopRun", () => {
       }
     });
 
-    const runPromise = orchestrator.startRun({ brief: TEST_BRIEF });
+    void orchestrator.startRun({ brief: TEST_BRIEF });
     const started = await firstState.promise;
     await reached.promise;
 
@@ -112,6 +113,6 @@ describe("orchestrator stopRun", () => {
     await expect(orchestrator.retryRun(started.id)).rejects.toThrow(RunBusyError);
 
     gate.resolve();
-    await runPromise;
+    await waitForTerminalRun(store, started.id);
   });
 });

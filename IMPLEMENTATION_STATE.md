@@ -999,6 +999,18 @@ COMMIT EXPECT:2–4 coherent `docs:` commits (plan-suggested boundaries).
 
 ## Active Work
 
+- **2026-10-27 async run start + S0/S1 responsiveness (working tree, uncommitted):**
+  `POST /api/runs` now returns after persisting the frozen Prior and emits
+  `investigating`; the investigation pass runs in the background and streams
+  progress over SSE, so `/run/:id` opens immediately. The Qloo tag preview now
+  paginates past already-seen tags, sends bounded `excludeTagIds`/`excludeLabels`,
+  and targets 4 fresh tags (8 initially) without duplicating selected/seen labels.
+  S0 warms the MapLibre style after paint, restores the last map camera from
+  `sessionStorage`, and geocode lookups use a bounded TTL/LRU cache. Route changes
+  use the View Transition API; in-page S1 panel switches use a restrained panel
+  animation. The stale S0 smoke assertion was corrected because `2947ea1`
+  intentionally removed the first-page "Try a site" presets. No commit made yet.
+
 - **2026-10-25 user-requested Qloo-driven S0 tags (in progress):** Replaced the
   local four-seed relationship graph with a server-mediated `POST /api/qloo/tags`
   preview. The route resolves the Goal through Qloo, asks the typed REST insight
@@ -1304,6 +1316,31 @@ returned the pre-persist Prior object (unfrozen, separate object from the persis
 (`62f29af`).
 
 ## Verified Tests / Evidence
+
+### 2026-10-27 — async run start + perceived-performance pass (working tree, uncommitted)
+
+- Async orchestration regression update: `startRun` asserts `investigating` plus a
+  frozen Prior, then polls durable terminal state. The orchestrator support helper
+  `waitForTerminalRun` rehydrates the stored state (restoring the frozen Prior)
+  and `retryWhenIdle` waits past `RunBusyError` before retrying. All
+  lifecycle, recovery, stop, wall-clock, capture, idempotency, and exit-gate
+  tests pass after the change.
+- Qloo preview regression: `tests/qloo/tagSuggestions.test.ts` covers exclusion
+  arrays, three-page exhaustion, and four fresh tags after already-seen results;
+  `tests/web/s0Brief.test.ts` covers replenishing a full 12-slot rail.
+- Focused post-fix run: **7 orchestration files / 31 tests passed**; earlier
+  **3 files / 34 tests passed** (Qloo preview, S0 state, runs API). The full suite
+  also covers API challenge/judgeChain.
+- Full suite: `npm.cmd test` → **75 files passed + 3 skipped; 786 tests passed +
+  6 skipped**. `npm.cmd run typecheck` → exit 0; `npm.cmd run lint` → exit 0;
+  `npm.cmd run build` → exit 0 (existing >500 kB chunk warning only).
+- Browser: `npx playwright test` against a temporary local config on port **3100**
+  → **14 passed, 4 skipped**. Port 3000 was occupied by an unrelated Next.js
+  process, so the temporary config was deleted after the run and that process was
+  not killed. The S0 smoke test now asserts the intentional custom-brief screen
+  (no "Try a site") from `2947ea1`.
+- Not claimed: live-services judge pass remains blocked by B-02 (DeepSeek balance
+  $0.00). E2E run used the existing fixture judge path, not real Qloo/LLM calls.
 
 ### 2026-10-19 — static S0 adaptive preferences (`2947ea1`)
 
@@ -2240,14 +2277,20 @@ with both mini-challenge attack rows after a real in-browser replace.
 | B-10 | Low | **GET-only evidence projection:** only `GET /api/runs/:id` injects evidence; SSE/replace/stop responses carry RunState without it. Client evidence slot + terminal refetch bridge the gap (`b1f276e`). | Server-side unification deferred; Phase 8 challenge/blueprint surfaces did NOT add more state-only projections (challenge/blueprint responses stay report/blueprint-shaped; D-8.7 posture held). | Orchestrator (Phase 9) |
 | B-11 | Low | **Phase 8 deferred review polish** (from the 15-finding independent review, D-8.23): #8 rounds history not persisted per report (detail lines now render, `rounds` exists, but full per-round mutation history is not modeled); #9 bridge evidence provenance not attached to the blueprint's bridge-member receipts; #10 deep challenge block (full report) absent from the standalone share blueprint — share shows the composed artifact only; #11 `state.evidence` field is dead code alongside the projecting GET; #13 format-downshift ordering in fit copy vs spec's "downshift before dropping a role when practical"; #15 deterministic-fallback rationale cites positional indices without per-citation attribution; #16 mutation operator `Shift-scale` from the Plan's operator list exists only as the catchment attack's city-scale re-measure (challenge.ts:83 union = swap/drop/bridge), never as a mutation candidate producer. | None falsifies evidence, numeric truth, or the protected loop (verified during triage); each is judge-visible polish, state hygiene, or a bounded operator gap. Backlog for Phase 9 alongside `/method`. | Orchestrator (Phase 9) |
 
-### B-12 — Medium — local fresh production server boot failed 2026-10-19
+### B-12 — RESOLVED 2026-10-27 — fresh production server boot
 
-`npm.cmd start` exits `fatal: fetch failed`, which prevented a fresh Playwright smoke
-run after the S0 map deferral. A stale port-3000 process was serving API-only 404s and
-was stopped before the fresh attempt. Unit/type/build evidence is green; browser
-verification must be repeated when the server dependency/network path is available.
+The 2026-10-19 boot failure was environmental, not a Zorq server defect. A fresh
+built server boots and serves `/healthz`; a full Playwright run was completed on
+port **3100** with **14 passed / 4 skipped** (temporary config removed afterward).
+Port 3000 remains occupied by an unrelated Node/Next.js process that serves API-only
+404s for Zorq routes; it was not killed. Use an explicit free port for local browser
+verification when that process is present.
 
 ## Last Verified Commit
+
+The last **committed** state remains `6378d89` below. The async-start +
+perceived-performance changes are verified in the **uncommitted working tree**
+(2026-10-27: full unit suite, typecheck, lint, build, and local Playwright green).
 
 `6378d89` — **make Qloo preview degradation in-band** (2026-10-25; route regression
 observed red then green, full 772-pass unit suite / 6 skips, typecheck, lint, build, and

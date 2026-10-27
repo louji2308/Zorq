@@ -6,7 +6,15 @@ import { createOrchestrator, rehydrateRun } from "../../src/server/orchestrator/
 import { RunNotFound, type RunStore, createMemoryStore } from "../../src/server/persistence/index.js";
 import type { RunState } from "../../src/shared/run.js";
 import { TEST_BRIEF, TEST_NOW, TEST_PRIOR, fakeGateway, fakeLlm } from "../agent/support/fakes.js";
-import { FINAL_TURN, PRIOR_RESPONSE, TURN_ONE, completion, deferred } from "./support.js";
+import {
+  FINAL_TURN,
+  PRIOR_RESPONSE,
+  TURN_ONE,
+  completion,
+  deferred,
+  retryWhenIdle,
+  waitForTerminalRun
+} from "./support.js";
 
 type ScriptStep = (request: LlmCompletionRequest) => Promise<LlmCompletionResult> | LlmCompletionResult;
 
@@ -91,7 +99,7 @@ describe("orchestrator recovery", () => {
       }
     });
 
-    const runPromise = orchestrator.startRun({ brief: TEST_BRIEF });
+    void orchestrator.startRun({ brief: TEST_BRIEF });
     const started = await firstState.promise;
     await investigating.promise;
 
@@ -102,10 +110,10 @@ describe("orchestrator recovery", () => {
     const priorSnapshot = JSON.parse(JSON.stringify(stopped.prior)) as unknown;
 
     gate.resolve();
-    const afterGate = await runPromise;
+    const afterGate = await waitForTerminalRun(store, started.id);
     expect(afterGate.status).toBe("stopped");
 
-    const retried = await orchestrator.retryRun(started.id);
+    const retried = await retryWhenIdle(orchestrator, started.id);
     expect(retried.status).toBe("complete");
     expect(retried.phase).toBe("measurement");
     expect(retried.id).toBe(started.id);
@@ -173,7 +181,8 @@ describe("orchestrator recovery", () => {
       now: () => TEST_NOW
     });
 
-    const done = await orchestrator.startRun({ brief: TEST_BRIEF });
+    const created = await orchestrator.startRun({ brief: TEST_BRIEF });
+    const done = await waitForTerminalRun(store, created.id);
     expect(done.status).toBe("complete");
     const before = await store.listLedgerEvents(done.id);
 
@@ -247,13 +256,14 @@ describe("orchestrator recovery", () => {
       now: () => TEST_NOW
     });
 
-    const failed = await orchestrator.startRun({ brief: TEST_BRIEF });
+    const created = await orchestrator.startRun({ brief: TEST_BRIEF });
+    const failed = await waitForTerminalRun(store, created.id);
     expect(failed.status).toBe("failed");
     const priorSnapshot = JSON.parse(JSON.stringify(failed.prior)) as unknown;
     const before = await store.listLedgerEvents(failed.id);
     expect(before.some((entry) => entry.event.label === "run.error")).toBe(true);
 
-    const retried = await orchestrator.retryRun(failed.id);
+    const retried = await retryWhenIdle(orchestrator, failed.id);
     expect(retried.status).toBe("complete");
     expect(JSON.parse(JSON.stringify(retried.prior))).toEqual(priorSnapshot);
 
@@ -279,7 +289,8 @@ describe("orchestrator recovery", () => {
       now: () => TEST_NOW
     });
 
-    const done = await orchestrator.startRun({ brief: TEST_BRIEF });
+    const created = await orchestrator.startRun({ brief: TEST_BRIEF });
+    const done = await waitForTerminalRun(store, created.id);
     expect(done.status).toBe("complete");
     expect(llm.calls).toHaveLength(3);
     const before = await store.listLedgerEvents(done.id);

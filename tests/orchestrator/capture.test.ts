@@ -5,7 +5,7 @@ import { createOrchestrator } from "../../src/server/orchestrator/index.js";
 import { createMemoryStore } from "../../src/server/persistence/index.js";
 import { anchorsFromRun, heatFromRun, parseCulturalDna } from "../../src/web/screens/s1/s1Model.js";
 import { TEST_BRIEF, TEST_NOW, fakeGateway, fakeLlm, okEnvelope } from "../agent/support/fakes.js";
-import { PRIOR_RESPONSE } from "./support.js";
+import { PRIOR_RESPONSE, waitForTerminalRun } from "./support.js";
 
 const DEVOCION = {
   entityId: "urn:entity:place-devocion",
@@ -125,8 +125,9 @@ async function runScripted(
     llm: llm.client,
     now: () => TEST_NOW
   });
-  const state = await orchestrator.startRun({ brief: TEST_BRIEF });
-  return { state, runId: state.id, store };
+  const created = await orchestrator.startRun({ brief: TEST_BRIEF });
+  const state = await waitForTerminalRun(store, created.id);
+  return { state, runId: created.id, store };
 }
 
 describe("W-7.1 investigation capture (scripted LLM + fake gateway)", () => {

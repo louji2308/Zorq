@@ -46,8 +46,8 @@ export function InvestigateMap({ apiKey, site, anchors, heat }: InvestigateMapPr
     let cancelled = false;
     let handle: S0MapHandle | null = null;
     setStatus("loading");
-    // Same 60 ms deadline as the S0 panel: keep first paint, drop the dead time
-    // before the style request starts (see MapPanel).
+    // Keep first paint, but start immediately: the map module/style are already
+    // warmed by the S0 visit (see MapPanel).
     const cancelDeferred = scheduleDeferred(() => {
       void import("../../lib/map.js")
         .then(({ createS0Map }) => {
@@ -67,7 +67,7 @@ export function InvestigateMap({ apiKey, site, anchors, heat }: InvestigateMapPr
         .catch(() => {
           if (!cancelled) setStatus("failed");
         });
-    }, { timeoutMs: 60 });
+    }, { timeoutMs: 0 });
 
     return () => {
       cancelled = true;

@@ -38,7 +38,14 @@ export const qlooTagSuggestionsRequestSchema = z.object({
     })
     .optional(),
   objective: z.string().trim().min(1).max(200),
-  selectedTagIds: z.array(z.string().trim().min(1).max(300)).max(6).default([])
+  selectedTagIds: z.array(z.string().trim().min(1).max(300)).max(6).default([]),
+  /**
+   * Signals already shown for this goal/site. They are excluded from the next
+   * page so repeat clicks cannot re-render the same chips. Additive defaults
+   * keep older clients valid.
+   */
+  excludeTagIds: z.array(z.string().trim().min(1).max(300)).max(200).default([]),
+  excludeLabels: z.array(z.string().trim().min(1).max(200)).max(200).default([])
 });
 
 export type QlooTagSuggestionsRequest = z.infer<typeof qlooTagSuggestionsRequestSchema>;

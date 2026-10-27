@@ -671,10 +671,23 @@ export async function startJudgeFixtureServer(options: JudgeLlmOptions = {}): Pr
     if (response.status !== 201 || typeof body.run?.id !== "string") {
       throw new Error(`judge fixture: run creation failed with ${response.status} ${JSON.stringify(body.error ?? body)}`);
     }
-    if (body.run.status !== "complete") {
-      throw new Error(`judge fixture: run ended as "${String(body.run.status)}" instead of complete`);
-    }
     runId = body.run.id;
+    const deadline = Date.now() + 5000;
+    for (;;) {
+      const current = await fetch(`${running.baseUrl}/api/runs/${runId}`);
+      const payload = (await current.json()) as { run?: { status?: string } };
+      const status = payload.run?.status;
+      if (status === "complete") {
+        break;
+      }
+      if (status === "partial" || status === "failed" || status === "stopped") {
+        throw new Error(`judge fixture: run ended as "${status}" instead of complete`);
+      }
+      if (Date.now() >= deadline) {
+        throw new Error(`judge fixture: run did not complete; last status was "${String(status)}"`);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1));
+    }
   } catch (error) {
     await running.close();
     throw error;

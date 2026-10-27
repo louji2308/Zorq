@@ -35,10 +35,8 @@ test("GET / renders the S0 Brief screen (landing line, presets, steps) and no er
   await expect(
     page.getByRole("heading", { level: 2, name: "Design what belongs together on a site." })
   ).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Try a site" })).toBeVisible();
-  await expect(page.getByText("Crosby Street, SoHo")).toBeVisible();
-  await expect(page.getByText("Lower Broadway, Nashville")).toBeVisible();
-  await expect(page.getByText("Reading Terminal Market")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Or describe your own site" })).toBeVisible();
+  await expect(page.getByRole("combobox", { name: "Address" })).toBeVisible();
   await expect(page.getByText("1 Read the culture.")).toBeVisible();
 
   const rendered = await page.locator("body").innerText();

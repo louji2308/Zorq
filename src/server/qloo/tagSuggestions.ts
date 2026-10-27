@@ -7,6 +7,18 @@ import type { QlooGateway } from "./gateway.js";
 const EMPTY_MESSAGE = "Qloo found no cultural signals for this goal yet.";
 const DEGRADED_MESSAGE = "Qloo could not complete the tag read. You can continue without adaptive tags.";
 const MAX_OBJECTIVE_TAG_QUERIES = 4;
+const TARGET_TAG_COUNT = 8;
+/**
+ * A replenish click must not feel like a dead end. Once the client has already
+ * seen part of the pool we stop as soon as this many fresh signals exist, which
+ * usually means one `insights` page per click.
+ */
+const MIN_NEW_TAG_COUNT = 4;
+const MAX_INSIGHT_PAGES = 3;
+const INSIGHTS_TAKE = 12;
+const MAX_SIGNAL_TAGS = 10;
+/** Qloo accepts at most ten excluded signal tags per request. */
+const MAX_EXCLUDE_TAGS = 10;
 const OBJECTIVE_STOP_WORDS = new Set([
   "a",
   "an",
@@ -74,6 +86,39 @@ function normalized(value: string): string {
   return value.trim().toLocaleLowerCase();
 }
 
+interface CollectedTag {
+  readonly id: string;
+  readonly label: string;
+  readonly score: number | null;
+}
+
+function collectPageTags(
+  rawTags: readonly { id: string; name?: string; score?: number }[],
+  excludedIds: ReadonlySet<string>,
+  excludedLabels: ReadonlySet<string>,
+  acceptedLabels: Set<string>
+): CollectedTag[] {
+  return rawTags
+    .map((tag, index) => ({ tag, index }))
+    .filter(({ tag }) => !excludedIds.has(tag.id) && tag.name !== undefined)
+    .sort((left, right) => {
+      const leftScore = left.tag.score ?? Number.NEGATIVE_INFINITY;
+      const rightScore = right.tag.score ?? Number.NEGATIVE_INFINITY;
+      return rightScore - leftScore || left.index - right.index;
+    })
+    .filter(({ tag }) => {
+      const label = normalized(tag.name ?? "");
+      if (label === "" || excludedLabels.has(label) || acceptedLabels.has(label)) return false;
+      acceptedLabels.add(label);
+      return true;
+    })
+    .map(({ tag }) => ({
+      id: tag.id,
+      label: tag.name!,
+      score: tag.score ?? null
+    }));
+}
+
 export async function buildQlooTagSuggestions(
   gateway: QlooGateway,
   request: QlooTagSuggestionsRequest
@@ -103,7 +148,10 @@ export async function buildQlooTagSuggestions(
     }
     if (objectiveSignalIds.length >= 10) break;
   }
-  const signalTags = [...new Set([...request.selectedTagIds, ...objectiveSignalIds])].slice(0, 10);
+  const signalTags = [...new Set([...request.selectedTagIds, ...objectiveSignalIds])].slice(
+    0,
+    MAX_SIGNAL_TAGS
+  );
 
   if (signalTags.length === 0) {
     if (resolutionDegraded && request.selectedTagIds.length === 0) {
@@ -112,44 +160,76 @@ export async function buildQlooTagSuggestions(
     return { status: "empty", tags: [], message: EMPTY_MESSAGE };
   }
 
-  const insights = await gateway.insights(
-    {
-      filterType: "tag",
-      signalTags,
-      signalLocation: request.location,
-      take: 8,
-      explainability: true
-    },
-    { transport: "rest" }
-  );
+  const excludedIds = new Set([...request.selectedTagIds, ...request.excludeTagIds]);
+  const excludedLabels = new Set(request.excludeLabels.map(normalized));
+  const acceptedLabels = new Set<string>();
+  const collected: CollectedTag[] = [];
+  const desiredCount =
+    request.excludeTagIds.length > 0 || request.excludeLabels.length > 0
+      ? MIN_NEW_TAG_COUNT
+      : TARGET_TAG_COUNT;
 
-  if (insights.status === "degraded" || insights.status === "needs_input" || insights.status === "partial") {
-    return { status: "degraded", tags: [], message: DEGRADED_MESSAGE };
+  let insightsDegraded = false;
+  let previousPageWasEmpty = false;
+
+  for (let page = 1; page <= MAX_INSIGHT_PAGES; page += 1) {
+    // Ten IDs maximum upstream. Keep the selected tags last so they are never
+    // the entries dropped when the seen pool grows past the upstream cap.
+    const excludeTags = unique([
+      ...request.excludeTagIds,
+      ...collected.map((tag) => tag.id),
+      ...request.selectedTagIds
+    ]).slice(-MAX_EXCLUDE_TAGS);
+
+    const insights = await gateway.insights(
+      {
+        filterType: "tag",
+        signalTags,
+        signalLocation: request.location,
+        take: INSIGHTS_TAKE,
+        page,
+        explainability: true,
+        ...(excludeTags.length > 0 ? { excludeTags } : {})
+      },
+      { transport: "rest" }
+    );
+
+    if (
+      insights.status === "degraded" ||
+      insights.status === "needs_input" ||
+      insights.status === "partial"
+    ) {
+      insightsDegraded = true;
+      break;
+    }
+
+    const rawTags = insights.results.tags ?? [];
+    const pageTags = collectPageTags(
+      rawTags,
+      excludedIds,
+      excludedLabels,
+      acceptedLabels
+    );
+    for (const tag of pageTags) excludedIds.add(tag.id);
+    collected.push(...pageTags);
+    previousPageWasEmpty = rawTags.length === 0;
+
+    if (collected.length >= desiredCount) break;
+    if (previousPageWasEmpty) break;
   }
 
-  const selectedIds = new Set(request.selectedTagIds);
-  const seenLabels = new Set<string>();
-  const tags = (insights.results.tags ?? [])
-    .map((tag, index) => ({ tag, index }))
-    .filter(({ tag }) => tag.name !== undefined && !selectedIds.has(tag.id))
-    .sort((left, right) => {
-      const leftScore = left.tag.score ?? Number.NEGATIVE_INFINITY;
-      const rightScore = right.tag.score ?? Number.NEGATIVE_INFINITY;
-      return rightScore - leftScore || left.index - right.index;
-    })
-    .filter(({ tag }) => {
-      const label = normalized(tag.name ?? "");
-      if (label === "" || seenLabels.has(label)) return false;
-      seenLabels.add(label);
-      return true;
-    })
-    .slice(0, 8)
-    .map(({ tag }) => ({
-      id: tag.id,
-      label: tag.name!,
-      score: tag.score ?? null,
-      source: "qloo" as const
-    }));
+  const tags = collected.slice(0, TARGET_TAG_COUNT).map((tag) => ({
+    ...tag,
+    source: "qloo" as const
+  }));
 
-  return tags.length > 0 ? { status: "ok", tags } : { status: "empty", tags: [], message: EMPTY_MESSAGE };
+  if (insightsDegraded) {
+    return { status: "degraded", tags, message: DEGRADED_MESSAGE };
+  }
+
+  if (tags.length > 0) {
+    return { status: "ok", tags };
+  }
+
+  return { status: "empty", tags: [], message: EMPTY_MESSAGE };
 }

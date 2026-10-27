@@ -13,6 +13,7 @@ import {
   DEFAULT_RADIUS_M,
   MAX_ADMIRED_PLACES,
   MAX_OBJECTIVE_CHARS,
+  MAX_QLOO_TAG_SUGGESTIONS,
   mergeQlooTagSuggestions,
   addAdmiredPlace,
   emptyBriefForm,
@@ -95,6 +96,28 @@ describe("S0 Qloo-driven tags", () => {
       tags: [...existing, incoming[2]],
       addedIds: ["urn:tag:creative"]
     });
+  });
+
+  it("accepts a fresh replenish batch when the rail is already full", () => {
+    const existing = Array.from({ length: MAX_QLOO_TAG_SUGGESTIONS }, (_, index) => ({
+      id: `urn:tag:old-${index}`,
+      label: `Old ${index}`,
+      score: 1 - index / 100,
+      source: "qloo" as const
+    }));
+    const incoming = Array.from({ length: 4 }, (_, index) => ({
+      id: `urn:tag:new-${index}`,
+      label: `New ${index}`,
+      score: 0.5 - index / 100,
+      source: "qloo" as const
+    }));
+
+    const merged = mergeQlooTagSuggestions(existing, incoming);
+
+    expect(merged.addedIds).toEqual(incoming.map((tag) => tag.id));
+    expect(merged.tags).toHaveLength(MAX_QLOO_TAG_SUGGESTIONS);
+    expect(merged.tags.slice(-4)).toEqual(incoming);
+    expect(merged.tags.some((tag) => tag.id === "urn:tag:old-3")).toBe(false);
   });
 
   it("selects and removes draft-only Qloo tags by id", () => {

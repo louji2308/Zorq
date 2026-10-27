@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createOrchestrator, type OrchestratorEvent } from "../../src/server/orchestrator/index.js";
 import { RunConflict, type RunStore, createMemoryStore } from "../../src/server/persistence/index.js";
 import { TEST_BRIEF, TEST_NOW, fakeGateway, fakeLlm } from "../agent/support/fakes.js";
-import { FINAL_TURN, PRIOR_RESPONSE, TURN_ONE } from "./support.js";
+import { FINAL_TURN, PRIOR_RESPONSE, TURN_ONE, waitForTerminalRun } from "./support.js";
 
 describe("orchestrator idempotency", () => {
   it("duplicate createRun surfaces RUN_CONFLICT once with a failure event", async () => {
@@ -52,10 +52,12 @@ describe("orchestrator idempotency", () => {
     });
 
     const a = await orchestrator.startRun({ brief: TEST_BRIEF });
+    const aDone = await waitForTerminalRun(store, a.id);
     const b = await orchestrator.startRun({ brief: TEST_BRIEF });
+    const bDone = await waitForTerminalRun(store, b.id);
     expect(a.id).not.toBe(b.id);
-    expect(a.status).toBe("complete");
-    expect(b.status).toBe("complete");
+    expect(aDone.status).toBe("complete");
+    expect(bDone.status).toBe("complete");
   });
 
   it("no-op resume/retry on a completed run append no ledger entries and spend no LLM", async () => {
@@ -69,7 +71,8 @@ describe("orchestrator idempotency", () => {
       now: () => TEST_NOW
     });
 
-    const state = await orchestrator.startRun({ brief: TEST_BRIEF });
+    const created = await orchestrator.startRun({ brief: TEST_BRIEF });
+    const state = await waitForTerminalRun(store, created.id);
     expect(llm.calls).toHaveLength(3);
     const before = await store.listLedgerEvents(state.id);
 

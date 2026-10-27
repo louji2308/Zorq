@@ -93,6 +93,13 @@ const INITIAL_CENTER: [number, number] = [-80.4, 38.4];
 const INITIAL_ZOOM = 4.6;
 const FAILURE_TIMEOUT_MS = 15_000;
 const RING_SEGMENTS = 96;
+/** Session-scoped camera handoff between S0 and S1 (never durable truth). */
+const CAMERA_STORAGE_KEY = "zq.map.camera.v1";
+interface StoredCamera {
+  readonly lat: number;
+  readonly lon: number;
+  readonly zoom: number;
+}
 /** Circumference of the web-mercator world at zoom 0 for 512 px tiles. */
 const WORLD_PIXELS_Z0 = 512;
 
@@ -115,6 +122,56 @@ const BLANK_STYLE_IMAGE = " ";
 
 export function mapTilerStyleUrl(apiKey: string): string {
   return `${STYLE_URL}?key=${encodeURIComponent(apiKey)}`;
+}
+
+/**
+ * Fetch the style once the home screen is idle. MapLibre's own style request
+ * then hits the HTTP cache instead of paying the full round trip at the moment
+ * the map canvas mounts.
+ */
+export function warmMapStyle(apiKey: string): void {
+  if (typeof fetch !== "function") return;
+  void fetch(mapTilerStyleUrl(apiKey))
+    .then((response) => (response.ok ? response.text() : undefined))
+    .catch(() => undefined);
+}
+
+function readStoredCamera(): StoredCamera | null {
+  if (typeof window === "undefined" || typeof window.sessionStorage === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(CAMERA_STORAGE_KEY);
+    if (raw === null) return null;
+    const value: unknown = JSON.parse(raw);
+    if (typeof value !== "object" || value === null) return null;
+    const { lat, lon, zoom } = value as Record<string, unknown>;
+    if (
+      typeof lat !== "number" ||
+      typeof lon !== "number" ||
+      typeof zoom !== "number" ||
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lon) ||
+      !Number.isFinite(zoom)
+    ) {
+      return null;
+    }
+    if (lat < -90 || lat > 90 || lon < -180 || lon > 180 || zoom < 3 || zoom > 17) return null;
+    return { lat, lon, zoom };
+  } catch {
+    return null;
+  }
+}
+
+function storeCamera(map: MapLibreMap): void {
+  if (typeof window === "undefined" || typeof window.sessionStorage === "undefined") return;
+  try {
+    const center = map.getCenter();
+    window.sessionStorage.setItem(
+      CAMERA_STORAGE_KEY,
+      JSON.stringify({ lat: center.lat, lon: center.lng, zoom: map.getZoom() })
+    );
+  } catch {
+    // Storage can be unavailable in private/degraded contexts; the map still works.
+  }
 }
 
 function prefersReducedMotion(): boolean {
@@ -282,11 +339,12 @@ export function createS0Map(container: HTMLElement, options: S0MapOptions): S0Ma
   let heat: readonly MapHeatPoint[] = [];
   const anchorIcons = new Set<string>();
 
+  const storedCamera = readStoredCamera();
   const map = new MapLibreMap({
     container,
     style: mapTilerStyleUrl(options.apiKey),
-    center: INITIAL_CENTER,
-    zoom: INITIAL_ZOOM,
+    center: storedCamera === null ? INITIAL_CENTER : [storedCamera.lon, storedCamera.lat],
+    zoom: storedCamera?.zoom ?? INITIAL_ZOOM,
     minZoom: 3,
     maxZoom: 17,
     maxPitch: 0,
@@ -304,6 +362,9 @@ export function createS0Map(container: HTMLElement, options: S0MapOptions): S0Ma
   });
 
   const chrome = createMapChrome(container, map);
+  map.on("moveend", () => {
+    if (!destroyed) storeCamera(map);
+  });
 
   const failureTimer =
     typeof window === "undefined"
@@ -664,6 +725,7 @@ export function createS0Map(container: HTMLElement, options: S0MapOptions): S0Ma
       }
       chrome.destroy();
       container.style.cursor = "";
+      storeCamera(map);
       map.remove();
     }
   };

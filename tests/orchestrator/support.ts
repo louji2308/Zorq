@@ -1,5 +1,8 @@
 import { RAPIDROUTER_MODEL } from "../../src/server/agent/llm.js";
 import type { LlmCompletionResult, LlmToolCall } from "../../src/server/agent/llm.js";
+import { RunBusyError, rehydrateRun } from "../../src/server/orchestrator/index.js";
+import type { RunStore } from "../../src/server/persistence/index.js";
+import type { RunState } from "../../src/shared/run.js";
 
 export const PRIOR_RESPONSE = JSON.stringify({
   composition: { thesis: "A daytime cultural corner anchored by coffee and film", members: [{ role: "Anchor", name: "coffee roastery" }] },
@@ -35,4 +38,45 @@ export function deferred<T = void>(): Deferred<T> {
     resolve = r;
   });
   return { promise, resolve };
+}
+
+const TERMINAL_RUN_STATUSES = new Set(["complete", "partial", "failed", "stopped"]);
+
+export async function waitForTerminalRun(
+  store: Pick<RunStore, "loadRun">,
+  runId: string,
+  timeoutMs = 2000
+): Promise<RunState> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const stored = await store.loadRun(runId);
+    if (stored !== null && TERMINAL_RUN_STATUSES.has(stored.state.status)) {
+      return rehydrateRun(stored);
+    }
+    if (Date.now() >= deadline) {
+      throw new Error(`run ${runId} did not reach a terminal state within ${timeoutMs}ms`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1));
+  }
+}
+
+export async function retryWhenIdle(
+  orchestrator: { retryRun(runId: string): Promise<RunState> },
+  runId: string,
+  timeoutMs = 2000
+): Promise<RunState> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    try {
+      return await orchestrator.retryRun(runId);
+    } catch (error) {
+      if (!(error instanceof RunBusyError)) {
+        throw error;
+      }
+      if (Date.now() >= deadline) {
+        throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+  }
 }

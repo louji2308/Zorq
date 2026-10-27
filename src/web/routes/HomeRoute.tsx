@@ -58,6 +58,8 @@ function readMapApiKey(): string | null {
 }
 
 const MAP_API_KEY = readMapApiKey();
+/** Let the decision column paint before warming the map chunk + style. */
+const MAP_PRELOAD_DELAY_MS = 200;
 /**
  * How long the goal/site draft must settle before the preview is requested.
  * 650 ms made the rail feel dead: it added half a second on top of the server's
@@ -85,6 +87,25 @@ export function HomeRoute() {
   const qlooRequestSequence = useRef(0);
   const qlooTagsRef = useRef<readonly QlooTagSuggestion[]>([]);
   const qlooTagSiteKey = useRef<string | null>(null);
+  const qlooTagContextKey = useRef<string | null>(null);
+  const qlooSeenTagIds = useRef(new Set<string>());
+  const qlooSeenTagLabels = useRef(new Set<string>());
+
+  useEffect(() => {
+    if (MAP_API_KEY === null) return;
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void import("../lib/map.js")
+        .then(({ warmMapStyle }) => {
+          if (!cancelled) warmMapStyle(MAP_API_KEY);
+        })
+        .catch(() => undefined);
+    }, MAP_PRELOAD_DELAY_MS);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, []);
 
   const emptyMapSites = useMemo<readonly MapSite[]>(() => [], []);
   const placedSite = form.site;
@@ -98,18 +119,34 @@ export function HomeRoute() {
     const location = form.location.trim();
     const objective = form.objective.trim();
     const selectedTagIds = form.selectedQlooTags.map((tag) => tag.id);
+    const selectedIdSet = new Set(selectedTagIds);
+    const selectedLabelSet = new Set(
+      form.selectedQlooTags.map((tag) => tag.label.trim().toLocaleLowerCase())
+    );
     const siteKey = site === null ? null : `${site.lat}:${site.lon}`;
+    const contextKey = site === null ? null : `${siteKey}\u0000${objective}`;
     const requestSequence = qlooRequestSequence.current + 1;
     qlooRequestSequence.current = requestSequence;
 
     if (qlooTagSiteKey.current !== siteKey) {
       qlooTagSiteKey.current = siteKey;
+      qlooTagContextKey.current = null;
+      qlooSeenTagIds.current.clear();
+      qlooSeenTagLabels.current.clear();
       qlooTagsRef.current = [];
       setQlooTags([]);
       setQlooTagNewIds([]);
     }
 
     if (site === null || location === "" || objective.length < 3) {
+      if (qlooTagContextKey.current !== contextKey) {
+        qlooTagContextKey.current = contextKey;
+        qlooSeenTagIds.current.clear();
+        qlooSeenTagLabels.current.clear();
+        qlooTagsRef.current = [];
+        setQlooTags([]);
+        setQlooTagNewIds([]);
+      }
       setQlooTagLoading(false);
       setQlooTagMessage(null);
       return;
@@ -120,21 +157,44 @@ export function HomeRoute() {
     setQlooTagMessage(null);
 
     const timer = window.setTimeout(() => {
+      // A new goal is a new signal space: drop the previous pool (and its
+      // exclusions) right before asking, so the 300 ms debounce does not flash
+      // an empty rail on every keystroke.
+      if (qlooTagContextKey.current !== contextKey) {
+        qlooTagContextKey.current = contextKey;
+        qlooSeenTagIds.current.clear();
+        qlooSeenTagLabels.current.clear();
+        qlooTagsRef.current = [];
+        setQlooTags([]);
+        setQlooTagNewIds([]);
+      }
+      const excludeTagIds = [...qlooSeenTagIds.current]
+        .filter((id) => !selectedIdSet.has(id))
+        .slice(-200);
+      const excludeLabels = [...qlooSeenTagLabels.current]
+        .filter((label) => !selectedLabelSet.has(label))
+        .slice(-200);
       void getQlooTagSuggestions(
         {
           location,
           coordinates: { lat: site.lat, lon: site.lon },
           objective,
-          selectedTagIds
+          selectedTagIds,
+          excludeTagIds,
+          excludeLabels
         },
         { signal: controller.signal }
       )
         .then((result) => {
           if (qlooRequestSequence.current !== requestSequence) return;
+          for (const tag of result.tags) {
+            qlooSeenTagIds.current.add(tag.id);
+            qlooSeenTagLabels.current.add(tag.label.trim().toLocaleLowerCase());
+          }
           const merged = mergeQlooTagSuggestions(qlooTagsRef.current, result.tags);
           qlooTagsRef.current = merged.tags;
           setQlooTags(merged.tags);
-          setQlooTagNewIds((currentIds) => [...new Set([...currentIds, ...merged.addedIds])]);
+          setQlooTagNewIds(merged.addedIds);
           setQlooTagMessage(merged.tags.length === 0 ? result.message ?? null : null);
         })
         .catch(() => {
@@ -176,7 +236,7 @@ export function HomeRoute() {
     try {
       const run = await createRun(brief);
       setStatus(`Run ${run.id} created — opening the investigation…`);
-      navigate(`/run/${run.id}`);
+      navigate(`/run/${run.id}`, { viewTransition: true });
     } catch (error) {
       const view = describeRunFailure(error);
       setFailure(view);

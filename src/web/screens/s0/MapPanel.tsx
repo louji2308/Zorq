@@ -45,10 +45,9 @@ export function MapPanel({ apiKey, presets, activeSite, crosshair, onSitePick }:
     let cancelled = false;
     let handle: S0MapHandle | null = null;
     setStatus("loading");
-    // Yield once so the landing copy paints first, then start: requestIdleCallback
-    // runs at the first idle moment and the 60 ms deadline is only the ceiling
-    // for a main thread that stays busy (the old 350 ms ceiling was a third of a
-    // second of dead time before the style request could even be issued).
+    // Yield once so the landing copy paints first, then start without an
+    // artificial delay: the module/style are pre-warmed from HomeRoute, so any
+    // extra wait here is pure dead time.
     const cancelDeferred = scheduleDeferred(() => {
       void import("../../lib/map.js")
         .then(({ createS0Map }) => {
@@ -68,7 +67,7 @@ export function MapPanel({ apiKey, presets, activeSite, crosshair, onSitePick }:
         .catch(() => {
           if (!cancelled) setStatus("failed");
         });
-    }, { timeoutMs: 60 });
+    }, { timeoutMs: 0 });
 
     return () => {
       cancelled = true;

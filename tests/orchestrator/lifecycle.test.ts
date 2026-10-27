@@ -4,7 +4,7 @@ import { PriorGenerationError } from "../../src/server/agent/errors.js";
 import { createOrchestrator, type OrchestratorEvent } from "../../src/server/orchestrator/index.js";
 import { createMemoryStore } from "../../src/server/persistence/index.js";
 import { TEST_BRIEF, TEST_NOW, fakeGateway, fakeLlm } from "../agent/support/fakes.js";
-import { FINAL_TURN, PRIOR_RESPONSE, TURN_ONE } from "./support.js";
+import { FINAL_TURN, PRIOR_RESPONSE, TURN_ONE, waitForTerminalRun } from "./support.js";
 
 describe("orchestrator lifecycle (startRun)", () => {
   it("locks a frozen Prior, advances prior -> investigation -> measurement, and lands a durable terminal run", async () => {
@@ -20,7 +20,10 @@ describe("orchestrator lifecycle (startRun)", () => {
       eventSink: (event) => events.push(event)
     });
 
-    const state = await orchestrator.startRun({ brief: TEST_BRIEF });
+    const started = await orchestrator.startRun({ brief: TEST_BRIEF });
+    expect(started.status).toBe("investigating");
+    expect(started.prior).toBeDefined();
+    const state = await waitForTerminalRun(store, started.id);
 
     expect(runStateSchema.safeParse(state).success).toBe(true);
     expect(state.status).toBe("complete");

@@ -66,6 +66,41 @@ const featureSchema = z.object({
 
 const collectionSchema = z.object({ features: z.array(z.unknown()) });
 
+/**
+ * Forward geocoding for one address is stable within a session; repeat lookups
+ * (edit-away-edit-back, switching focus) should not pay MapTiler again. Bounded
+ * and TTL-limited, and bypassed when a fetch is injected for tests.
+ */
+const CACHE_TTL_MS = 5 * 60_000;
+const CACHE_MAX_ENTRIES = 50;
+interface GeocodeCacheEntry {
+  readonly expiresAt: number;
+  readonly suggestions: readonly GeocodeSuggestion[];
+}
+const geocodeCache = new Map<string, GeocodeCacheEntry>();
+
+function readCache(url: string): readonly GeocodeSuggestion[] | null {
+  const entry = geocodeCache.get(url);
+  if (entry === undefined) return null;
+  if (entry.expiresAt <= Date.now()) {
+    geocodeCache.delete(url);
+    return null;
+  }
+  // Refresh LRU position.
+  geocodeCache.delete(url);
+  geocodeCache.set(url, entry);
+  return entry.suggestions;
+}
+
+function writeCache(url: string, suggestions: readonly GeocodeSuggestion[]): void {
+  geocodeCache.set(url, { expiresAt: Date.now() + CACHE_TTL_MS, suggestions: [...suggestions] });
+  while (geocodeCache.size > CACHE_MAX_ENTRIES) {
+    const oldest = geocodeCache.keys().next().value;
+    if (oldest === undefined) break;
+    geocodeCache.delete(oldest);
+  }
+}
+
 function toSuggestion(raw: unknown, index: number): GeocodeSuggestion | null {
   const parsed = featureSchema.safeParse(raw);
   if (!parsed.success) return null;
@@ -93,6 +128,13 @@ export async function geocode(query: string, options: GeocodeOptions): Promise<G
   const trimmed = query.trim();
   if (trimmed === "") return [];
 
+  const usingDefaultFetch = options.fetchImpl === undefined;
+  const requestUrl = geocodeUrl(trimmed, options);
+  if (usingDefaultFetch) {
+    const cached = readCache(requestUrl);
+    if (cached !== null) return [...cached];
+  }
+
   const doFetch =
     options.fetchImpl ??
     ((input: RequestInfo | URL, requestInit?: RequestInit): Promise<Response> =>
@@ -100,7 +142,7 @@ export async function geocode(query: string, options: GeocodeOptions): Promise<G
 
   let response: Response;
   try {
-    response = await doFetch(geocodeUrl(trimmed, options), { method: "GET" });
+    response = await doFetch(requestUrl, { method: "GET" });
   } catch (error) {
     const message = error instanceof Error ? error.message : "geocode request failed";
     throw new GeocodeError("NETWORK", `geocode request failed: ${message}`);
@@ -128,5 +170,6 @@ export async function geocode(query: string, options: GeocodeOptions): Promise<G
     const suggestion = toSuggestion(feature, index);
     if (suggestion !== null) suggestions.push(suggestion);
   });
+  if (usingDefaultFetch) writeCache(requestUrl, suggestions);
   return suggestions;
 }

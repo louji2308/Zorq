@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createOrchestrator, type OrchestratorEvent } from "../../src/server/orchestrator/index.js";
 import { createMemoryStore } from "../../src/server/persistence/index.js";
 import { TEST_BRIEF, TEST_NOW, fakeGateway, fakeLlm } from "../agent/support/fakes.js";
-import { FINAL_TURN, PRIOR_RESPONSE, TURN_ONE } from "./support.js";
+import { FINAL_TURN, PRIOR_RESPONSE, TURN_ONE, waitForTerminalRun } from "./support.js";
 
 describe("orchestrator wall-clock cap", () => {
   it("caps an overlong investigation: partial status, no measurement, wall-clock ledger event", async () => {
@@ -27,7 +27,8 @@ describe("orchestrator wall-clock cap", () => {
       eventSink: (event) => events.push(event)
     });
 
-    const state = await orchestrator.startRun({ brief: TEST_BRIEF });
+    const started = await orchestrator.startRun({ brief: TEST_BRIEF });
+    const state = await waitForTerminalRun(store, started.id);
     expect(state.status).toBe("partial");
     expect(state.status).not.toBe("complete");
     expect(state.prior?.qlooUsed).toBe(false);
@@ -67,7 +68,8 @@ describe("orchestrator wall-clock cap", () => {
       wallClockCapMs: 10_000
     });
 
-    const state = await orchestrator.startRun({ brief: TEST_BRIEF });
+    const started = await orchestrator.startRun({ brief: TEST_BRIEF });
+    const state = await waitForTerminalRun(store, started.id);
     expect(state.status).toBe("partial");
     expect(state.phase).toBe("investigation");
     expect(llm.calls).toHaveLength(1);

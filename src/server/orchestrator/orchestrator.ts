@@ -367,9 +367,20 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
       }
       emitState(state);
       emitPhase(state, "investigation");
-      return await runPass({ state, ledger, budget, startedAt, record });
-    } finally {
+      // The frozen Prior is the client's first meaningful reveal. Return it as
+      // soon as it is durable so /run/:id can open and stream the investigation,
+      // instead of holding the POST open for the whole Qloo + measurement pass.
+      void runPass({ state, ledger, budget, startedAt, record })
+        .catch((error: unknown) => {
+          emitError(runId, error);
+        })
+        .finally(() => {
+          activePasses.delete(runId);
+        });
+      return state;
+    } catch (error) {
       activePasses.delete(runId);
+      throw error;
     }
   }
 
