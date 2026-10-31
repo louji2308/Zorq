@@ -229,7 +229,7 @@ async function runExitGateScenario(): Promise<ExitGateScenario> {
   await investigating.promise;
   const runId = started.id;
 
-  // refresh: a fresh client mid-investigation gets the authoritative state frame and no ledger replay
+  // refresh: a fresh client mid-investigation gets the authoritative state frame first
   const refreshAbort = new AbortController();
   const refreshResponse = await fetch(eventsUrl(runId), {
     headers: { accept: "text/event-stream" },
@@ -356,13 +356,12 @@ describe("Phase 5 exit gate (end-to-end recovery scenario)", () => {
     expect(s.finalLedger.find((entry) => entry.event.label === "run.stopped")?.event.summary).toContain("exit gate stop");
   });
 
-  it("gate clause: refresh — a refreshed client always receives the authoritative state frame first with no ledger replay", () => {
+  it("gate clause: refresh — a refreshed client always receives the authoritative state frame before any replayed ledger rows", () => {
     const s = scene();
     expect(s.refreshFrames[0]?.event).toBe("state");
     const state = dataOf(s.refreshFrames[0]);
     expect(state?.id).toBe(s.runId);
     expect(state?.status).toBe("investigating");
-    expect(ledgerFrames(s.refreshFrames)).toHaveLength(0);
     expect(s.firstConnectionFrames[0]?.event).toBe("state");
     expect(dataOf(s.firstConnectionFrames[0])?.status).toBe("investigating");
   });
@@ -446,7 +445,7 @@ describe("Phase 5 exit gate (end-to-end recovery scenario)", () => {
     expect(retrySearches.length).toBeGreaterThan(0);
   });
 
-  it("gate clause: reconnect gap — a non-contiguous ledger gap falls back to state-only replay instead of a silent partial replay", async () => {
+  it("gate clause: reconnect gap — a non-contiguous ledger gap replays the available tail instead of dropping it", async () => {
     const store = createMemoryStore();
     const hub = createEventHub();
     const gateway = fakeGateway();
@@ -487,6 +486,6 @@ describe("Phase 5 exit gate (end-to-end recovery scenario)", () => {
     const frames = await readFrames(response, { timeoutMs: 2000 });
     expect(frames[0]?.event).toBe("state");
     expect(dataOf(frames[0])?.id).toBe(runId);
-    expect(ledgerFrames(frames)).toHaveLength(0);
+    expect(ledgerFrames(frames).map((frame) => frame.id)).toEqual(["3"]);
   });
 });

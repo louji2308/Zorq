@@ -38,7 +38,9 @@ export function guardInsights(request: InsightsRequest): void {
     hasEntries(request.signalTags);
   if (request.filterType === "heatmap") {
     if (!hasSignal) {
-      throw guardMessage("heatmap insights require at least one signal (signalEntities or signalTags)");
+      throw guardMessage(
+        "heatmap insights require at least one signal (signalEntities, signalEntitiesQuery, or signalTags)"
+      );
     }
     if (request.location === undefined) {
       throw guardMessage("heatmap insights require a location (location.query or location.point)");

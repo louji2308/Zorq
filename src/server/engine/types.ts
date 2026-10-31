@@ -100,7 +100,21 @@ export function validatePool(value: unknown): CandidateComponent[] {
   if (!Array.isArray(value)) {
     throw new EngineError("INVALID_COMPONENT", "candidate pool must be an array");
   }
-  const pool = value.map((entry) => parseCandidateComponent(entry));
+  const pool: CandidateComponent[] = [];
+  for (const [index, entry] of value.entries()) {
+    try {
+      pool.push(parseCandidateComponent(entry));
+    } catch (error) {
+      const record = typeof entry === "object" && entry !== null ? (entry as Record<string, unknown>) : {};
+      const id = typeof record.id === "string" && record.id.trim() !== "" ? record.id.trim() : undefined;
+      const role = typeof record.role === "string" ? `, role=${JSON.stringify(record.role)}` : "";
+      const label = id === undefined ? `components[${index}]` : `components[${index}] ("${id}"${role})`;
+      throw new EngineError(
+        "INVALID_COMPONENT",
+        `${label}: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
   const seen = new Set<string>();
   for (const component of pool) {
     if (seen.has(component.id)) {

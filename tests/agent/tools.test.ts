@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ApiError } from "../../src/shared/errors.js";
 import { ledgerEventSchema } from "../../src/shared/events.js";
 import { AgentToolError } from "../../src/server/agent/errors.js";
 import { createLedger } from "../../src/server/agent/ledger.js";
@@ -51,6 +52,35 @@ describe("agent tool schemas", () => {
     expect((caught as AgentToolError).reason).toBe("invalid_arguments");
     expect((caught as AgentToolError).code).toBe("VALIDATION_FAILED");
     expect(calls).toHaveLength(0);
+    expect(ledgerRef.size()).toBe(0);
+  });
+
+  it("converts a gateway validation rejection into a tool rejection", async () => {
+    const { gateway } = fakeGateway({
+      onCall: () => {
+        throw new ApiError("VALIDATION_FAILED", "heatmap insights require at least one signal");
+      }
+    });
+    const ledgerRef = ledger();
+
+    await expect(
+      executeToolCall({
+        gateway,
+        call: {
+          id: "call_1",
+          name: "qloo_insights",
+          arguments: '{"filterType":"heatmap","location":{"query":"Williamsburg, Brooklyn"}}'
+        },
+        ledger: ledgerRef,
+        now: () => TEST_NOW
+      })
+    ).rejects.toMatchObject({
+      reason: "invalid_arguments",
+      toolName: "qloo_insights",
+      code: "VALIDATION_FAILED",
+      message: expect.stringContaining("heatmap insights require at least one signal")
+    });
+
     expect(ledgerRef.size()).toBe(0);
   });
 
@@ -110,7 +140,14 @@ describe("agent tool schemas", () => {
       label: "qloo_search",
       duration: 77,
       cacheState: "cached",
-      resultCount: 4
+      resultCount: 4,
+      detail: expect.stringContaining('request {"query":"jazz cafe","take":4}'),
+      parameters: {
+        tool: "qloo_search",
+        request: { query: "jazz cafe", take: 4 },
+        operation: "search",
+        resultCount: 4
+      }
     });
     expect(outcome.ledgerEntry.sequence).toBe(1);
     expect(outcome.evidence.provenance).toEqual({

@@ -23,11 +23,7 @@ coverage
 !.env.example
 
 # Test + tooling artifacts (not needed by `npm run build` or runtime)
-test-results
-playwright-report
-blob-report
 tests
-e2e
 tmp
 .tmp
 scratch

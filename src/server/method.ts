@@ -128,7 +128,7 @@ export const methodContent: MethodContent = {
   typeNote:
     "The interface sets the results of assembly in Bricolage and the explanations in Raleway: the agent is a bricoleur, assembling a place from the cultural fragments Qloo returns, while the code is the engineer, measuring those fragments from first principles. The pairing makes that boundary visible wherever the product speaks.",
   setupSummary:
-    "Zorq runs from a public checkout: Node.js 22.19+, npm ci, configuration copied from .env.example (Qloo and Rapid Router keys are server-side only), `npm run build` and `npm start`, or `npm run dev:server` and `npm run dev:web` in development. Quality gates: npm run typecheck, npm run lint, npm test and npm run test:e2e. The Qloo integration runs through the official qloo MCP harness with a direct REST fallback for diagnostics; no keys, endpoints or credentials are embedded in source, and no Qloo responses are committed.",
+    "Zorq runs from a public checkout: Node.js 22.19+, npm ci, configuration copied from .env.example (Qloo and Rapid Router keys are server-side only), `npm run build` and `npm start`, or `npm run dev:server` and `npm run dev:web` in development. Quality gates: npm run typecheck, npm run lint and npm test. The Qloo integration runs through the official qloo MCP harness with a direct REST fallback for diagnostics; no keys, endpoints or credentials are embedded in source, and no Qloo responses are committed.",
   evidenceVsInference: {
     badges: [
       { badge: "[Qloo]", meaning: "Directly measured or returned by Qloo. Every [Qloo] claim traces to an evidence ID and ledger rows in the run." },

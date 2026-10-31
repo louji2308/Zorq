@@ -5,7 +5,7 @@ import type { LedgerEntry } from "../../src/server/agent/ledger.js";
 import { createOrchestrator, rehydrateRun } from "../../src/server/orchestrator/index.js";
 import { RunNotFound, type RunStore, createMemoryStore } from "../../src/server/persistence/index.js";
 import type { RunState } from "../../src/shared/run.js";
-import { TEST_BRIEF, TEST_NOW, TEST_PRIOR, fakeGateway, fakeLlm } from "../agent/support/fakes.js";
+import { TEST_BRIEF, TEST_NOW, TEST_PRIOR, fakeGateway, fakeLlm, outageError } from "../agent/support/fakes.js";
 import {
   FINAL_TURN,
   PRIOR_RESPONSE,
@@ -193,6 +193,29 @@ describe("orchestrator recovery", () => {
     expect(after.filter((entry) => entry.event.label === "run.stopped")).toHaveLength(0);
   });
 
+  it("re-enters investigation after retrying a partial run that stopped in measurement", async () => {
+    const store = createMemoryStore();
+    const gateway = fakeGateway();
+    const llm = fakeLlm([TURN_ONE, FINAL_TURN]);
+    const orchestrator = createOrchestrator({
+      store,
+      gateway: gateway.gateway,
+      llm: llm.client,
+      now: () => TEST_NOW
+    });
+    const seeded = seededEntry(1, "measure.compose");
+    const id = await craftRun(store, { status: "partial", phase: "measurement", ledger: [seeded] });
+
+    const retried = await retryWhenIdle(orchestrator, id);
+
+    expect(retried.status).toBe("complete");
+    expect(retried.phase).toBe("measurement");
+    expect(retried.id).toBe(id);
+    const ledger = await store.listLedgerEvents(id);
+    expect(ledger[0]).toEqual(seeded);
+    expectStrictlyIncreasingUnique(ledger);
+  });
+
   it("resumes a crafted in-flight run to a terminal state, keeping the frozen Prior and the old ledger intact", async () => {
     const store = createMemoryStore();
     const gateway = fakeGateway();
@@ -276,6 +299,51 @@ describe("orchestrator recovery", () => {
     const stored = await store.loadRun(failed.id);
     expect(stored?.state.status).toBe("complete");
     expect(stored?.state.prior).toEqual(priorSnapshot);
+  });
+
+  it("records and emits a controller outage instead of leaving the partial run unexplained", async () => {
+    const store = createMemoryStore();
+    const gateway = fakeGateway({
+      onCall: () => {
+        throw outageError();
+      }
+    });
+    const llm = fakeLlm([
+      { content: PRIOR_RESPONSE },
+      {
+        content: "checking Qloo readiness",
+        toolCalls: [{ id: "call_capabilities", name: "qloo_capabilities", arguments: "{}" }]
+      }
+    ]);
+    const errorEvents: Array<{ name?: string; message?: string; code?: string }> = [];
+    const orchestrator = createOrchestrator({
+      store,
+      gateway: gateway.gateway,
+      llm: llm.client,
+      now: () => TEST_NOW,
+      eventSink: (event) => {
+        if (event.type === "error") {
+          errorEvents.push(event.payload as { name?: string; message?: string; code?: string });
+        }
+      }
+    });
+
+    const created = await orchestrator.startRun({ brief: TEST_BRIEF });
+    const partial = await waitForTerminalRun(store, created.id);
+
+    expect(partial.status).toBe("partial");
+    expect(partial.phase).toBe("measurement");
+    const ledger = await store.listLedgerEvents(created.id);
+    const errorEntries = ledger.filter((entry) => entry.event.label === "run.error");
+    expect(errorEntries).toHaveLength(1);
+    expect(errorEntries[0]?.event.summary).toContain("Qloo is unreachable");
+    expect(ledger.filter((entry) => entry.event.label === "measure.compose")).toHaveLength(1);
+    expect(errorEvents).toHaveLength(1);
+    expect(errorEvents[0]).toMatchObject({
+      name: "QlooUpstreamError",
+      message: "Qloo is unreachable (simulated outage)",
+      code: "DEPENDENCY_UNAVAILABLE"
+    });
   });
 
   it("makes zero new LLM calls when resuming a completed run", async () => {

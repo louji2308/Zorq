@@ -15,15 +15,12 @@ export interface RunEventsOptions {
   heartbeatMs?: number;
 }
 
-function contiguous(entries: readonly { sequence: number }[], from: number): boolean {
-  let expected = from;
-  for (const entry of entries) {
-    if (entry.sequence !== expected) {
-      return false;
-    }
-    expected += 1;
+function isTerminalStateFrame(frame: StreamFrame): boolean {
+  if (frame.event !== "state") {
+    return false;
   }
-  return true;
+  const parsed = runStateSchema.safeParse(frame.data);
+  return parsed.success && !isResumableStatus(parsed.data.status);
 }
 
 export function createRunEventsHandler(options: RunEventsOptions) {
@@ -84,6 +81,22 @@ export function createRunEventsHandler(options: RunEventsOptions) {
       res.write(serializeFrame(frame, requestId));
     };
 
+    const writeEnd = (): void => {
+      write({ event: "end", id: options.hub.nextId(runId), data: {} });
+      res.end();
+      close();
+    };
+
+    const deliver = (frame: StreamFrame): void => {
+      if (closed || res.writableEnded) {
+        return;
+      }
+      write(frame);
+      if (isTerminalStateFrame(frame)) {
+        writeEnd();
+      }
+    };
+
     const pending: StreamFrame[] = [];
     let ready = false;
     let lastReplayedSeq = 0;
@@ -97,7 +110,7 @@ export function createRunEventsHandler(options: RunEventsOptions) {
         if (frame.event === "ledger" && Number(frame.id) <= lastReplayedSeq) {
           return;
         }
-        write(frame);
+        deliver(frame);
       });
     }
 
@@ -119,19 +132,17 @@ export function createRunEventsHandler(options: RunEventsOptions) {
     options.hub.seed(runId, maxSequence);
     write({ event: "state", id: options.hub.nextId(runId), data: projection.data });
 
-    if (lastEventId !== undefined && lastEventId < maxSequence) {
-      const missed = entries.filter((entry) => entry.sequence > lastEventId);
-      if (missed.length > 0 && contiguous(missed, lastEventId + 1)) {
-        for (const entry of missed) {
-          write({ event: "ledger", id: String(entry.sequence), data: entry.event });
-          lastReplayedSeq = entry.sequence;
-        }
+    const replayAfter = lastEventId ?? 0;
+    if (replayAfter < maxSequence) {
+      const missed = entries.filter((entry) => entry.sequence > replayAfter);
+      for (const entry of missed) {
+        write({ event: "ledger", id: String(entry.sequence), data: entry.event });
+        lastReplayedSeq = entry.sequence;
       }
     }
 
     if (terminal) {
-      res.end();
-      close();
+      writeEnd();
       return;
     }
 
@@ -140,7 +151,10 @@ export function createRunEventsHandler(options: RunEventsOptions) {
       if (frame.event === "ledger" && Number(frame.id) <= lastReplayedSeq) {
         continue;
       }
-      write(frame);
+      deliver(frame);
+      if (closed || res.writableEnded) {
+        break;
+      }
     }
     pending.length = 0;
 

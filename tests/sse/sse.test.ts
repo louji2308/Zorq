@@ -175,7 +175,7 @@ describe("GET /api/runs/:id/events (SSE)", () => {
     expect(body.error.code).toBe("RUN_NOT_FOUND");
   });
 
-  it("emits the authoritative state frame first and closes a terminal run after it", async () => {
+  it("replays terminal state and durable history before closing with an end frame", async () => {
     const { baseUrl, store } = await createStack();
     await seedRun(store, { id: runId, status: "complete", entries: [entry(1, "one"), entry(2, "two")] });
 
@@ -193,8 +193,36 @@ describe("GET /api/runs/:id/events (SSE)", () => {
     const state = dataOf(frames[0]);
     expect(state?.id).toBe(runId);
     expect(state?.status).toBe("complete");
-    expect(frames.filter((frame) => frame.event === "ledger")).toHaveLength(0);
+    const ledgerFrames = frames.filter((frame) => frame.event === "ledger");
+    expect(ledgerFrames.map((frame) => frame.id)).toEqual(["1", "2"]);
+    expect(dataOf(ledgerFrames[0])?.label).toBe("one");
+    expect(dataOf(ledgerFrames[1])?.label).toBe("two");
     expect(frames[0]?.id).toBeDefined();
+    expect(frames.at(-1)?.event).toBe("end");
+    expect(frames.at(-1)?.data).toBe("{}");
+  });
+
+  it("replays durable ledger history on a fresh resumable connection and then streams live frames", async () => {
+    const { baseUrl, store } = await createStack();
+    await seedRun(store, {
+      id: runId,
+      status: "investigating",
+      entries: [entry(1, "one"), entry(2, "two")]
+    });
+    const controller = new AbortController();
+
+    const response = await fetch(`${baseUrl}/api/runs/${runId}/events`, {
+      headers: { accept: "text/event-stream" },
+      signal: controller.signal
+    });
+
+    const frames = await readFrames(response, {
+      until: (collected) => collected.filter((frame) => frame.event === "ledger").length >= 2
+    });
+    controller.abort();
+
+    expect(frames[0]?.event).toBe("state");
+    expect(frames.filter((frame) => frame.event === "ledger").map((frame) => frame.id)).toEqual(["1", "2"]);
   });
 
   it("replays contiguous ledger events after Last-Event-ID and never duplicates them", async () => {
@@ -215,9 +243,10 @@ describe("GET /api/runs/:id/events (SSE)", () => {
     expect(ledgerFrames.map((frame) => frame.id)).toEqual(["2", "3"]);
     expect(dataOf(ledgerFrames[0])?.label).toBe("two");
     expect(dataOf(ledgerFrames[1])?.label).toBe("three");
+    expect(frames.at(-1)?.event).toBe("end");
   });
 
-  it("falls back to a fresh state frame when the replay gap cannot be proven complete", async () => {
+  it("replays available ledger events after a durable gap instead of dropping the whole tail", async () => {
     const { baseUrl, store } = await createStack();
     await seedRun(store, {
       id: runId,
@@ -232,10 +261,13 @@ describe("GET /api/runs/:id/events (SSE)", () => {
     const frames = await readFrames(response);
     expect(frames[0]?.event).toBe("state");
     expect(dataOf(frames[0])?.id).toBe(runId);
-    expect(frames.filter((frame) => frame.event === "ledger")).toHaveLength(0);
+    const ledgerFrames = frames.filter((frame) => frame.event === "ledger");
+    expect(ledgerFrames.map((frame) => frame.id)).toEqual(["3"]);
+    expect(dataOf(ledgerFrames[0])?.label).toBe("three");
+    expect(frames.at(-1)?.event).toBe("end");
   });
 
-  it("sends only the state frame when Last-Event-ID is at or beyond the newest ledger sequence", async () => {
+  it("sends state and end when Last-Event-ID is at or beyond the newest ledger sequence", async () => {
     const { baseUrl, store } = await createStack();
     await seedRun(store, {
       id: runId,
@@ -250,9 +282,10 @@ describe("GET /api/runs/:id/events (SSE)", () => {
     const frames = await readFrames(response);
     expect(frames[0]?.event).toBe("state");
     expect(frames.filter((frame) => frame.event === "ledger")).toHaveLength(0);
+    expect(frames.at(-1)?.event).toBe("end");
   });
 
-  it("treats a non-numeric Last-Event-ID as absent and sends only the state frame", async () => {
+  it("treats a non-numeric Last-Event-ID as absent and replays durable history", async () => {
     const { baseUrl, store } = await createStack();
     await seedRun(store, { id: runId, status: "complete", entries: [entry(1, "one")] });
 
@@ -262,7 +295,41 @@ describe("GET /api/runs/:id/events (SSE)", () => {
 
     const frames = await readFrames(response);
     expect(frames[0]?.event).toBe("state");
-    expect(frames.filter((frame) => frame.event === "ledger")).toHaveLength(0);
+    const ledgerFrames = frames.filter((frame) => frame.event === "ledger");
+    expect(ledgerFrames.map((frame) => frame.id)).toEqual(["1"]);
+    expect(frames.at(-1)?.event).toBe("end");
+  });
+
+  it("ends a live terminal state and releases the hub subscriber", async () => {
+    const { baseUrl, store, hub } = await createStack();
+    await seedRun(store, { id: runId, status: "investigating" });
+    const controller = new AbortController();
+
+    const response = await fetch(`${baseUrl}/api/runs/${runId}/events`, {
+      headers: { accept: "text/event-stream" },
+      signal: controller.signal
+    });
+    const reading = readFrames(response, {
+      until: (collected) => collected.some((frame) => frame.event === "end"),
+      timeoutMs: 3000
+    });
+    await waitFor(() => hub.subscriberCount(runId) === 1);
+    const stored = await store.loadRun(runId);
+    if (stored === null) {
+      throw new Error("seeded run was not found");
+    }
+
+    hub.publish({
+      type: "state",
+      runId,
+      payload: { ...stored.state, status: "complete" }
+    });
+
+    const frames = await reading;
+    expect(frames.filter((frame) => frame.event === "state")).toHaveLength(2);
+    expect(frames.at(-1)?.event).toBe("end");
+    await waitFor(() => hub.subscriberCount(runId) === 0);
+    controller.abort();
   });
 
   it("keeps an idle resumable connection alive with periodic heartbeat comments", async () => {

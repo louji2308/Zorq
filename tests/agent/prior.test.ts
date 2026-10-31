@@ -50,6 +50,11 @@ describe("generatePrior", () => {
     expect(ledger.list()).toHaveLength(1);
     expect(ledger.list()[0]?.event.kind).toBe("LLM");
     expect(ledger.list()[0]?.event.cacheState).toBe("n/a");
+    expect(ledger.list()[0]?.event.detail).toBe("grounded in the brief only");
+    expect(ledger.list()[0]?.event.parameters).toMatchObject({
+      model: RAPIDROUTER_MODEL,
+      finishReason: "stop"
+    });
   });
 
   it("asks for the Without-Qloo polish in the frozen prior contract", async () => {

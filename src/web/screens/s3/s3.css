@@ -97,12 +97,13 @@
 .s3-body {
   flex: 1 1 auto;
   min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 400px;
+  position: relative;
+  display: block;
   overflow: hidden;
 }
 
 .s3-main {
+  height: 100%;
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
@@ -110,6 +111,12 @@
   flex-direction: column;
   gap: var(--zq-space-16);
   padding: var(--zq-space-16) var(--zq-space-24) var(--zq-space-24);
+}
+
+.s3-hint {
+  margin: 0;
+  font-size: var(--zq-text-micro);
+  color: var(--zq-ink-600);
 }
 
 .s3-pane-hidden {
@@ -373,6 +380,9 @@
 }
 
 .s3-drawer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
@@ -380,8 +390,8 @@
   flex-direction: column;
   gap: var(--zq-space-12);
   padding: var(--zq-space-16) var(--zq-space-16) var(--zq-space-24);
-  background: var(--zq-ink-50);
-  border-left: var(--zq-l3) solid var(--zq-ink);
+  background: var(--zq-paper);
+  border-left: 0;
 }
 
 .s3-drawer-close {
@@ -646,16 +656,18 @@
 
 @media (max-width: 1199px) {
   .s3-body {
-    grid-template-columns: minmax(0, 1fr);
     overflow-y: auto;
   }
 
   .s3-main {
+    height: auto;
     overflow: visible;
   }
 
   .s3-drawer {
-    border-left: 0;
+    position: relative;
+    inset: auto;
+    z-index: auto;
     border-top: var(--zq-l3) solid var(--zq-ink);
   }
 }

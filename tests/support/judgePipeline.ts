@@ -582,6 +582,7 @@ const TURN_TWO = {
       name: "qloo_insights",
       arguments: JSON.stringify({
         filterType: "heatmap",
+        signalTags: ["tag-jazz-1"],
         location: { point: { lat: 40.7144, lon: -73.9614 } }
       })
     },

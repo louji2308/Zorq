@@ -6,6 +6,8 @@ export const ledgerEventSchema = z.object({
   kind: z.enum(["Qloo", "Compute", "LLM"]),
   label: z.string(),
   summary: z.string(),
+  detail: z.string().min(1).max(1200).optional(),
+  parameters: z.record(z.string(), z.unknown()).optional(),
   duration: z.number(),
   cacheState: z.string(),
   resultCount: z.number()
@@ -22,7 +24,8 @@ export const sseEventNames = [
   "compositions",
   "stress",
   "blueprint",
-  "error"
+  "error",
+  "end"
 ] as const;
 
 export const sseEventNameSchema = z.enum(sseEventNames);
@@ -42,7 +45,8 @@ export const sseFrameSchema = z.discriminatedUnion("event", [
   z.object({ ...sseFrameBase, event: z.literal("dna"), data: z.unknown() }),
   z.object({ ...sseFrameBase, event: z.literal("compositions"), data: z.unknown() }),
   z.object({ ...sseFrameBase, event: z.literal("stress"), data: z.unknown() }),
-  z.object({ ...sseFrameBase, event: z.literal("blueprint"), data: z.unknown() })
+  z.object({ ...sseFrameBase, event: z.literal("blueprint"), data: z.unknown() }),
+  z.object({ ...sseFrameBase, event: z.literal("end"), data: z.object({}) })
 ]);
 
 export type SseFrame = z.infer<typeof sseFrameSchema>;

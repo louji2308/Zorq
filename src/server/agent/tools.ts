@@ -18,8 +18,15 @@ import {
   type EvidenceProvenance,
   type EvidenceRecord
 } from "../evidence/index.js";
-import { zodIssuesToDetails } from "../../shared/errors.js";
+import { ApiError, zodIssuesToDetails } from "../../shared/errors.js";
 import { ledgerEventSchema, type LedgerEvent } from "../../shared/events.js";
+import {
+  boundedActivityRequest,
+  boundedActivityValue,
+  clipActivityText,
+  collectActivityNames,
+  formatActivityRequest
+} from "./activity.js";
 import { AgentToolError } from "./errors.js";
 import type { LlmToolCall, LlmToolDefinition } from "./llm.js";
 import type { Ledger, LedgerEntry } from "./ledger.js";
@@ -67,7 +74,7 @@ function defineTool<T>(
 const toolSpecs: AgentToolSpec[] = [
   defineTool(
     "qloo_capabilities",
-    "Diagnostic probe: check Qloo gateway readiness, contract version, and supported operations. Use once at the start of an investigation or after transport errors.",
+    "Diagnostic probe: check Qloo gateway readiness, contract version, and supported operations. Use only after a tool call fails with a transport error; do not spend a planning turn on it before your first cultural probe.",
     z.object({}),
     (gateway) => gateway.capabilities()
   ),
@@ -85,7 +92,7 @@ const toolSpecs: AgentToolSpec[] = [
   ),
   defineTool(
     "qloo_insights",
-    "Primary measurement probe: audience/affinity insights, locality heatmaps, and taste neighborhoods around tags, entities, or locations. Use to gather site-local evidence. If site-local data is thin, widen the scale (larger take, broader location) and compare local vs. city signals.",
+    "Primary measurement probe: audience/affinity insights, locality heatmaps, and taste neighborhoods around tags, entities, or locations. For filterType=heatmap you must provide at least one signal (signalEntities, signalEntitiesQuery, or signalTags) and a location (location.query or location.point). Use to gather site-local evidence. If site-local data is thin, widen the scale (larger take, broader location) and compare local vs. city signals.",
     insightsRequestSchema,
     (gateway, request) => gateway.insights(request)
   ),
@@ -170,6 +177,32 @@ function isZodError(error: unknown): error is ZodError {
   return error instanceof z.ZodError;
 }
 
+function describeEnvelope(
+  tool: string,
+  args: unknown,
+  envelope: QlooEnvelope<unknown>
+): Pick<LedgerEvent, "detail" | "parameters"> {
+  const names = collectActivityNames(envelope.results);
+  const returned =
+    names.length > 0 ? `returned ${names.join(", ")}` : `returned ${envelope.resultCount} result(s)`;
+  return {
+    detail: clipActivityText(`request ${formatActivityRequest(args)} | ${returned}`),
+    parameters: {
+      tool,
+      request: boundedActivityRequest(args),
+      operation: envelope.operation,
+      status: envelope.status,
+      transport: envelope.transport,
+      cache: envelope.cache,
+      endpoint: envelope.provenance.endpoint,
+      durationMs: envelope.provenance.durationMs,
+      resultCount: envelope.resultCount,
+      resultNames: names,
+      warnings: boundedActivityValue(envelope.warnings ?? [])
+    }
+  };
+}
+
 export interface ExecuteToolCallOptions {
   gateway: QlooGateway;
   call: LlmToolCall;
@@ -206,6 +239,14 @@ export async function executeToolCall(options: ExecuteToolCallOptions): Promise<
         zodIssuesToDetails(error.issues)
       );
     }
+    if (error instanceof ApiError && error.code === "VALIDATION_FAILED" && !(error instanceof AgentToolError)) {
+      throw new AgentToolError(
+        "invalid_arguments",
+        spec.name,
+        `tool "${spec.name}" was rejected: ${error.message}`,
+        error.details
+      );
+    }
     throw error;
   }
 
@@ -221,10 +262,12 @@ export async function executeToolCall(options: ExecuteToolCallOptions): Promise<
     );
   }
 
+  const activity = describeEnvelope(spec.name, args, envelope);
   const event: LedgerEvent = {
     kind: "Qloo",
     label: spec.name,
     summary: `${envelope.status} ${envelope.operation} via ${envelope.transport} | ${envelope.cache} | ${envelope.resultCount} result(s)`,
+    ...activity,
     duration: envelope.provenance.durationMs,
     cacheState: envelope.cache,
     resultCount: envelope.resultCount

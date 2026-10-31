@@ -6,10 +6,12 @@
  * only from real DNA data (parseCulturalDna); otherwise an honest empty
  * state. Full Evidence drawer is Phase 7 — rows do not open it yet.
  */
-import type { DnaGroup } from "./s1Model.js";
+import { describeDnaEmpty, type DnaGroup } from "./s1Model.js";
 
 export interface DnaStripProps {
   groups: readonly DnaGroup[];
+  /** Current run status, so an empty strip never implies work is ongoing. */
+  status: string;
   collapsed: boolean;
   onToggle: () => void;
 }
@@ -65,7 +67,7 @@ function Group({ group }: { group: DnaGroup }) {
   );
 }
 
-export function DnaStrip({ groups, collapsed, onToggle }: DnaStripProps) {
+export function DnaStrip({ groups, status, collapsed, onToggle }: DnaStripProps) {
   return (
     <section className={collapsed ? "s1-dna is-collapsed" : "s1-dna"} aria-label="Cultural DNA">
       <header className="s1-dna-header">
@@ -80,10 +82,7 @@ export function DnaStrip({ groups, collapsed, onToggle }: DnaStripProps) {
       {!collapsed && (
         <div className="s1-dna-body">
           {groups.length === 0 ? (
-            <p className="s1-dna-empty">
-              Cultural DNA appears here as the investigation measures real entities. Nothing has
-              arrived yet.
-            </p>
+            <p className="s1-dna-empty">{describeDnaEmpty(status)}</p>
           ) : (
             <div className="s1-dna-groups">
               {groups.map((group) => (

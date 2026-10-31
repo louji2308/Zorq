@@ -81,6 +81,7 @@ async function bootstrap(): Promise<void> {
     store,
     gateway,
     llm,
+    siteScan: true,
     eventSink: (event) => {
       hub.publish(event);
     }

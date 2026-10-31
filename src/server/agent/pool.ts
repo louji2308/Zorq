@@ -32,7 +32,7 @@ export const proposeCandidatePoolTool: LlmToolDefinition = {
   description:
     "Propose the candidate pool for this run: 1 to " +
     String(POOL_DRAFT_COMPONENT_CAP) +
-    " components (the design target is about 8 to 10 when the evidence supports it; propose fewer when the evidence is honestly thin), each with a role (Anchor, Social, Discovery, Experience, Night, Community), tags, 1-5 exemplars (id + name), a provenance path (anchorPlace, qlooSignal, resolvedCategory, exemplarSet, tasteNeighborhood) and an evidenceState (measured, not measured, incomplete, unavailable). Call this once, as your last action, only after you have gathered real observations. Every exemplar must be an entity you actually saw in a tool result, with the same id and the same name, and every tag must be a tag you actually saw (from qloo_resolve_tags or on an observed entity). The draft is validated by the deterministic engine; a rejected draft is returned to you as an error and is never repaired into lookalike data.",
+    " components (the design target is about 8 to 10 when the evidence supports it; propose fewer when the evidence is honestly thin), each with a role (Anchor, Social, Discovery, Experience, Night, Community), tags, 1-5 exemplars (id + name), a provenance path (anchorPlace, qlooSignal, resolvedCategory, exemplarSet, tasteNeighborhood) and an evidenceState (measured, not measured, incomplete, unavailable). Never send an empty exemplars array: omit a component you cannot ground in an observed entity. Call this once, as your last action, only after you have gathered real observations. Every exemplar must be an entity you actually saw in a tool result, with the same id and the same name, and every tag must be a tag you actually saw (from qloo_resolve_tags or on an observed entity). The draft is validated by the deterministic engine; a rejected draft is returned to you as an error and is never repaired into lookalike data.",
   parameters: toolParametersJson
 };
 
@@ -47,6 +47,8 @@ export interface ObservationIndex {
   record(envelope: QlooEnvelope<unknown>, evidenceId: string): void;
   entity(id: string): ObservedEntity | undefined;
   hasTag(key: string): boolean;
+  observedEntities(): ObservedEntity[];
+  observedTags(): string[];
   locatedEntities(): ObservedEntity[];
   heatCells(): SiteHeatCell[];
 }
@@ -126,6 +128,7 @@ export function createObservationIndex(): ObservationIndex {
   const entities = new Map<string, ObservedEntity>();
   const located: ObservedEntity[] = [];
   const tagKeys = new Set<string>();
+  const tagLabels = new Map<string, string>();
   const heat: SiteHeatCell[] = [];
 
   return {
@@ -172,6 +175,12 @@ export function createObservationIndex(): ObservationIndex {
         for (const key of readTagKeys(raw)) {
           tagKeys.add(key);
         }
+        if (isRecord(raw)) {
+          const label = readString(raw.name) ?? readString(raw.id);
+          if (label !== null) {
+            tagLabels.set(label.toLowerCase(), label);
+          }
+        }
       }
 
       if (Array.isArray(results.heatmap)) {
@@ -191,6 +200,12 @@ export function createObservationIndex(): ObservationIndex {
     },
     hasTag(key) {
       return tagKeys.has(key.trim().toLowerCase());
+    },
+    observedEntities() {
+      return [...entities.values()];
+    },
+    observedTags() {
+      return [...tagLabels.values()];
     },
     locatedEntities() {
       return [...located];
@@ -254,27 +269,50 @@ export function formCandidatePool(input: {
       `candidate pool failed engine validation: ${error instanceof Error ? error.message : String(error)}`
     );
   }
+  const issues: string[] = [];
+  const exemplarOwners = new Map<string, string>();
   for (const component of pool) {
     for (const exemplar of component.exemplars) {
+      const owner = exemplarOwners.get(exemplar.id);
+      if (owner !== undefined) {
+        issues.push(
+          owner === component.id
+            ? `component "${component.id}" cites exemplar "${exemplar.name}" (${exemplar.id}) more than once; every exemplar must be a distinct observed place`
+            : `components "${owner}" and "${component.id}" both cite exemplar "${exemplar.name}" (${exemplar.id}); each component must be grounded in a distinct observed place so the graph is not inflated by duplicate evidence`
+        );
+        continue;
+      }
+      exemplarOwners.set(exemplar.id, component.id);
       const observed = input.index.entity(exemplar.id);
       if (observed === undefined) {
-        reject(
-          `component "${component.id}" cites exemplar "${exemplar.name}" (${exemplar.id}) that was never observed in a tool result; only entities you actually saw may be used`
+        const named = input.index
+          .observedEntities()
+          .find((entity) => entity.name?.toLowerCase() === exemplar.name.toLowerCase());
+        const hint =
+          named !== undefined
+            ? ` The observed entity named "${exemplar.name}" has id "${named.entityId}"; copy that id exactly.`
+            : "";
+        issues.push(
+          `component "${component.id}" cites exemplar "${exemplar.name}" (${exemplar.id}) that was never observed in a tool result; only entities you actually saw may be used.${hint}`
         );
+        continue;
       }
       if (observed.name === null || observed.name.toLowerCase() !== exemplar.name.toLowerCase()) {
-        reject(
+        issues.push(
           `component "${component.id}" cites exemplar name "${exemplar.name}" for ${exemplar.id} but the observed name is "${observed.name ?? "unnamed"}"; copy the observed name exactly`
         );
       }
     }
     for (const tag of component.tags) {
       if (!input.index.hasTag(tag)) {
-        reject(
+        issues.push(
           `component "${component.id}" cites tag "${tag}" that was never observed; resolve it with qloo_resolve_tags or cite a tag you saw on an observed entity`
         );
       }
     }
+  }
+  if (issues.length > 0) {
+    reject(issues.join("; "));
   }
   return pool;
 }

@@ -8,14 +8,9 @@ node_modules/
 dist/
 build/
 .vite/
-coverage/
+ coverage/
 *.tsbuildinfo
 
-# Test artifacts
-playwright-report/
-test-results/
-blob-report/
-playwright/.cache/
 
 # Logs
 *.log
@@ -37,3 +32,6 @@ docker-compose.override.yml
 tmp/
 .tmp/
 scratch/
+
+# Tests
+tests/test-results/

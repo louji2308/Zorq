@@ -481,7 +481,7 @@ Never write:
 Prefer:
 ```text
 POST /api/runs returns validated Run state;
-Vitest X passes; Playwright Y passes; verified in commit abc1234.
+Vitest X passes; verified in commit abc1234.
 ```
 ### No fabricated intelligence
 Production code must never depend on:

@@ -5,6 +5,7 @@ export {
   isResumableStatus,
   isRetryableStatus,
   orchestratorRunPhases,
+  reenterInvestigationAfterRetry,
   orchestratorRunStatuses,
   transitionTo
 } from "./status.js";

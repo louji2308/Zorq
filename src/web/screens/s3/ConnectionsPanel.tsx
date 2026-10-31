@@ -170,6 +170,11 @@ export function ConnectionsPanel({
       </div>
       <div className="s3-body">
         <div className="s3-main">
+          {!hasSelection && (
+            <p className="s3-hint" role="status">
+              Choose a line to see the culture its two audiences share.
+            </p>
+          )}
           <div
             className={`s3-pane s3-pane-map${view === "map" ? "" : " s3-pane-hidden"}`}
           >
@@ -209,18 +214,20 @@ export function ConnectionsPanel({
             </div>
           )}
         </div>
-        <EvidenceDrawer
-          evidence={evidence}
-          sheet={sheet}
-          hasSelection={hasSelection}
-          onOpenLedger={onOpenLedger}
-          onReplace={
-            onReplace === undefined
-              ? undefined
-              : (memberId) => onReplace(memberId, model.selected?.key ?? null)
-          }
-          onClose={handleClose}
-        />
+        {hasSelection && (
+          <EvidenceDrawer
+            evidence={evidence}
+            sheet={sheet}
+            hasSelection={hasSelection}
+            onOpenLedger={onOpenLedger}
+            onReplace={
+              onReplace === undefined
+                ? undefined
+                : (memberId) => onReplace(memberId, model.selected?.key ?? null)
+            }
+            onClose={handleClose}
+          />
+        )}
       </div>
     </section>
   );

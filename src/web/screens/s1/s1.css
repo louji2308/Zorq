@@ -38,6 +38,7 @@
 
 .s1-topbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   gap: var(--zq-space-16);
@@ -99,14 +100,34 @@
   color: var(--zq-ink);
 }
 
+/* Locked tabs stay visible with a dashed underline and a title tooltip
+ * (Final Design §6.3) — no mystery, no dead tab. */
 .s1-tab:disabled {
-  color: var(--zq-ink-350);
+  color: var(--zq-ink-450);
   cursor: not-allowed;
+  text-decoration: underline dashed var(--zq-ink-350);
+  text-underline-offset: 4px;
 }
 
 .s1-tab:focus-visible {
   outline: var(--zq-focus-ring-width) solid var(--zq-ink);
   outline-offset: var(--zq-focus-ring-offset);
+}
+
+.s1-tab[data-tooltip]:hover::after,
+.s1-tab[data-tooltip]:focus-visible::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--zq-ink);
+  color: var(--zq-paper);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 1000;
 }
 
 .s1-tab-indicator {
@@ -197,6 +218,55 @@
   font-size: var(--zq-text-micro);
   font-weight: 600;
   color: var(--zq-ink-600);
+}
+
+/* ---- Map fallback (no key or unreachable tiles) ----
+ * The map is optional; the Prior and ledger are not. When tiles cannot
+ * render, give the Prior its own column instead of parking it under the
+ * full-bleed "map unavailable" veil. */
+.s1-map.is-map-unavailable {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  align-items: start;
+  align-content: start;
+  gap: var(--zq-space-24);
+  padding: var(--zq-space-24);
+  overflow-y: auto;
+  background: var(--zq-paper);
+}
+
+.s1-map.is-map-unavailable .s1-map-panel {
+  position: relative;
+  inset: auto;
+  grid-column: 2;
+  grid-row: 1;
+  min-height: 300px;
+  background: var(--zq-ink-50);
+  border: var(--zq-l2) dashed var(--zq-ink-350);
+}
+
+.s1-map.is-map-unavailable .s1-map-canvas {
+  display: none;
+}
+
+.s1-map.is-map-unavailable .s1-map-veil {
+  position: relative;
+  inset: auto;
+  min-height: 300px;
+  padding: var(--zq-space-32);
+  background: transparent;
+}
+
+.s1-map.is-map-unavailable .s1-prior,
+.s1-map.is-map-unavailable .s1-prior-wait {
+  position: relative;
+  inset: auto;
+  grid-column: 1;
+  grid-row: 1;
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
 }
 
 /* ---- Prior card (floating top-left of the map) ---- */
@@ -352,12 +422,15 @@
   color: var(--zq-ink-600);
 }
 
+/* Sits between the header and the scrolling rows so retry never scrolls
+ * away with the history. */
 .s1-ledger-recovery {
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--zq-space-12);
-  margin: var(--zq-space-16) 0;
+  margin: var(--zq-space-16) var(--zq-space-24);
   padding: var(--zq-space-16);
   border: var(--zq-l1) solid var(--zq-ink-350);
   background: var(--zq-ink-50);
@@ -430,6 +503,16 @@
   font-size: var(--zq-text-small);
   font-weight: var(--zq-weight-body);
   overflow-wrap: anywhere;
+}
+
+.s1-row-detail {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: var(--zq-text-micro);
+  color: var(--zq-ink-800);
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .s1-row-note {
@@ -671,7 +754,7 @@
 
 @media (max-width: 1199px) {
   .s1 {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto 40vh auto auto;
     grid-template-areas:
       "top"
@@ -682,9 +765,50 @@
     min-height: 100vh;
   }
 
+  /* The fallback carries real content (Prior + notice), so let it size
+   * naturally instead of trapping it in the 40vh map row. */
+  .s1.is-map-unavailable {
+    grid-template-rows: auto auto auto auto;
+  }
+
+  .s1-top,
+  .s1-map,
+  .s1-ledger,
+  .s1-dna {
+    min-width: 0;
+  }
+
   .s1-map {
     border-right: 0;
     border-bottom: var(--zq-l1) solid var(--zq-ink-200);
+  }
+
+  .s1-map.is-map-unavailable {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--zq-space-16);
+    padding: var(--zq-space-16);
+  }
+
+  .s1-map.is-map-unavailable .s1-map-panel,
+  .s1-map.is-map-unavailable .s1-prior,
+  .s1-map.is-map-unavailable .s1-prior-wait {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .s1-map.is-map-unavailable .s1-prior,
+  .s1-map.is-map-unavailable .s1-prior-wait {
+    order: -1;
+  }
+
+  .s1-map.is-map-unavailable .s1-map-panel {
+    min-height: 0;
+    border: 0;
+  }
+
+  .s1-map.is-map-unavailable .s1-map-veil {
+    min-height: 0;
+    padding: var(--zq-space-16);
   }
 
   .s1-ledger {
@@ -697,5 +821,19 @@
 
   .s1-dna-groups {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Five tabs no longer fit beside the wordmark on a phone. Wrap them instead
+ * of letting the grid track grow past the viewport; the slide indicator is
+ * hidden because its single underline cannot track a wrapped row. */
+@media (max-width: 600px) {
+  .s1-tabs {
+    flex-wrap: wrap;
+    row-gap: 0;
+  }
+
+  .s1-tab-indicator {
+    display: none;
   }
 }

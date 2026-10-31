@@ -17,7 +17,7 @@ describe("Rapid Router LLM boundary", () => {
     expect(config.rapidRouterApiKey).toBe("rapid-router-test-key");
   });
 
-  it("sends every completion to Rapid Router with the locked Qwen model", async () => {
+  it("sends every completion to Rapid Router with the locked DeepSeek model", async () => {
     let requestUrl = "";
     let requestInit: RequestInit | undefined;
     const client = createRapidRouterLlmClient({
@@ -45,11 +45,37 @@ describe("Rapid Router LLM boundary", () => {
     expect(requestUrl).toBe(`${RAPIDROUTER_BASE_URL}/chat/completions`);
     expect(new Headers(requestInit?.headers).get("authorization")).toBe("Bearer rapid-router-test-key");
     expect(JSON.parse(String(requestInit?.body))).toMatchObject({
-      model: "qwen/qwen3.7-flash-2026-07-15",
+      model: RAPIDROUTER_MODEL,
       messages: [{ role: "user", content: "hello" }],
       max_tokens: 4096
     });
     expect(result.content).toBe("hello");
     expect(result.model).toBe(RAPIDROUTER_MODEL);
+  });
+
+  it("bounds a stalled completion with a request timeout", async () => {
+    const client = createRapidRouterLlmClient({
+      apiKey: "rapid-router-test-key",
+      timeoutMs: 20,
+      fetch: (_input, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          const signal = init?.signal;
+          if (signal === undefined || signal === null) {
+            reject(new Error("expected an abort signal"));
+            return;
+          }
+          const abort = (): void => reject(new DOMException("aborted", "AbortError"));
+          if (signal.aborted) {
+            abort();
+            return;
+          }
+          signal.addEventListener("abort", abort, { once: true });
+        }),
+      now: () => 1_000
+    });
+
+    await expect(
+      client.complete({ label: "test", messages: [{ role: "user", content: "hello" }] })
+    ).rejects.toMatchObject({ code: "DEPENDENCY_UNAVAILABLE" });
   });
 });

@@ -18,9 +18,10 @@ import type { BridgeRequest, DescribeRequest, QlooOperation, ReplaceRequest, Res
 export const EXPECTED_QLOO_CONTRACT_CHECKSUM =
   "sha256:762bdcc5e14ff797b6de739d2658a83f78af35e68d7a5a3449455be6046924f5";
 
-export const MCP_ENDPOINT_LABEL = "stdio:@qloo/qloo-harness/dist/bin.js mcp";
+export const MCP_ENDPOINT_LABEL = "stdio:@qloo/qloo-harness/dist/mcp.js";
 
 const HARNESS_ENTRY_URL = new URL("../../../node_modules/@qloo/qloo-harness/dist/bin.js", import.meta.url);
+const HARNESS_MCP_URL = new URL("mcp.js", HARNESS_ENTRY_URL);
 
 const envelopeSchema = {
   status: ["ok", "empty", "needs_input", "partial", "degraded", "error"]
@@ -103,6 +104,26 @@ function harnessEntry(): string {
   return fileURLToPath(HARNESS_ENTRY_URL);
 }
 
+export interface HarnessMcpLaunch {
+  entry: string;
+  command: string;
+  args: string[];
+}
+
+export function harnessMcpLaunch(): HarnessMcpLaunch {
+  const fastEntry = fileURLToPath(HARNESS_MCP_URL);
+  if (existsSync(fastEntry)) {
+    const bootstrap = `import { runQlooMcp } from ${JSON.stringify(HARNESS_MCP_URL.href)}; runQlooMcp([]);`;
+    return {
+      entry: fastEntry,
+      command: process.execPath,
+      args: ["--input-type=module", "-e", bootstrap]
+    };
+  }
+  const entry = harnessEntry();
+  return { entry, command: process.execPath, args: [entry, "mcp"] };
+}
+
 function extractToolPayload(result: unknown, path: string, secrets: ReadonlyArray<string | undefined>): unknown {
   const record = asRecord(result);
   const structured = record?.structuredContent;
@@ -137,6 +158,108 @@ function mcpFailure(operation: string, error: unknown, secrets: ReadonlyArray<st
   );
 }
 
+export function normalizeMcpPayload(
+  operation: QlooOperation,
+  toolName: string,
+  payload: unknown,
+  durationMs: number,
+  secrets: ReadonlyArray<string | undefined> = []
+): TransportResponse {
+  const path = `tools/call ${toolName}`;
+  const envelope = asRecord(payload);
+  if (envelope === undefined) {
+    throw malformedResponse(path, "MCP envelope was not an object", secrets);
+  }
+
+  if (
+    operation === "capabilities" &&
+    asString(envelope.capabilities_tool) === "qloo_capabilities" &&
+    asRecord(envelope.adapter) !== undefined
+  ) {
+    const adapter = asRecord(envelope.adapter);
+    const ready =
+      typeof envelope.ready === "boolean"
+        ? envelope.ready
+        : typeof adapter?.ready === "boolean"
+          ? adapter.ready
+          : undefined;
+    const supported = asStringArray(adapter?.supported_operation_ids) ?? asStringArray(envelope.supported_operation_ids);
+    const contractChecksum = asString(envelope.contract_checksum);
+    const response: TransportResponse = {
+      payload,
+      durationMs,
+      endpoint: MCP_ENDPOINT_LABEL,
+      requests: [{ method: "POST", path: "tools/call", params: { tool: toolName } }],
+      upstreamStatus: ready === false ? "degraded" : "ok"
+    };
+    if (supported !== undefined) {
+      response.upstreamResultCount = supported.length;
+    }
+    if (contractChecksum !== undefined) {
+      response.contractChecksum = contractChecksum;
+      response.contractChecksumChanged = contractChecksum !== EXPECTED_QLOO_CONTRACT_CHECKSUM;
+    }
+    return response;
+  }
+
+  const status = envelope.status as string | undefined;
+  if (typeof status !== "string" || !(envelopeSchema.status as readonly string[]).includes(status)) {
+    throw malformedResponse(path, "MCP envelope was missing a valid status", secrets);
+  }
+  if (status === "error") {
+    const errorRecord = asRecord(envelope.error);
+    const code = asString(errorRecord?.code) ?? "QLOO_ERROR";
+    const summary = asString(envelope.summary);
+    const recovery = asString(errorRecord?.recovery);
+    const detail = scrubSecrets(
+      truncateText(`Qloo MCP ${operation} failed (${code})${summary === undefined ? "" : `: ${summary}`}`),
+      secrets
+    );
+    throw new QlooUpstreamError(
+      "DEPENDENCY_UNAVAILABLE",
+      detail,
+      { retryable: errorRecord?.retryable === true },
+      upstreamDetail(recovery ?? code)
+    );
+  }
+
+  const execution = asRecord(envelope.execution);
+  const correlationId = asString(execution?.correlation_id);
+  const contractChecksum = asString(envelope.contract_checksum);
+  const resultCount = asNumber(envelope.result_count) ?? upstreamResultCount(payload, "results");
+  const warnings = asStringArray(envelope.warnings);
+  const explainability = envelope.explainability;
+
+  const response: TransportResponse = {
+    payload,
+    durationMs,
+    endpoint: MCP_ENDPOINT_LABEL,
+    requests: [{ method: "POST", path: "tools/call", params: { tool: toolName } }],
+    upstreamStatus: status as TransportResponse["upstreamStatus"],
+    upstreamResultCount: resultCount
+  };
+  if (correlationId !== undefined) {
+    response.correlationId = correlationId;
+  }
+  if (contractChecksum !== undefined) {
+    response.contractChecksum = contractChecksum;
+    response.contractChecksumChanged = contractChecksum !== EXPECTED_QLOO_CONTRACT_CHECKSUM;
+  }
+  if (envelope.interpretation !== undefined) {
+    response.interpretation = envelope.interpretation;
+  }
+  if (envelope.resolution !== undefined) {
+    response.resolution = envelope.resolution;
+  }
+  if (warnings !== undefined) {
+    response.warnings = warnings;
+  }
+  if (explainability !== undefined) {
+    response.explainability = explainability;
+  }
+  return response;
+}
+
 export class McpTransport implements QlooTransport {
   #client: Client | undefined;
   #connecting: Promise<void> | undefined;
@@ -166,17 +289,17 @@ export class McpTransport implements QlooTransport {
   }
 
   async #connect(settings: QlooTransportCall["settings"]): Promise<void> {
-    const entry = harnessEntry();
-    if (!existsSync(entry)) {
+    const launch = harnessMcpLaunch();
+    if (!existsSync(launch.entry)) {
       throw new ApiError(
         "SERVICE_UNAVAILABLE",
         "Qloo MCP harness entry point is missing; reinstall @qloo/qloo-harness",
-        [{ path: "qloo.mcp", message: entry }]
+        [{ path: "qloo.mcp", message: launch.entry }]
       );
     }
     const transport = new StdioClientTransport({
-      command: process.execPath,
-      args: [entry, "mcp"],
+      command: launch.command,
+      args: launch.args,
       env: {
         QLOO_BASE_URL: settings.baseUrl,
         QLOO_TRUSTED_BASE_URL: settings.baseUrl,
@@ -226,66 +349,7 @@ export class McpTransport implements QlooTransport {
     }
 
     const payload = extractToolPayload(result, `tools/call ${toolCall.name}`, secrets);
-    const envelope = asRecord(payload);
-    if (envelope === undefined) {
-      throw malformedResponse(`tools/call ${toolCall.name}`, "MCP envelope was not an object", secrets);
-    }
-    const status = envelope.status as string | undefined;
-    if (typeof status !== "string" || !(envelopeSchema.status as readonly string[]).includes(status)) {
-      throw malformedResponse(`tools/call ${toolCall.name}`, "MCP envelope was missing a valid status", secrets);
-    }
-    if (status === "error") {
-      const errorRecord = asRecord(envelope.error);
-      const code = asString(errorRecord?.code) ?? "QLOO_ERROR";
-      const summary = asString(envelope.summary);
-      const recovery = asString(errorRecord?.recovery);
-      const detail = scrubSecrets(
-        truncateText(`Qloo MCP ${operation} failed (${code})${summary === undefined ? "" : `: ${summary}`}`),
-        secrets
-      );
-      throw new QlooUpstreamError(
-        "DEPENDENCY_UNAVAILABLE",
-        detail,
-        { retryable: errorRecord?.retryable === true },
-        upstreamDetail(recovery ?? code)
-      );
-    }
-
-    const execution = asRecord(envelope.execution);
-    const correlationId = asString(execution?.correlation_id);
-    const contractChecksum = asString(envelope.contract_checksum);
-    const resultCount = asNumber(envelope.result_count) ?? upstreamResultCount(payload, "results");
-    const warnings = asStringArray(envelope.warnings);
-    const explainability = envelope.explainability;
-
-    const response: TransportResponse = {
-      payload,
-      durationMs: Date.now() - startedAt,
-      endpoint: MCP_ENDPOINT_LABEL,
-      requests: [{ method: "POST", path: "tools/call", params: { tool: toolCall.name } }],
-      upstreamStatus: status as TransportResponse["upstreamStatus"],
-      upstreamResultCount: resultCount
-    };
-    if (correlationId !== undefined) {
-      response.correlationId = correlationId;
-    }
-    if (contractChecksum !== undefined) {
-      response.contractChecksum = contractChecksum;
-      response.contractChecksumChanged = contractChecksum !== EXPECTED_QLOO_CONTRACT_CHECKSUM;
-    }
-    if (envelope.interpretation !== undefined) {
-      response.interpretation = envelope.interpretation;
-    }
-    if (envelope.resolution !== undefined) {
-      response.resolution = envelope.resolution;
-    }
-    if (warnings !== undefined) {
-      response.warnings = warnings;
-    }
-    if (explainability !== undefined) {
-      response.explainability = explainability;
-    }
-    return response;
+    return normalizeMcpPayload(operation, toolCall.name, payload, Date.now() - startedAt, secrets);
   }
 
   async close(): Promise<void> {

@@ -56,6 +56,7 @@ export function AddressSearch({
   const [highlight, setHighlight] = useState(-1);
   const sequenceRef = useRef(0);
   const pickedRef = useRef<string | null>(null);
+  const debounceRef = useRef<number | null>(null);
 
   function choose(suggestion: GeocodeSuggestion): void {
     pickedRef.current = suggestion.label;
@@ -69,6 +70,10 @@ export function AddressSearch({
   async function searchNow(): Promise<void> {
     const query = value.trim();
     if (apiKey === null || query === "") return;
+    if (debounceRef.current !== null) {
+      window.clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
     const sequence = ++sequenceRef.current;
     onGeocodeState("searching");
     try {
@@ -101,6 +106,7 @@ export function AddressSearch({
       return;
     }
       const timer = window.setTimeout(() => {
+      debounceRef.current = null;
       const sequence = ++sequenceRef.current;
       void (async () => {
         try {
@@ -120,7 +126,12 @@ export function AddressSearch({
         }
       })();
     }, DEBOUNCE_MS);
-    return () => window.clearTimeout(timer);
+    debounceRef.current = timer;
+    return () => {
+      window.clearTimeout(timer);
+      if (debounceRef.current === timer) debounceRef.current = null;
+      sequenceRef.current += 1;
+    };
   }, [value, apiKey]);
 
   const optionId = (index: number): string => `s0-address-option-${index}`;
@@ -188,6 +199,9 @@ export function AddressSearch({
           value={value}
           onChange={(event) => {
             pickedRef.current = null;
+            sequenceRef.current += 1;
+            setSuggestions([]);
+            setOpen(false);
             setHighlight(-1);
             onTextChange(event.target.value);
           }}

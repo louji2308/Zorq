@@ -55,6 +55,24 @@ export function isRetryableStatus(status: string): boolean {
   return status === "failed" || status === "partial" || status === "stopped";
 }
 
+export function reenterInvestigationAfterRetry(state: RunState): RunState {
+  const currentStatus = asStatus(state.status);
+  asPhase(state.phase);
+  if (!isRetryableStatus(currentStatus)) {
+    throw new OrchestratorStateError(`cannot re-enter investigation after retry from status: ${state.status}`, [
+      { path: "status", message: "allowed from failed, partial or stopped" }
+    ]);
+  }
+  if (state.prior === undefined) {
+    throw new OrchestratorStateError("cannot move a run to investigating before the Prior is persisted", [
+      { path: "prior", message: "Prior Lock must be persisted first (Prior-before-Qloo)" }
+    ]);
+  }
+  const next: RunState = { ...state, status: "investigating", phase: "investigation" };
+  runStateSchema.parse(next);
+  return Object.freeze(next);
+}
+
 export function transitionTo(
   state: RunState,
   status: OrchestratorRunStatus,

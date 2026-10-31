@@ -26,6 +26,12 @@ function prefersReducedMotion(): boolean {
   );
 }
 
+function labelAnchor(x: number): "start" | "middle" | "end" {
+  if (x < 0.3) return "start";
+  if (x > 0.7) return "end";
+  return "middle";
+}
+
 export function MapOfMeaning({
   nodes,
   edges,
@@ -132,7 +138,7 @@ export function MapOfMeaning({
                 className={node.member ? "s3-node-label" : "s3-node-label s3-node-label-dim"}
                 x={node.x * 100}
                 y={node.y * 100 + (node.member ? 5.5 : 4)}
-                textAnchor="middle"
+                textAnchor={labelAnchor(node.x)}
               >
                 {node.letter !== null ? `${node.letter} ${node.name}` : node.name}
               </text>

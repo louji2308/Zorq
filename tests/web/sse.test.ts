@@ -197,13 +197,18 @@ describe("sse client", () => {
     expect(ledgers.map((row) => row.sequence)).toEqual([1, 10]);
   });
 
-  it("delivers a terminal state to onTerminal, closes cleanly and ignores later frames", () => {
+  it("holds a terminal state until end, then delivers it once, closes and ignores later frames", () => {
     const { harness, states, terminals, ledgers } = collect();
     harness.source().fireOpen();
 
     harness.source().emit({ type: "state", data: terminalRun("complete"), id: "4" });
 
     expect(states).toHaveLength(1);
+    expect(terminals).toHaveLength(0);
+    expect(harness.source().closed).toBe(false);
+
+    harness.source().emit({ type: "end", data: {}, id: "5" });
+
     expect(terminals).toEqual([terminalRun("complete")]);
     expect(harness.source().closed).toBe(true);
     expect(harness.stream.status()).toBe("closed");
@@ -213,6 +218,17 @@ describe("sse client", () => {
 
     expect(ledgers).toHaveLength(0);
     expect(states).toHaveLength(1);
+  });
+
+  it("reports an end frame without a terminal state and closes", () => {
+    const { harness, terminals, invalid } = collect();
+    harness.source().fireOpen();
+
+    harness.source().emit({ type: "end", data: {}, id: "2" });
+
+    expect(terminals).toHaveLength(0);
+    expect(invalid).toEqual([{ event: "end", reason: "end frame without a terminal state" }]);
+    expect(harness.source().closed).toBe(true);
   });
 
   it("classifies statuses the same way the server stream does", () => {

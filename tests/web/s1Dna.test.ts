@@ -91,20 +91,44 @@ describe("parseCulturalDna", () => {
 });
 
 describe("DnaStrip rendering", () => {
-  it("renders the honest empty state when nothing has been measured", () => {
+  it("renders the honest empty state while the run is still measuring", () => {
     const html = renderToStaticMarkup(
-      createElement(DnaStrip, { groups: [], collapsed: false, onToggle: () => {} })
+      createElement(DnaStrip, {
+        groups: [],
+        status: "investigating",
+        collapsed: false,
+        onToggle: () => {}
+      })
     );
 
     expect(html).toContain("Cultural DNA");
-    expect(html).toContain("Nothing has arrived yet.");
+    expect(html).toContain("nothing has arrived yet.");
     expect(html).toContain("aria-expanded=\"true\"");
+  });
+
+  it("does not imply ongoing work once a partial run has stopped", () => {
+    const html = renderToStaticMarkup(
+      createElement(DnaStrip, {
+        groups: [],
+        status: "partial",
+        collapsed: false,
+        onToggle: () => {}
+      })
+    );
+
+    expect(html).toContain("stopped before any entities were measured");
+    expect(html).not.toContain("nothing has arrived yet");
   });
 
   it("renders each real entity with its dumbbell and local/city percentages", () => {
     const groups = parseCulturalDna(runWithDna(REAL_DNA).culturalDna);
     const html = renderToStaticMarkup(
-      createElement(DnaStrip, { groups, collapsed: false, onToggle: () => {} })
+      createElement(DnaStrip, {
+        groups,
+        status: "investigating",
+        collapsed: false,
+        onToggle: () => {}
+      })
     );
 
     expect(html).toContain("Artists");
@@ -120,7 +144,12 @@ describe("DnaStrip rendering", () => {
   it("hides the body when collapsed and exposes the toggle state", () => {
     const groups = parseCulturalDna(runWithDna(REAL_DNA).culturalDna);
     const html = renderToStaticMarkup(
-      createElement(DnaStrip, { groups, collapsed: true, onToggle: () => {} })
+      createElement(DnaStrip, {
+        groups,
+        status: "investigating",
+        collapsed: true,
+        onToggle: () => {}
+      })
     );
 
     expect(html).toContain("Show DNA");

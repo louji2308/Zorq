@@ -1,9 +1,7 @@
 # Zorq CI on every push (Tools & Requirements §18):
 #   install → typecheck → lint → unit tests → build
-# The Playwright judge-path suite runs against system Chrome locally (`npm run test:e2e`);
-# it is not part of this workflow because the E2E config targets the machine's real
-# Chrome channel, which hosted runners do not provision. The build + unit gate pins the
-# same contracts the e2e suite exercises against the production build.
+# The build + unit gate pins the same contracts the Vitest suite exercises
+# against the production build.
 name: ci
 
 on:

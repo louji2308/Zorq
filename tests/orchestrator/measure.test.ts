@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import type { LedgerEvent } from "../../src/shared/events.js";
 import { runStateSchema, type RunState } from "../../src/shared/run.js";
 import { createLedger, type Ledger } from "../../src/server/agent/ledger.js";
-import { localityLadder, runMeasurement } from "../../src/server/orchestrator/measure.js";
+import {
+  localityLadder,
+  reconcilePoolEvidence,
+  runMeasurement
+} from "../../src/server/orchestrator/measure.js";
+import type { TasteNeighborhood } from "../../src/server/engine/types.js";
 import type { QlooEnvelope, QlooOperation } from "../../src/server/qloo/index.js";
 import { makeComponent } from "../engine/fixtures.js";
 import { fakeGateway, okEnvelope, TEST_BRIEF, TEST_NOW, TEST_PRIOR } from "../agent/support/fakes.js";
@@ -110,6 +115,32 @@ const COMPONENT_ENTITIES: Record<string, Record<string, FakeEntity[]>> = {
     ],
     brand: [
       { entityId: "urn:entity:brand-mcnally", name: "McNally Jackson", type: "brand", affinity: 0.8 }
+    ]
+  },
+  tea: {
+    artist: [
+      { entityId: "urn:entity:artist-pharoah", name: "Pharoah Sanders", type: "artist", affinity: 0.82 },
+      { entityId: "urn:entity:artist-alice", name: "Alice Coltrane", type: "artist", affinity: 0.66 },
+      { entityId: "urn:entity:artist-don", name: "Don Cherry", type: "artist", affinity: 0.54 }
+    ],
+    movie: [
+      { entityId: "urn:entity:film-koyaanisqatsi", name: "Koyaanisqatsi", type: "movie", affinity: 0.73 }
+    ],
+    brand: [
+      { entityId: "urn:entity:brand-tea-house", name: "Tea House", type: "brand", affinity: 0.61 }
+    ]
+  },
+  print: {
+    artist: [
+      { entityId: "urn:entity:artist-joao", name: "Joao Gilberto", type: "artist", affinity: 0.79 },
+      { entityId: "urn:entity:artist-antonio", name: "Antonio Carlos Jobim", type: "artist", affinity: 0.63 },
+      { entityId: "urn:entity:artist-stan", name: "Stan Getz", type: "artist", affinity: 0.5 }
+    ],
+    movie: [
+      { entityId: "urn:entity:film-black-orpheus", name: "Black Orpheus", type: "movie", affinity: 0.7 }
+    ],
+    brand: [
+      { entityId: "urn:entity:brand-printed-matter", name: "Printed Matter", type: "brand", affinity: 0.58 }
     ]
   }
 };
@@ -284,6 +315,16 @@ describe("runMeasurement", () => {
     expect(eventLabels).toContain("measure.compositions");
     expect(eventLabels).toContain("measure.dna");
     expect(eventLabels).toContain("measure.neighborhood_fetch");
+    const neighborhoodEvent = harness.ledger
+      .list()
+      .find((entry) => entry.event.label === "measure.neighborhood_fetch");
+    expect(neighborhoodEvent?.event.detail).toContain("request {");
+    expect(neighborhoodEvent?.event.parameters).toMatchObject({
+      call: "measure.neighborhood_fetch",
+      operation: "insights",
+      request: { take: expect.any(Number), signalEntities: expect.any(Array) },
+      resultNames: expect.any(Array)
+    });
 
     const evidenceIds = new Set(result.evidence.map((record) => record.id));
     expect(result.evidence.length).toBeGreaterThan(0);
@@ -298,6 +339,33 @@ describe("runMeasurement", () => {
     }
 
     expect(runStateSchema.parse(result.state)).toEqual(result.state);
+  });
+
+  it("replaces a model-authored evidence state with the measured neighborhood state", async () => {
+    const stalePool = POOL.map((component) =>
+      component.id === "books" ? { ...component, evidenceState: "not measured" as const } : component
+    );
+    const harness = measure(stateWithPool(stalePool), sharedSignalGateway);
+    const result = await harness.run();
+
+    expect(result.state.candidatePool?.find((component) => component.id === "books")?.evidenceState).toBe(
+      "measured"
+    );
+    expect(result.state.graph?.edges.every((edge) => edge.state === "measured")).toBe(true);
+    expect(result.state.compositions?.family.totalValid).toBeGreaterThan(0);
+    expect(result.state.compositions?.ranked.length).toBeGreaterThan(0);
+  });
+
+  it("keeps a measured component measured when its neighborhood is incomplete", () => {
+    const pool = [makeComponent({ id: "partial" })];
+    const neighborhoods: TasteNeighborhood[] = [
+      {
+        componentId: "partial",
+        domains: { artist: [], movie: [], brand: [] },
+        state: "incomplete"
+      }
+    ];
+    expect(reconcilePoolEvidence(pool, neighborhoods)[0]?.evidenceState).toBe("measured");
   });
 
   it("is deterministic across two identical runs", async () => {
@@ -316,6 +384,87 @@ describe("runMeasurement", () => {
     expect(result.evidence).toEqual([]);
     expect(result.state.neighborhoods).toBeDefined();
     expect(harness.fake.calls.filter((call) => call.operation === "insights")).toHaveLength(0);
+  });
+
+  it("keeps unmeasured components in the pool but builds a smaller family from measured ones", async () => {
+    const widePool = [
+      ...POOL,
+      makeComponent({
+        id: "tea",
+        role: "Social",
+        tags: ["tea"],
+        exemplars: [{ id: "urn:entity:place-tea", name: "T Gallery" }],
+        evidenceState: "not measured"
+      }),
+      makeComponent({
+        id: "print",
+        role: "Experience",
+        tags: ["print"],
+        exemplars: [{ id: "urn:entity:place-print", name: "Printed Matter" }],
+        evidenceState: "not measured"
+      })
+    ];
+    const harness = measure(stateWithPool(widePool), (request, operation) => {
+      const signals = request.signalEntities ?? [];
+      if (
+        operation === "insights" &&
+        signals.some((id) => id.includes("place-tea") || id.includes("place-print"))
+      ) {
+        return entitiesEnvelope([]);
+      }
+      return sharedSignalGateway(request);
+    });
+    const result = await harness.run();
+
+    expect(result.state.candidatePool).toHaveLength(5);
+    expect(result.state.neighborhoods?.components).toHaveLength(5);
+    expect(result.state.compositions?.family.poolSize).toBe(5);
+    expect(result.state.compositions?.family.size).toBe(3);
+    expect(result.state.compositions?.family.totalValid).toBeGreaterThan(0);
+    expect(result.state.compositions?.ranked.length).toBeGreaterThan(0);
+    expect(result.state.compositions?.family.reason).toBeUndefined();
+  });
+
+  it("uses size 3 when four components are measured so competing compositions remain", async () => {
+    const fourPool = [
+      ...POOL,
+      makeComponent({
+        id: "tea",
+        role: "Social",
+        tags: ["tea"],
+        exemplars: [{ id: "urn:entity:place-tea", name: "T Gallery" }]
+      })
+    ];
+    const result = await measure(stateWithPool(fourPool), sharedSignalGateway).run();
+
+    expect(result.state.candidatePool).toHaveLength(4);
+    expect(result.state.compositions?.family.poolSize).toBe(4);
+    expect(result.state.compositions?.family.size).toBe(3);
+    expect(result.state.compositions?.family.totalValid).toBeGreaterThan(1);
+  });
+
+  it("uses size 4 when five components are measured rather than one all-in composition", async () => {
+    const fivePool = [
+      ...POOL,
+      makeComponent({
+        id: "tea",
+        role: "Social",
+        tags: ["tea"],
+        exemplars: [{ id: "urn:entity:place-tea", name: "T Gallery" }]
+      }),
+      makeComponent({
+        id: "print",
+        role: "Experience",
+        tags: ["print"],
+        exemplars: [{ id: "urn:entity:place-print", name: "Printed Matter" }]
+      })
+    ];
+    const result = await measure(stateWithPool(fivePool), sharedSignalGateway).run();
+
+    expect(result.state.candidatePool).toHaveLength(5);
+    expect(result.state.compositions?.family.poolSize).toBe(5);
+    expect(result.state.compositions?.family.size).toBe(4);
+    expect(result.state.compositions?.family.totalValid).toBeGreaterThan(1);
   });
 
   it("degrades to an empty-family reason when the pool has fewer than two components", async () => {
@@ -354,6 +503,12 @@ describe("runMeasurement", () => {
       .list()
       .filter((entry) => entry.event.label === "measure.neighborhood_fetch" && entry.event.summary.includes("call failed"));
     expect(failureEvents.length).toBeGreaterThan(0);
+    expect(failureEvents[0]?.event.detail).toContain("component ");
+    expect(failureEvents[0]?.event.parameters).toMatchObject({
+      call: "measure.neighborhood_fetch",
+      request: { take: expect.any(Number), signalEntities: expect.any(Array) },
+      error: expect.stringContaining("simulated outage")
+    });
   });
 
   it("grades finalist compositions without inventing triangulation evidence", async () => {

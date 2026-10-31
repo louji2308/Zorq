@@ -58,6 +58,18 @@ describe("candidateComponentSchema", () => {
     expectEngineError(() => parseCandidateComponent(component), "INVALID_COMPONENT");
   });
 
+  it("names the offending component and role when a pool entry is invalid", () => {
+    const invalid = { ...makeComponent({ id: "family_table" }), role: "Food" };
+    let caught: unknown;
+    try {
+      validatePool([makeComponent({ id: "anchor" }), invalid]);
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(EngineError);
+    expect((caught as EngineError).message).toContain('components[1] ("family_table", role="Food")');
+  });
+
   it("rejects a pool with duplicate component ids", () => {
     expectEngineError(() => validatePool([...makePool(["a"]), ...makePool(["a"])]), "INVALID_COMPONENT");
   });

@@ -4,11 +4,11 @@
  * Honesty rules encoded here (AGENTS §12/§13):
  *  - Every model is built from the server's own RunState / LedgerEvent fields.
  *    Nothing is invented: missing data becomes null/[] and the UI degrades.
- *  - `ledgerEventSchema` (src/shared/events.ts) carries exactly
- *    { kind, label, summary, duration, cacheState, resultCount }. Endpoint,
- *    parameters, decision cards and retry counters are NOT in the schema, so
- *    they are never fabricated; `parameters` support below is defence-in-depth
- *    that only renders if a future schema actually delivers it (redacted).
+ *  - `ledgerEventSchema` (src/shared/events.ts) carries
+ *    { kind, label, summary, detail, parameters, duration, cacheState,
+ *    resultCount }. Decision cards and retry counters are NOT in the schema,
+ *    so they are never fabricated; detail and parameters are redacted before
+ *    they reach the DOM.
  *  - `prior.composition` is LLM-authored unknown — extracted defensively,
  *    never re-authored. Missing prior -> null model -> honest loading state.
  *  - `culturalDna` / `siteRead` / `compositions` are unknown placeholders
@@ -19,7 +19,10 @@
  */
 import { isResumableRunStatus } from "../../lib/sse.js";
 import type { LedgerEvent } from "../../../shared/events.js";
+import { REDACTED, redactSensitive } from "../../../shared/redaction.js";
 import type { RunState } from "../../../shared/run.js";
+
+export { REDACTED, redactSensitive };
 
 /* ------------------------------------------------------------------ *
  * Prior card
@@ -192,6 +195,8 @@ export interface LedgerRowModel {
   readonly label: string;
   readonly technicalLabel: string;
   readonly summary: string;
+  /** Server-authored visible activity detail; null when the event carried none. */
+  readonly detail: string | null;
   readonly durationLabel: string;
   /** "Live" | "From cache" | null when the server sent cacheState "n/a". */
   readonly cacheLabel: string | null;
@@ -200,7 +205,7 @@ export interface LedgerRowModel {
   readonly dashed: boolean;
   /** Extra honest wording shown with a dashed row. */
   readonly note: string | null;
-  /** Defence-in-depth: only present if a future event schema carries it. */
+  /** Redacted structured activity parameters; null when none were sent. */
   readonly parameters: LedgerRowParameters | null;
 }
 
@@ -208,28 +213,6 @@ export interface LedgerRowModel {
 export interface LedgerRowInput {
   readonly sequence: number;
   readonly event: LedgerEvent;
-}
-
-const SENSITIVE_KEY = /^(api[-_ ]?key|key|token|secret|authorization|password|credential|access[-_ ]?token)$/i;
-export const REDACTED = "[redacted]";
-
-/** Recursively replace values under key-like names. Applied to any
- *  parameters-shaped data before it can reach the DOM. */
-export function redactSensitive(value: unknown, depth = 0): unknown {
-  if (depth > 6) {
-    return REDACTED;
-  }
-  if (Array.isArray(value)) {
-    return value.map((item) => redactSensitive(item, depth + 1));
-  }
-  if (isNamedRecord(value)) {
-    const out: Record<string, unknown> = {};
-    for (const [key, item] of Object.entries(value)) {
-      out[key] = SENSITIVE_KEY.test(key) ? REDACTED : redactSensitive(item, depth + 1);
-    }
-    return out;
-  }
-  return value;
 }
 
 export function formatDuration(ms: number): string {
@@ -299,6 +282,7 @@ export function describeLedgerRow(row: LedgerRowInput): LedgerRowModel {
     label: plainLabel(event),
     technicalLabel: event.label,
     summary: event.summary,
+    detail: typeof event.detail === "string" && event.detail.trim() !== "" ? event.detail : null,
     durationLabel: formatDuration(event.duration),
     cacheLabel: cacheLabel(event.cacheState),
     resultCount: event.resultCount,
@@ -433,6 +417,39 @@ export function describeRunStatus(status: string): string {
 
 export function isRunActive(status: string): boolean {
   return isResumableRunStatus(status);
+}
+
+export type MapUnavailableStatus = "no-key" | "failed";
+
+/** The map is optional; the run is not. Never imply a stopped run is still
+ *  working just because its tiles failed. */
+export function describeMapUnavailable(status: MapUnavailableStatus, active: boolean): string {
+  if (status === "no-key") {
+    return active
+      ? "Map unavailable: this build has no map key. The investigation keeps running; the ledger shows every step."
+      : "Map unavailable: this build has no map key. The ledger still shows every step that completed.";
+  }
+  return active
+    ? "The map couldn't load — the style or tiles never arrived. The investigation keeps running; the ledger shows every step."
+    : "The map couldn't load — the style or tiles never arrived. The investigation is no longer running; the ledger still shows every step that completed.";
+}
+
+/** The DNA strip can be empty because the run is still measuring or because
+ *  it stopped before measuring anything. Say which one. */
+export function describeDnaEmpty(status: string): string {
+  if (isRunActive(status)) {
+    return "Cultural DNA compares local and city affinity. Entities appear here as the investigation measures them; nothing has arrived yet.";
+  }
+  if (status === "complete") {
+    return "Cultural DNA compares local and city affinity. The investigation finished without recording any entities.";
+  }
+  if (status === "failed") {
+    return "Cultural DNA compares local and city affinity. The investigation failed before any entities were measured.";
+  }
+  if (status === "stopped" || status === "partial") {
+    return "Cultural DNA compares local and city affinity. The investigation stopped before any entities were measured.";
+  }
+  return "Cultural DNA compares local and city affinity. No entities are recorded for this investigation.";
 }
 
 /** "See compositions" may only exist when the server actually delivered

@@ -9,7 +9,8 @@
  *    `id:` as the Last-Event-ID header on auto-reconnect, and the Phase 5 server
  *    reads exactly that header, replaying only a contiguous missed window.
  *  - Heartbeat comment frames are invisible to EventSource (spec behaviour).
- *  - The server closes the stream after a terminal state.
+ *  - A terminal state is followed by its replayed ledger history and then an
+ *    `end` frame; the server closes the stream after the frame is written.
  *
  * Frame policy (dedupe / apply):
  *  - `state` frames REPLACE the run projection wholesale (the reconcile point).
@@ -20,6 +21,8 @@
  *    delivery until the next state frame reconciles. No client-side gap repair —
  *    the next state reconcile is the source of truth.
  *  - `error` frames surface the typed error body unchanged.
+ *  - `end` marks a graceful terminal stream after history replay; `onTerminal`
+ *    fires against the stored terminal state, then the stream closes.
  *  - Other named frames (phase/evidence/dna/compositions/stress/blueprint) are
  *    observable via `onFrame` for callers that want them; run-shaped data also
  *    arrives inside state frames, which remain authoritative.
@@ -71,7 +74,7 @@ export interface RunStreamOptions {
   onLedger?: (event: LedgerEvent, sequence: number) => void;
   /** Typed `error` frame body ({ error: { code, message, requestId } }). */
   onErrorFrame?: (error: ApiErrorBody) => void;
-  /** Fires once when a state frame carries a terminal run status, before close. */
+  /** Fires once after a terminal state's replayed history ends, before close. */
   onTerminal?: (run: RunState) => void;
   /** Observability hook: every frame that validates, before policy filtering. */
   onFrame?: (name: SseEventName, data: unknown, id: string) => void;
@@ -99,7 +102,7 @@ export function isResumableRunStatus(status: string): boolean {
   return status === "prior_pending" || status === "investigating";
 }
 
-/** Terminal = the server closes the stream after this state frame. */
+/** Terminal = no further state changes; history replay ends with an `end` frame. */
 export function isTerminalRunStatus(status: string): boolean {
   return !isResumableRunStatus(status);
 }
@@ -117,6 +120,16 @@ export function createRunEventStream(options: RunStreamOptions): RunStreamHandle
   let status: ConnectionStatus = "closed";
   let lastLedgerSequence: number | null = null;
   let ledgerSuspended = false;
+  let terminalState: RunState | null = null;
+  let terminalDelivered = false;
+
+  const notifyTerminal = (run: RunState): void => {
+    if (terminalDelivered) {
+      return;
+    }
+    terminalDelivered = true;
+    options.onTerminal?.(run);
+  };
 
   const emitConnection = (next: ConnectionStatus): void => {
     if (status === next) {
@@ -163,11 +176,8 @@ export function createRunEventStream(options: RunStreamOptions): RunStreamHandle
         // The state frame is the reconcile point: ledger delivery re-baselines.
         lastLedgerSequence = null;
         ledgerSuspended = false;
+        terminalState = isTerminalRunStatus(frame.data.status) ? frame.data : null;
         options.onState?.(frame.data);
-        if (isTerminalRunStatus(frame.data.status)) {
-          options.onTerminal?.(frame.data);
-          close();
-        }
         break;
       }
       case "ledger": {
@@ -193,6 +203,15 @@ export function createRunEventStream(options: RunStreamOptions): RunStreamHandle
         options.onLedger?.(frame.data, sequence);
         break;
       }
+      case "end": {
+        if (terminalState === null) {
+          options.onInvalidFrame?.({ event: frame.event, reason: "end frame without a terminal state" });
+        } else {
+          notifyTerminal(terminalState);
+        }
+        close();
+        break;
+      }
       case "error": {
         options.onErrorFrame?.(frame.data);
         break;
@@ -214,7 +233,14 @@ export function createRunEventStream(options: RunStreamOptions): RunStreamHandle
     if (closed) {
       return;
     }
-    emitConnection(source.readyState === EVENT_SOURCE_CLOSED ? "closed" : "connecting");
+    if (source.readyState === EVENT_SOURCE_CLOSED) {
+      if (terminalState !== null) {
+        notifyTerminal(terminalState);
+      }
+      close();
+      return;
+    }
+    emitConnection("connecting");
   };
 
   emitConnection("connecting");

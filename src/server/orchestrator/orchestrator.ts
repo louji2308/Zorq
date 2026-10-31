@@ -29,6 +29,7 @@ import { applyReplacement, type ReplaceOutcome } from "./replace.js";
 import {
   isResumableStatus,
   isRetryableStatus,
+  reenterInvestigationAfterRetry,
   transitionTo,
   type OrchestratorRunPhase,
   type OrchestratorRunStatus
@@ -36,7 +37,7 @@ import {
 import type { Orchestrator, OrchestratorDeps, OrchestratorEvent } from "./types.js";
 import { WriteThroughLedger } from "./writeThroughLedger.js";
 
-const DEFAULT_WALL_CLOCK_CAP_MS = 120_000;
+const DEFAULT_WALL_CLOCK_CAP_MS = 300_000;
 const ERROR_SUMMARY_LIMIT = 300;
 
 function firstLine(error: Error): string {
@@ -259,9 +260,15 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
       llm: deps.llm,
       budget: input.budget,
       ledger: input.ledger,
-      now
+      now,
+      ...(deps.siteScan === true ? { siteScan: true } : {})
     });
     await persistEvidence(runId, result.evidence);
+
+    if (result.error !== undefined) {
+      emitError(runId, result.error);
+      input.ledger.append(failureEvent(result.error));
+    }
 
     if (input.record.stopped) {
       await input.ledger.flush();
@@ -269,7 +276,10 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
     }
 
     const terminal: OrchestratorRunStatus =
-      result.stopReason === "llm_final" && result.observations > 0 ? "complete" : "partial";
+      result.observations > 0 &&
+      (result.stopReason === "llm_final" || result.outputs.candidatePool !== undefined)
+        ? "complete"
+        : "partial";
 
     if (now() - input.startedAt > wallClockCapMs) {
       return capExit(input, "investigation");
@@ -487,7 +497,7 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
     try {
       let reentered: RunState;
       try {
-        reentered = transitionTo(state, "investigating", "investigation");
+        reentered = reenterInvestigationAfterRetry(state);
         await deps.store.saveRunState(runId, reentered);
       } catch (error) {
         emitError(runId, error);

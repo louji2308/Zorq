@@ -25,7 +25,7 @@ import { ApiClientError, challengeRun, getRun, retryRun } from "../lib/api.js";
 import { createRunEventStream, type RunStreamHandle } from "../lib/sse.js";
 import { useRunStore } from "../store/runStore.js";
 import { DnaStrip } from "../screens/s1/DnaStrip.js";
-import { InvestigateMap } from "../screens/s1/InvestigateMap.js";
+import { InvestigateMap, type S1MapStatus } from "../screens/s1/InvestigateMap.js";
 import { LedgerPanel } from "../screens/s1/LedgerPanel.js";
 import { PriorCard } from "../screens/s1/PriorCard.js";
 import {
@@ -94,6 +94,7 @@ export function RunRoute() {
   const [stopError, setStopError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
+  const [mapStatus, setMapStatus] = useState<S1MapStatus | null>(null);
   const [priorCollapsed, setPriorCollapsed] = useState(false);
   const [dnaCollapsed, setDnaCollapsed] = useState(false);
   const [view, setView] = useState<RunView>("investigate");
@@ -157,6 +158,7 @@ export function RunRoute() {
     setStopError(null);
     setRetryError(null);
     setRetrying(false);
+    setMapStatus(null);
     setView("investigate");
     setS3Key(null);
     setS3Pair(null);
@@ -240,8 +242,11 @@ export function RunRoute() {
   // failed attempt: a transient network error must not remove the only
   // recovery affordance (the error itself surfaces in the banner above).
   const stopVisible = run !== null && isRunActive(run.status);
+  const mapActive = run !== null && isRunActive(run.status);
   const streamNotice = describeStreamNotice(connection, run?.status ?? null);
   const ready = run !== null;
+  const mapUnavailable = mapStatus === "failed" || mapStatus === "no-key";
+  const mapFallback = view === "investigate" && mapUnavailable;
   const s2Available = s2Model !== null && hasCompositions(run);
   const s3Available = s3Model !== null;
   const tabReadiness = getRunTabReadiness({
@@ -350,6 +355,7 @@ export function RunRoute() {
       className={[
         "s1",
         view === "blueprint" ? "is-reading" : "",
+        mapFallback ? "is-map-unavailable" : "",
         panelMotion ? "is-panel-motion" : ""
       ]
         .filter(Boolean)
@@ -375,6 +381,15 @@ export function RunRoute() {
                   (tab.id === "connections" && !tabReadiness.connections) ||
                   (tab.id === "challenge" && !tabReadiness.challenge) ||
                   (tab.id === "blueprint" && !tabReadiness.blueprint);
+                const tooltip = disabled
+                  ? tab.id === "compositions"
+                    ? "Compositions appear once the run measures the candidate pool."
+                    : tab.id === "connections"
+                      ? "Connections appear once compositions are measured."
+                      : tab.id === "challenge"
+                        ? (s4Model?.blockedReason ?? "Challenge appears once a ranked composition is ready.")
+                        : "Blueprint appears after the plan has been challenged."
+                  : undefined;
                 return (
                   <button
                     key={tab.id}
@@ -382,18 +397,8 @@ export function RunRoute() {
                     className={view === tab.id ? "s1-tab is-active" : "s1-tab"}
                     aria-current={view === tab.id ? "page" : undefined}
                     disabled={disabled}
-                    title={
-                      tab.id === "compositions" && !s2Available
-                        ? "Compositions appear once the run measures the candidate pool."
-                        : tab.id === "connections" && !tabReadiness.connections
-                          ? "Connections appear once compositions are measured."
-                          : tab.id === "challenge" && !tabReadiness.challenge
-                            ? (s4Model?.blockedReason ??
-                              "Challenge appears once a ranked composition is ready.")
-                            : tab.id === "blueprint" && !tabReadiness.blueprint
-                              ? "Blueprint appears after the plan has been challenged."
-                          : undefined
-                    }
+                    title={tooltip}
+                    data-tooltip={tooltip}
                     onClick={() => setView(tab.id)}
                     ref={view === tab.id ? activeTabRef : undefined}
                   >
@@ -433,8 +438,15 @@ export function RunRoute() {
       ) : (
         <>
           {view !== "blueprint" && (
-            <div className="s1-map">
-              <InvestigateMap apiKey={MAP_API_KEY} site={site} anchors={anchors} heat={heat} />
+            <div className={mapFallback ? "s1-map is-map-unavailable" : "s1-map"}>
+              <InvestigateMap
+                apiKey={MAP_API_KEY}
+                site={site}
+                anchors={anchors}
+                heat={heat}
+                active={mapActive}
+                onStatusChange={setMapStatus}
+              />
               {view === "investigate" && (
                 <>
                   <PriorCard
@@ -513,6 +525,7 @@ export function RunRoute() {
       {ready && view !== "blueprint" && (
         <DnaStrip
           groups={dnaGroups}
+          status={run?.status ?? "investigating"}
           collapsed={dnaCollapsed}
           onToggle={() => setDnaCollapsed((current) => !current)}
         />

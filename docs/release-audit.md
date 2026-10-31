@@ -4,6 +4,18 @@ Scope: the audit items from Hackathon_details §28 and IMPLEMENTATION_PLAN Phase
 that are verifiable from this repository without live credentials. Items that require live
 keys or the deployed URL are listed as pending live evidence, never claimed as passed.
 
+> **Update 2026-10-31 (stale-claim correction):** the LLM is **Rapid Router**
+> (`deepseek/deepseek-v4-flash` via `src/server/agent/llm.ts:24`, the model the record's
+> logged live runs actually used). Render deploy is **live**: https://zorq-12dk.onrender.com with
+> `/healthz` 200 (re-verified 2026-10-31). Real funded runs that complete exist
+> (Chennai `d30b7047-df2c-4f65-bf72-4d7db6c60525`; Nashville
+> `4564a1cb-f4fc-4a0c-b23d-45f929bbd976` — challenge verdicts + Blueprint grade B, see
+> `IMPLEMENTATION_STATE.md` 2026-10-27/28), but the Without-Qloo A/B receipts in
+> `docs/qloo-removal-proof.md` §3 remain pending. The `e2e/*` Playwright suites and
+> `playwright.config.ts` were removed by user decision; e2e citations below are
+> historical dated records, not current coverage. Dated 2026-10-17 rows are kept as
+> the historical record.
+
 ## Secret audit
 
 | Check | Result | Evidence |
@@ -29,10 +41,11 @@ fallbacks, or preset-specific answers found.
 
 | Gate | Result |
 |---|---|
-| `npm run typecheck` | Pass (exit 0) |
-| `npm run lint` | Pass (exit 0) |
-| `npm test` | Pass — 746 tests / 69 files (5 live tests skipped as credential-gated) |
-| `npm run test:e2e` | Pass — 10/10 judge-path + smoke against the real production build |
+| `npm run typecheck` | Pass (exit 0) — re-observed 2026-10-31 |
+| `npm run lint` | Pass (exit 0) — re-observed 2026-10-31 |
+| `npm test` | Pass — **831 tests passed / 6 skipped** (79 files, live tests credential-gated), 2026-10-30 audit run against the uncommitted working tree |
+| `npm run build` | Pass (exit 0; the existing >500 kB chunk warning only), 2026-10-30 audit run |
+| `npm run test:e2e` | *Historical (2026-10-17):* Pass — 10/10 judge-path + smoke against the then-current production build. The `e2e/*` Playwright suites and `playwright.config.ts` were removed by user decision on 2026-10-30; the judge path is now verified by the API/integration suites plus manual browser evidence (live runs browser-walked 2026-10-27/28, zero console errors). |
 
 ## Emergency/boundary behaviors already covered by suites
 
@@ -43,10 +56,11 @@ fallbacks, or preset-specific answers found.
 | Failed probes stay visible and cap evidence grade | Phase 8 S4 suites (`tests/api/judgeChain.test.ts`) |
 | Zero-result / invalid-combination Qloo semantics | `tests/qloo/*` contract suites |
 
+*Historical 2026-10-17 baseline, superseded by the counts above:* typecheck/lint pass, 746 tests / 69 files, e2e 10/10.
+
 ## Pending live evidence (do not claim from fixtures)
 
-- Real-run A/B receipts → `docs/qloo-removal-proof.md` §3.
+- Real-run A/B receipts → `docs/qloo-removal-proof.md` §3. (Real funded runs that complete exist — Chennai `d30b7047…`, Nashville `4564a1cb…` — but the §3 receipt table stays unfilled until recorded; never claimed from other runs.)
 - Live `LIVE_QLOO=1` gateway contract run.
-- Render deploy smoke (image builds and `/healthz` 200 through the public URL).
-- Physical 360px/keyboard/reduced-motion manual sweep is partially covered (narrow-viewport S3
-  e2e exists); the remaining manual pass happens against the live URL at freeze.
+- ~~Render deploy smoke (image builds and `/healthz` 200 through the public URL).~~ → **Done.** Deployed at https://zorq-12dk.onrender.com (Render Docker service); `/healthz` 200 confirmed 2026-10-18 and re-verified 2026-10-31 (`{"status":"ok","service":"zorq",…}`).
+- Physical 360px/keyboard/reduced-motion manual sweep is partially covered (narrow-viewport S3 was e2e-proven at the 2026-10-17 record; that suite has since been removed, and live browser walks on 2026-10-27/28 showed zero console errors); the remaining manual pass against the live URL is outstanding.

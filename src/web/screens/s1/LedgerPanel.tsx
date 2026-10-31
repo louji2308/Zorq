@@ -4,8 +4,8 @@
  * to the real stop route by the route). Rows appear ONLY from real SSE/state
  * data via LedgerRowModel — no artificial delay, no fabricated rows
  * (AGENTS §12). Expansion shows the fields the event schema actually carries
- * (technical call, summary, result count, live-or-cached, duration) with any
- * parameters-shaped data passed through redactSensitive by the model.
+ * (technical call, summary, detail, result count, live-or-cached, duration)
+ * with parameters passed through redactSensitive by the model.
  * Auto-scrolls to the latest row; a "Jump to latest" tertiary appears when
  * the user has scrolled up. Dashed circles mark degraded/rate-limited rows —
  * meaning is carried by shape and words, never colour alone.
@@ -65,6 +65,12 @@ export function LedgerRowExpansion({ row }: { row: LedgerRowModel }) {
         <dt>Call</dt>
         <dd className="s1-mono">{row.technicalLabel}</dd>
       </div>
+      {row.detail !== null && (
+        <div>
+          <dt>Detail</dt>
+          <dd>{row.detail}</dd>
+        </div>
+      )}
       <div>
         <dt>Result</dt>
         <dd>{row.summary}</dd>
@@ -106,6 +112,7 @@ function LedgerRowView({ row }: { row: LedgerRowModel }) {
         <RowCircle dashed={row.dashed} />
         <span className="s1-row-main">
           <span className="s1-row-label">{row.label}</span>
+          {row.detail !== null && <span className="s1-row-detail">{row.detail}</span>}
           {row.note !== null && <span className="s1-row-note">{row.note}</span>}
         </span>
         <span className="s1-row-kind">{row.kind}</span>
@@ -122,9 +129,16 @@ function LedgerRowView({ row }: { row: LedgerRowModel }) {
 
 export function LedgerPanel({ rows, stopVisible, stopping, onStop, docked, recovery }: LedgerPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const atBottomRef = useRef(true);
   const [atBottom, setAtBottom] = useState(true);
 
   const lastSequence = rows.length > 0 ? (rows[rows.length - 1]?.sequence ?? 0) : 0;
+
+  const setStuckToBottom = (next: boolean): void => {
+    atBottomRef.current = next;
+    setAtBottom(next);
+  };
 
   useEffect(() => {
     if (!atBottom) {
@@ -137,13 +151,29 @@ export function LedgerPanel({ rows, stopVisible, stopping, onStop, docked, recov
     scroll.scrollTop = scroll.scrollHeight;
   }, [lastSequence, atBottom]);
 
+  useEffect(() => {
+    const scroll = scrollRef.current;
+    const list = listRef.current;
+    if (scroll === null || list === null || typeof ResizeObserver === "undefined") {
+      return;
+    }
+    const observer = new ResizeObserver(() => {
+      if (!atBottomRef.current) {
+        return;
+      }
+      scroll.scrollTop = scroll.scrollHeight;
+    });
+    observer.observe(list);
+    return () => observer.disconnect();
+  }, [rows.length]);
+
   function handleScroll(): void {
     const scroll = scrollRef.current;
     if (scroll === null) {
       return;
     }
     const distance = scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight;
-    setAtBottom(distance <= STICKY_BOTTOM_PX);
+    setStuckToBottom(distance <= STICKY_BOTTOM_PX);
   }
 
   function jumpToLatest(): void {
@@ -151,7 +181,7 @@ export function LedgerPanel({ rows, stopVisible, stopping, onStop, docked, recov
     if (scroll === null) {
       return;
     }
-    setAtBottom(true);
+    setStuckToBottom(true);
     scroll.scrollTop = scroll.scrollHeight;
   }
 
@@ -165,27 +195,27 @@ export function LedgerPanel({ rows, stopVisible, stopping, onStop, docked, recov
           </button>
         )}
       </header>
+      {recovery !== undefined && (
+        <div className="s1-ledger-recovery" role="status">
+          <p>{recovery.message}</p>
+          {recovery.error !== null && <p className="s1-ledger-recovery-error">{recovery.error}</p>}
+          <button
+            type="button"
+            className="s1-secondary"
+            onClick={recovery.onRetry}
+            disabled={recovery.retrying}
+          >
+            {recovery.retrying ? "Retrying investigation…" : "Retry investigation"}
+          </button>
+        </div>
+      )}
       <div className="s1-ledger-scroll" ref={scrollRef} onScroll={handleScroll}>
-        {recovery !== undefined && (
-          <div className="s1-ledger-recovery" role="status">
-            <p>{recovery.message}</p>
-            {recovery.error !== null && <p className="s1-ledger-recovery-error">{recovery.error}</p>}
-            <button
-              type="button"
-              className="s1-secondary"
-              onClick={recovery.onRetry}
-              disabled={recovery.retrying}
-            >
-              {recovery.retrying ? "Retrying investigation…" : "Retry investigation"}
-            </button>
-          </div>
-        )}
         {rows.length === 0 ? (
           <p className="s1-ledger-empty">
             Rows appear here as each real call finishes. Nothing has completed yet.
           </p>
         ) : (
-          <ul className="s1-ledger-list">
+          <ul className="s1-ledger-list" ref={listRef}>
             {rows.map((row) => (
               <LedgerRowView key={row.sequence} row={row} />
             ))}

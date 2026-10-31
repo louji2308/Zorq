@@ -11,7 +11,7 @@
 import { useEffect, useRef, useState } from "react";
 import { scheduleDeferred } from "../../lib/deferred.js";
 import type { MapAnchor, MapHeatPoint, S0MapHandle } from "../../lib/map.js";
-import type { S1Site } from "./s1Model.js";
+import { describeMapUnavailable, type S1Site } from "./s1Model.js";
 
 export type S1MapStatus = "no-key" | "loading" | "ready" | "failed";
 
@@ -20,9 +20,20 @@ export interface InvestigateMapProps {
   site: S1Site | null;
   anchors: readonly MapAnchor[];
   heat: readonly MapHeatPoint[];
+  /** True only while the run can still make progress. */
+  active: boolean;
+  /** Lets the route expose the map fallback without hiding the Prior. */
+  onStatusChange?: (status: S1MapStatus) => void;
 }
 
-export function InvestigateMap({ apiKey, site, anchors, heat }: InvestigateMapProps) {
+export function InvestigateMap({
+  apiKey,
+  site,
+  anchors,
+  heat,
+  active,
+  onStatusChange
+}: InvestigateMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<S0MapHandle | null>(null);
   const siteRef = useRef(site);
@@ -34,6 +45,10 @@ export function InvestigateMap({ apiKey, site, anchors, heat }: InvestigateMapPr
 
   const [status, setStatus] = useState<S1MapStatus>(apiKey === null ? "no-key" : "loading");
   const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    onStatusChange?.(status);
+  }, [onStatusChange, status]);
 
   useEffect(() => {
     if (apiKey === null) {
@@ -95,18 +110,12 @@ export function InvestigateMap({ apiKey, site, anchors, heat }: InvestigateMapPr
       {status === "loading" && <p className="s1-map-loading">Loading map…</p>}
       {status === "no-key" && (
         <div className="s1-map-veil">
-          <p>
-            Map unavailable: this build has no map key. The ledger and Prior still work — this
-            investigation is unfolding on the right.
-          </p>
+          <p>{describeMapUnavailable("no-key", active)}</p>
         </div>
       )}
       {status === "failed" && (
         <div className="s1-map-veil" role="status">
-          <p>
-            The map couldn&apos;t load — the style or tiles never arrived. The investigation keeps
-            running; the ledger on the right shows every step.
-          </p>
+          <p>{describeMapUnavailable("failed", active)}</p>
           <button type="button" className="s1-secondary" onClick={() => setAttempt((n) => n + 1)}>
             Try the map again
           </button>

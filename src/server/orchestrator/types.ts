@@ -29,6 +29,7 @@ export interface OrchestratorDeps {
   now?: () => number;
   wallClockCapMs?: number;
   eventSink?: (event: OrchestratorEvent) => void;
+  siteScan?: boolean;
 }
 
 export interface Orchestrator {

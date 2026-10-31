@@ -11,6 +11,8 @@
  *    when a replayed sequence slips past the stream layer;
  *  - a reconnect that cannot prove contiguity suspends ledger delivery and
  *    waits for the next state frame — no client-side gap repair;
+ *  - a terminal state waits for its replayed ledger history and `end` frame
+ *    before reporting terminal once;
  *  - the reconnect banner only appears for a live run whose stream gave up.
  */
 import { afterEach, describe, expect, it } from "vitest";
@@ -93,7 +95,10 @@ class FakeEventSource implements EventSourceLike {
 }
 
 /** Wires the REAL stream to the REAL store, exactly as RunRoute does. */
-function openWiredStream(runId: string): { source: () => FakeEventSource; close: () => void } {
+function openWiredStream(
+  runId: string,
+  hooks: { onTerminal?: (run: RunState) => void } = {}
+): { source: () => FakeEventSource; close: () => void } {
   let instance: FakeEventSource | undefined;
   const handle = createRunEventStream({
     runId,
@@ -104,7 +109,8 @@ function openWiredStream(runId: string): { source: () => FakeEventSource; close:
     onState: (run) => useRunStore.getState().applyState(run),
     onLedger: (event, sequence) => useRunStore.getState().applyLedger(event, sequence),
     onErrorFrame: (error) => useRunStore.getState().setError(error),
-    onConnection: (status: ConnectionStatus) => useRunStore.getState().setConnection(status)
+    onConnection: (status: ConnectionStatus) => useRunStore.getState().setConnection(status),
+    ...(hooks.onTerminal === undefined ? {} : { onTerminal: hooks.onTerminal })
   });
   return {
     source: () => {
@@ -142,6 +148,43 @@ describe("S1 stream → store reconcile", () => {
     expect(state.run?.status).toBe("stopped");
     expect(state.run?.brief?.location).toBe("Crosby Street, Manhattan, New York 10012, United States");
     expect(sequences()).toEqual([1, 2]);
+    wired.close();
+  });
+
+  it("applies terminal history before end and reports terminal exactly once", () => {
+    const terminals: RunState[] = [];
+    const wired = openWiredStream("run-1", { onTerminal: (run) => terminals.push(run) });
+    wired.source().fireOpen();
+    wired.source().emit({ type: "state", data: runState("run-1", "complete"), id: "5" });
+    wired.source().emit({ type: "ledger", data: ledgerEvent("one"), id: "1" });
+    wired.source().emit({ type: "ledger", data: ledgerEvent("two"), id: "2" });
+
+    expect(sequences()).toEqual([1, 2]);
+    expect(terminals).toHaveLength(0);
+    expect(useRunStore.getState().connection).toBe("open");
+
+    wired.source().emit({ type: "end", data: {}, id: "6" });
+
+    expect(terminals.map((run) => run.status)).toEqual(["complete"]);
+    expect(useRunStore.getState().connection).toBe("closed");
+    expect(wired.source().readyState).toBe(CLOSED);
+
+    wired.source().emit({ type: "end", data: {}, id: "7" });
+    expect(terminals).toHaveLength(1);
+    wired.close();
+  });
+
+  it("reports terminal once when a closed stream skips the end frame", () => {
+    const terminals: RunState[] = [];
+    const wired = openWiredStream("run-1", { onTerminal: (run) => terminals.push(run) });
+    wired.source().fireOpen();
+    wired.source().emit({ type: "state", data: runState("run-1", "stopped"), id: "5" });
+
+    expect(terminals).toHaveLength(0);
+    wired.source().fireError(false);
+
+    expect(terminals.map((run) => run.status)).toEqual(["stopped"]);
+    expect(useRunStore.getState().connection).toBe("closed");
     wired.close();
   });
 

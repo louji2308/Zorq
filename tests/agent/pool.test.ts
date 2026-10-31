@@ -89,6 +89,35 @@ function populatedIndex() {
   return index;
 }
 
+function bulkIndex(count: number) {
+  const index = createObservationIndex();
+  const entities = Array.from({ length: count }, (_, position) => ({
+    entityId: `urn:entity:place-bulk-${position}`,
+    name: `Bulk Place ${position}`,
+    type: "place",
+    location: { lat: 40.71 + position * 0.001, lon: -73.96 },
+    tags: [{ id: "tag-coffee-1", name: "coffee" }]
+  }));
+  index.record(okEnvelope("search", { results: { entities }, resultCount: count }), "ev-bulk");
+  index.record(
+    okEnvelope("resolveTags", {
+      results: { tags: [{ id: "tag-coffee-1", name: "coffee" }] },
+      resultCount: 1
+    }),
+    "ev-bulk-tags"
+  );
+  return index;
+}
+
+function bulkComponent(position: number): Record<string, unknown> {
+  return component({
+    id: `c-${position}`,
+    exemplars: [
+      { id: `urn:entity:place-bulk-${position}`, name: `Bulk Place ${position}` }
+    ]
+  });
+}
+
 describe("propose_candidate_pool tool contract", () => {
   it("is offered to the planner with a JSON-schema parameter body", () => {
     expect(proposeCandidatePoolTool.name).toBe("propose_candidate_pool");
@@ -128,6 +157,32 @@ describe("observation index and siteRead derivation", () => {
         { lat: 40.716, lon: -73.961, weight: 0.55 }
       ]
     });
+  });
+
+  it("exposes only observed entities and tags as grounding for the pool", () => {
+    const index = createObservationIndex();
+    index.record(
+      okEnvelope("search", { results: { entities: [DEVOCION] }, resultCount: 1 }),
+      "ev-search"
+    );
+    index.record(
+      okEnvelope("resolveTags", {
+        results: { tags: [{ id: "tag-coffee-1", name: "coffee" }] },
+        resultCount: 1
+      }),
+      "ev-tags"
+    );
+
+    expect(index.observedEntities()).toEqual([
+      {
+        entityId: DEVOCION.entityId,
+        name: DEVOCION.name,
+        location: DEVOCION.location,
+        evidenceId: "ev-search"
+      }
+    ]);
+    expect(index.observedTags()).toEqual(["coffee"]);
+    expect(index.hasTag("tag-coffee-1")).toBe(true);
   });
 
   it("returns undefined when nothing located or measured exists — never synthetic anchors", () => {
@@ -183,6 +238,28 @@ describe("formCandidatePool", () => {
     expect((caught as AgentToolError).message).toContain("never observed");
   });
 
+  it("names the observed id when an exemplar id looks mistyped", () => {
+    let caught: unknown;
+    try {
+      formCandidatePool({
+        draft: {
+          components: [
+            component({
+              exemplars: [{ id: "urn:entity:place-devocion-typo", name: DEVOCION.name }]
+            })
+          ]
+        },
+        index: populatedIndex()
+      });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(AgentToolError);
+    expect((caught as AgentToolError).message).toContain(DEVOCION.entityId);
+    expect((caught as AgentToolError).message).toContain("copy that id exactly");
+  });
+
   it("rejects an exemplar whose name does not match the observed name", () => {
     let caught: unknown;
     try {
@@ -213,6 +290,31 @@ describe("formCandidatePool", () => {
     expect((caught as AgentToolError).message).toContain('tag "coffee culture"');
   });
 
+  it("reports every unobserved tag in one rejection so repair can fix all at once", () => {
+    let caught: unknown;
+    try {
+      formCandidatePool({
+        draft: {
+          components: [
+            component({
+              tags: ["coffee culture", "intimate setting", "local crafts", "souvenirs"]
+            })
+          ]
+        },
+        index: populatedIndex()
+      });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(AgentToolError);
+    const message = (caught as AgentToolError).message;
+    expect(message).toContain('tag "coffee culture"');
+    expect(message).toContain('tag "intimate setting"');
+    expect(message).toContain('tag "local crafts"');
+    expect(message).toContain('tag "souvenirs"');
+  });
+
   it("rejects a structurally invalid component through the engine, without repair", () => {
     let caught: unknown;
     try {
@@ -234,16 +336,37 @@ describe("formCandidatePool", () => {
     );
     expect(() =>
       formCandidatePool({
-        draft: { components: Array.from({ length: 10 }, (_, i) => component({ id: `c-${i}` })) },
-        index: populatedIndex()
+        draft: { components: Array.from({ length: 10 }, (_, i) => bulkComponent(i)) },
+        index: bulkIndex(10)
       })
     ).not.toThrow();
     expect(() =>
       formCandidatePool({
-        draft: { components: Array.from({ length: 11 }, (_, i) => component({ id: `c-${i}` })) },
-        index: populatedIndex()
+        draft: { components: Array.from({ length: 11 }, (_, i) => bulkComponent(i)) },
+        index: bulkIndex(11)
       })
     ).toThrow(AgentToolError);
+  });
+
+  it("rejects two components built on the same observed exemplar", () => {
+    let caught: unknown;
+    try {
+      formCandidatePool({
+        draft: {
+          components: [
+            component({ id: "anchor" }),
+            component({ id: "social", role: "Social", tags: ["coffee"] })
+          ]
+        },
+        index: populatedIndex()
+      });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(AgentToolError);
+    expect((caught as AgentToolError).message).toContain("both cite exemplar");
+    expect((caught as AgentToolError).message).toContain("distinct observed place");
   });
 });
 

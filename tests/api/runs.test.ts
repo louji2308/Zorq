@@ -288,6 +288,22 @@ describe("POST /api/runs/:id/retry", () => {
     expect(body.run.prior).toEqual(TEST_PRIOR);
   });
 
+  it("re-enters a partial run that stopped in measurement instead of rejecting the phase regression", async () => {
+    const { baseUrl, store } = await createStack();
+    await store.createRun({
+      id: runId,
+      state: { id: runId, status: "partial", phase: "measurement", brief: TEST_BRIEF, prior: TEST_PRIOR }
+    });
+
+    const response = await postRetry(baseUrl, runId);
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { run: { id: string; status: string; phase: string } };
+    expect(body.run.id).toBe(runId);
+    expect(["complete", "partial", "failed"]).toContain(body.run.status);
+    expect(body.run.phase).toBe("measurement");
+  });
+
   it("answers 404 RUN_NOT_FOUND for an unknown run id", async () => {
     const { baseUrl } = await createStack();
 

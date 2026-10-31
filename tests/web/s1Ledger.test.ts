@@ -4,8 +4,8 @@
  * Fixtures are Zod-parsed against the REAL ledgerEventSchema
  * (src/shared/events.ts), so every field under test is one the server can
  * actually persist and stream. Expansion fields are exactly what the schema
- * carries; `parameters` is defence-in-depth for a future schema and is
- * proven here to be key-redacted before it can reach the DOM. Degraded rows
+ * carries; `detail` is server-authored visible activity and `parameters` are
+ * proven here to be key-redacted before they can reach the DOM. Degraded rows
  * carry shape (dashed circle) AND words — never colour alone (AGENTS §13).
  */
 import { describe, expect, it } from "vitest";
@@ -52,6 +52,7 @@ describe("describeLedgerRow — expansion fields from the real event schema", ()
       label: "Read local culture signals around the site",
       technicalLabel: "qloo_insights",
       summary: "ok insights via rest | live | 12 result(s)",
+      detail: null,
       durationLabel: "1.2s",
       cacheLabel: "Live",
       resultCount: 12,
@@ -59,6 +60,30 @@ describe("describeLedgerRow — expansion fields from the real event schema", ()
       note: null,
       parameters: null
     });
+  });
+
+  it("renders the server-authored visible activity detail", () => {
+    const event = qlooEvent({
+      detail: "request {\"query\":\"record shop\"} | returned Dusseldorf, Weltraum",
+      parameters: { query: "record shop", resultCount: 2 }
+    });
+    const projected = model(8, event);
+    const html = renderToStaticMarkup(
+      createElement(LedgerPanel, {
+        rows: [projected],
+        stopVisible: false,
+        stopping: false,
+        onStop: () => {}
+      })
+    );
+    const expansion = renderToStaticMarkup(createElement(LedgerRowExpansion, { row: projected }));
+
+    expect(projected.detail).toBe(
+      "request {\"query\":\"record shop\"} | returned Dusseldorf, Weltraum"
+    );
+    expect(html).toContain("Dusseldorf, Weltraum");
+    expect(expansion).toContain("<dt>Detail</dt>");
+    expect(expansion).toContain("Dusseldorf, Weltraum");
   });
 
   it("maps live, cached and n/a cache states honestly", () => {
@@ -288,6 +313,9 @@ describe("LedgerPanel rendering", () => {
     expect(html).toContain("This investigation stopped with partial results.");
     expect(html).toContain("Retry investigation");
     expect(html).not.toContain("disabled");
+    // Retry must sit outside the auto-scrolling row list, or it scrolls out
+    // of view with the history the moment the ledger jumps to the latest row.
+    expect(html.indexOf("s1-ledger-recovery")).toBeLessThan(html.indexOf("s1-ledger-scroll"));
   });
 
   it("disables retry while the real retry request is in flight", () => {

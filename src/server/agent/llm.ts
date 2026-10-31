@@ -10,13 +10,20 @@ import {
   type ApiErrorDetail,
   type ZodIssueLike
 } from "../../shared/errors.js";
+import {
+  boundedActivityRequest,
+  boundedActivityValue,
+  clipActivityText,
+  formatActivityRequest
+} from "./activity.js";
 import type { LlmBudget } from "./budget.js";
 import { missingRapidRouterConfiguration } from "./errors.js";
 import type { Ledger } from "./ledger.js";
 
 export const RAPIDROUTER_BASE_URL = "https://rapidrouter.ai/api/v1";
-export const RAPIDROUTER_MODEL = "qwen/qwen3.7-flash-2026-07-15";
+export const RAPIDROUTER_MODEL = "deepseek/deepseek-v4-flash";
 export const RAPIDROUTER_DEFAULT_MAX_OUTPUT_TOKENS = 4096;
+export const RAPIDROUTER_REQUEST_TIMEOUT_MS = 60_000;
 
 export interface LlmToolCall {
   id: string;
@@ -42,10 +49,13 @@ export interface LlmUsage {
   cachedPromptTokens?: number | undefined;
 }
 
+export type LlmToolChoice = "auto" | "required" | { type: "function"; name: string };
+
 export interface LlmCompletionRequest {
   label: string;
   messages: LlmMessage[];
   tools?: LlmToolDefinition[];
+  toolChoice?: LlmToolChoice;
   essential?: boolean;
   maxOutputTokens?: number;
 }
@@ -213,6 +223,7 @@ export interface RapidRouterLlmOptions {
   apiKey: string | undefined;
   fetch?: typeof fetch;
   now?: () => number;
+  timeoutMs?: number;
 }
 
 export function createRapidRouterLlmClient(options: RapidRouterLlmOptions): LlmClient {
@@ -229,6 +240,7 @@ export function createRapidRouterLlmClient(options: RapidRouterLlmOptions): LlmC
         apiKey,
         baseURL: RAPIDROUTER_BASE_URL,
         maxRetries: 0,
+        timeout: options.timeoutMs ?? RAPIDROUTER_REQUEST_TIMEOUT_MS,
         ...(options.fetch !== undefined ? { fetch: options.fetch } : {})
       });
       const payload: ChatCompletionCreateParamsNonStreaming = {
@@ -240,7 +252,15 @@ export function createRapidRouterLlmClient(options: RapidRouterLlmOptions): LlmC
                 type: "function" as const,
                 function: { name: tool.name, description: tool.description, parameters: tool.parameters }
               })),
-              tool_choice: "auto" as const
+              tool_choice:
+                request.toolChoice === undefined || request.toolChoice === "auto"
+                  ? ("auto" as const)
+                  : request.toolChoice === "required"
+                    ? ("required" as const)
+                    : {
+                        type: "function" as const,
+                        function: { name: request.toolChoice.name }
+                      }
             }
           : {}),
         max_tokens: request.maxOutputTokens ?? RAPIDROUTER_DEFAULT_MAX_OUTPUT_TOKENS
@@ -274,15 +294,109 @@ export interface BoundedCompletionOptions {
   request: LlmCompletionRequest;
 }
 
+function parseVisibleContent(content: string): unknown {
+  const trimmed = content.trim();
+  const unfenced = trimmed.startsWith("```")
+    ? trimmed.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "")
+    : trimmed;
+  try {
+    return JSON.parse(unfenced);
+  } catch {
+    return null;
+  }
+}
+
+function visibleContentDetail(content: string | null): string | null {
+  if (content === null || content.trim() === "") {
+    return null;
+  }
+  const parsed = parseVisibleContent(content);
+  if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+    const record = parsed as Record<string, unknown>;
+    for (const key of [
+      "rationale",
+      "polish",
+      "summary",
+      "note",
+      "decision",
+      "message",
+      "explanation",
+      "reasoning"
+    ]) {
+      const candidate = record[key];
+      if (typeof candidate === "string" && candidate.trim() !== "") {
+        return clipActivityText(candidate, 600);
+      }
+    }
+    return null;
+  }
+  return clipActivityText(content, 600);
+}
+
+function parseToolArguments(raw: string): unknown {
+  const trimmed = raw.trim();
+  if (trimmed === "") {
+    return {};
+  }
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return clipActivityText(trimmed, 360);
+  }
+}
+
+function toolCallsDetail(toolCalls: LlmToolCall[]): string | null {
+  if (toolCalls.length === 0) {
+    return null;
+  }
+  return clipActivityText(
+    toolCalls
+      .map((call) => {
+        const request = formatActivityRequest(parseToolArguments(call.arguments));
+        return request === "{}" ? `${call.name}()` : `${call.name}(${request})`;
+      })
+      .join("; "),
+    600
+  );
+}
+
+function describeResult(result: LlmCompletionResult): {
+  detail?: string;
+  parameters: Record<string, unknown>;
+} {
+  const contentDetail = visibleContentDetail(result.content);
+  const callsDetail = toolCallsDetail(result.toolCalls);
+  const detail =
+    contentDetail !== null && callsDetail !== null
+      ? clipActivityText(`${contentDetail} | requested ${callsDetail}`)
+      : contentDetail ?? (callsDetail !== null ? `requested ${callsDetail}` : null);
+  return {
+    ...(detail === null ? {} : { detail }),
+    parameters: {
+      model: result.model,
+      finishReason: result.finishReason,
+      usage: boundedActivityValue(result.usage),
+      toolCalls: result.toolCalls.map((call) => ({
+        name: call.name,
+        arguments: boundedActivityRequest(parseToolArguments(call.arguments))
+      }))
+    }
+  };
+}
+
 function summarizeResult(result: LlmCompletionResult): string {
   const parts = [`model ${result.model}`, `${result.usage.promptTokens} in / ${result.usage.completionTokens} out`];
   if (result.toolCalls.length > 0) {
     parts.push(`${result.toolCalls.length} tool call(s): ${result.toolCalls.map((call) => call.name).join(", ")}`);
-  } else if (result.content !== null && result.content.trim() !== "") {
-    const firstLine = result.content.trim().split("\n")[0] ?? "";
-    parts.push(firstLine.length > 120 ? `${firstLine.slice(0, 117)}...` : firstLine);
   } else {
-    parts.push("empty completion");
+    const contentDetail = visibleContentDetail(result.content);
+    if (contentDetail !== null) {
+      parts.push(contentDetail.length > 120 ? `${contentDetail.slice(0, 117)}...` : contentDetail);
+    } else if (result.content !== null && result.content.trim() !== "") {
+      parts.push("structured completion");
+    } else {
+      parts.push("empty completion");
+    }
   }
   return parts.join(" | ");
 }
@@ -292,10 +406,12 @@ export async function completeBounded(options: BoundedCompletionOptions): Promis
   options.budget.assertCanSpend({ essential });
   const result = await options.llm.complete(options.request);
   options.budget.charge(result.usage);
+  const activity = describeResult(result);
   options.ledger.append({
     kind: "LLM",
     label: options.request.label,
     summary: summarizeResult(result),
+    ...activity,
     duration: result.durationMs,
     cacheState: "n/a",
     resultCount: result.toolCalls.length > 0 ? result.toolCalls.length : 1

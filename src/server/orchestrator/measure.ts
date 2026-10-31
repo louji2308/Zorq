@@ -12,6 +12,13 @@ import type {
   RunState
 } from "../../shared/run.js";
 import { extractPriorMemberEntries } from "../../shared/run.js";
+import {
+  boundedActivityRequest,
+  boundedActivityValue,
+  clipActivityText,
+  collectActivityNames,
+  formatActivityRequest
+} from "../agent/activity.js";
 import { provenanceFromEnvelope } from "../agent/tools.js";
 import type { Ledger, LedgerEntry } from "../agent/ledger.js";
 import {
@@ -95,24 +102,57 @@ export function computeEvent(label: string, summary: string, duration: number, r
   return { kind: "Compute", label, summary, duration, cacheState: "n/a", resultCount };
 }
 
-export function observationEvent(label: string, envelope: QlooEnvelope<unknown>, detail: string): LedgerEvent {
+export function observationEvent(
+  label: string,
+  envelope: QlooEnvelope<unknown>,
+  detail: string,
+  request?: unknown
+): LedgerEvent {
+  const names = collectActivityNames(envelope.results);
+  const requestDetail = request === undefined ? "" : ` | request ${formatActivityRequest(request)}`;
+  const returned = names.length > 0 ? ` | returned ${names.join(", ")}` : "";
   return {
     kind: "Qloo",
     label,
     summary: `${envelope.status} ${envelope.operation} via ${envelope.transport} | ${envelope.cache} | ${envelope.resultCount} result(s) · ${detail}`,
+    detail: clipActivityText(`${detail}${requestDetail}${returned}`),
+    parameters: {
+      call: label,
+      request: boundedActivityRequest(request),
+      operation: envelope.operation,
+      status: envelope.status,
+      transport: envelope.transport,
+      cache: envelope.cache,
+      endpoint: envelope.provenance.endpoint,
+      durationMs: envelope.provenance.durationMs,
+      resultCount: envelope.resultCount,
+      resultNames: names,
+      warnings: boundedActivityValue(envelope.warnings ?? [])
+    },
     duration: envelope.provenance.durationMs,
     cacheState: envelope.cache,
     resultCount: envelope.resultCount
   };
 }
 
-export function failedCallEvent(label: string, detail: string, error: unknown): LedgerEvent {
+export function failedCallEvent(
+  label: string,
+  detail: string,
+  error: unknown,
+  request?: unknown
+): LedgerEvent {
   const failure = toError(error);
   const line = failure.message.split("\n")[0] ?? failure.name;
   return {
     kind: "Qloo",
     label,
     summary: `call failed · ${detail} · ${line.slice(0, 200)}`,
+    detail: clipActivityText(detail),
+    parameters: {
+      call: label,
+      request: boundedActivityRequest(request),
+      error: line.slice(0, 200)
+    },
     duration: 0,
     cacheState: "n/a",
     resultCount: 0
@@ -209,6 +249,7 @@ async function callGateway(
   context: MeasurementContext,
   label: string,
   detail: string,
+  request: unknown,
   call: () => Promise<QlooEnvelope<unknown>>
 ): Promise<{ envelope: QlooEnvelope<unknown>; evidenceId: string } | null> {
   if (!budgetAvailable(context)) {
@@ -218,7 +259,9 @@ async function callGateway(
   try {
     const envelope = await call();
     context.consecutiveFailures = 0;
-    const entry: LedgerEntry = context.ledger.append(observationEvent(label, envelope, detail));
+    const entry: LedgerEntry = context.ledger.append(
+      observationEvent(label, envelope, detail, request)
+    );
     const record = createEvidenceRecord({
       operation: envelope.operation,
       claim: `Qloo ${envelope.operation} observation · ${detail}`,
@@ -234,7 +277,7 @@ async function callGateway(
     if (context.consecutiveFailures >= MAX_CONSECUTIVE_FETCH_FAILURES) {
       context.failureStopped = true;
     }
-    context.ledger.append(failedCallEvent(label, detail, error));
+    context.ledger.append(failedCallEvent(label, detail, error, request));
     return null;
   }
 }
@@ -260,11 +303,12 @@ async function fetchNeighborhoodScope(
     const detail = `component ${component.id} · ${domain} ${scope}${
       attempt === null ? "" : ` · signal "${attempt}"`
     }`;
-    const outcome = await callGateway(context, "measure.neighborhood_fetch", detail, () =>
-      context.gateway.insights({
-        ...base,
-        ...(attempt === null ? {} : { signalLocation: attempt })
-      })
+    const request = {
+      ...base,
+      ...(attempt === null ? {} : { signalLocation: attempt })
+    };
+    const outcome = await callGateway(context, "measure.neighborhood_fetch", detail, request, () =>
+      context.gateway.insights(request)
     );
     if (outcome === null) {
       break;
@@ -304,8 +348,13 @@ async function resolveComponentTag(
       break;
     }
     if (!tagMemo.has(tag)) {
-      const outcome = await callGateway(context, "measure.resolve_tag", `tag query "${tag}"`, () =>
-        context.gateway.resolveTags({ query: tag, take: 5 })
+      const request = { query: tag, take: 5 };
+      const outcome = await callGateway(
+        context,
+        "measure.resolve_tag",
+        `tag query "${tag}"`,
+        request,
+        () => context.gateway.resolveTags(request)
       );
       if (outcome === null) {
         tagMemo.set(tag, null);
@@ -351,14 +400,22 @@ async function probeRoute2(
       return { resultCount: 0, focalInTopHalf: null };
     }
     const detail = `edge probe ${signalComponent.id} → ${typeComponent.id} · tag ${tagId} · radius ${radius}m`;
-    const outcome = await callGateway(context, "measure.triangulate_probe", detail, () =>
-      context.gateway.insights({
-        filterType: "place",
-        signalEntities: signalComponent.exemplars.map((exemplar) => exemplar.id),
-        filterTags: [tagId],
-        location: { point: { lat: brief.coordinates?.lat ?? 0, lon: brief.coordinates?.lon ?? 0 }, radiusM: radius },
-        take: 10
-      })
+    const request = {
+      filterType: "place" as const,
+      signalEntities: signalComponent.exemplars.map((exemplar) => exemplar.id),
+      filterTags: [tagId],
+      location: {
+        point: { lat: brief.coordinates?.lat ?? 0, lon: brief.coordinates?.lon ?? 0 },
+        radiusM: radius
+      },
+      take: 10
+    };
+    const outcome = await callGateway(
+      context,
+      "measure.triangulate_probe",
+      detail,
+      request,
+      () => context.gateway.insights(request)
     );
     if (outcome === null) {
       return { resultCount: 0, focalInTopHalf: null };
@@ -483,6 +540,20 @@ function buildCulturalDna(
   return Object.keys(dna).length > 0 ? dna : undefined;
 }
 
+export function reconcilePoolEvidence(
+  pool: readonly CandidateComponent[],
+  neighborhoods: readonly TasteNeighborhood[]
+): CandidateComponent[] {
+  const measuredIds = new Set(
+    neighborhoods.filter((entry) => entry.state === "measured").map((entry) => entry.componentId)
+  );
+  return pool.map((component) =>
+    measuredIds.has(component.id) && component.evidenceState !== "measured"
+      ? { ...component, evidenceState: "measured" as const }
+      : component
+  );
+}
+
 function emptyFamily(poolSize: number, size: number, requiredRoles: ComponentRole[]): CompositionFamily {
   return {
     poolSize,
@@ -494,9 +565,27 @@ function emptyFamily(poolSize: number, size: number, requiredRoles: ComponentRol
   };
 }
 
+function measuredCount(pool: readonly CandidateComponent[]): number {
+  return pool.filter((component) => component.evidenceState === "measured").length;
+}
+
+function compositionSizeFor(pool: readonly CandidateComponent[]): number {
+  const measured = measuredCount(pool);
+  if (measured < 3) {
+    return 0;
+  }
+  // Prefer the largest honest size that still leaves a competing family: K=4 -> size 3
+  // yields 4 valid subsets, while K would yield a single all-in composition.
+  return Math.min(COMPOSITION_SIZE, Math.max(3, measured - 1));
+}
+
 function familyReason(pool: readonly CandidateComponent[], family: CompositionFamily): string | undefined {
   if (pool.length < 2) {
     return "fewer than 2 pool components; no composition can be measured from this pool";
+  }
+  const measured = measuredCount(pool);
+  if (measured < 3) {
+    return `only ${measured} pool component(s) are measured; at least 3 measured components are required to form a composition, so nothing is ranked or fabricated`;
   }
   if (family.totalValid === 0) {
     return `no size-${family.size} subset of this pool is both role-valid and fully measured; nothing is ranked or fabricated`;
@@ -542,10 +631,12 @@ export interface CompositionsProjection {
 
 export function projectCompositionsNode(input: CompositionsProjection): RunCompositions {
   const { pool, family, familyError, ranking, triangulation, prior } = input;
-  const requiredRoles: ComponentRole[] = pool.some((component) => component.role === "Anchor") ? ["Anchor"] : [];
+  const measured = pool.filter((component) => component.evidenceState === "measured");
+  const requiredRoles: ComponentRole[] = measured.some((component) => component.role === "Anchor")
+    ? ["Anchor"]
+    : [];
   const effectiveFamily: CompositionFamily =
-    family ??
-    emptyFamily(pool.length, pool.length >= 2 ? Math.min(COMPOSITION_SIZE, pool.length) : 0, requiredRoles);
+    family ?? emptyFamily(pool.length, compositionSizeFor(pool), requiredRoles);
   const reason = familyReason(pool, effectiveFamily) ?? familyError ?? undefined;
   const classifiedStates = new Map<string, TriangulationClassification["state"]>();
   for (const entry of triangulation) {
@@ -624,8 +715,9 @@ export function rebuildChain(input: {
   familySize: number;
 }): RebuildChainResult {
   const { pool, siteNeighborhoods, cityNeighborhoods, familySize } = input;
-  const idf = computeIdf(pool, siteNeighborhoods);
-  const graph = buildGraph(pool, siteNeighborhoods, idf);
+  const measuredPool = reconcilePoolEvidence(pool, siteNeighborhoods);
+  const idf = computeIdf(measuredPool, siteNeighborhoods);
+  const graph = buildGraph(measuredPool, siteNeighborhoods, idf);
   const runGraph = projectRunGraph(graph, siteNeighborhoods, idf);
   const cityVectors: Record<string, WeightedEntity[]> = {};
   for (const neighborhood of cityNeighborhoods) {
@@ -635,14 +727,23 @@ export function rebuildChain(input: {
     }));
   }
   const distinctiveness = computeDistinctivenessMap(siteNeighborhoods, cityVectors);
-  const requiredRoles: ComponentRole[] = pool.some((component) => component.role === "Anchor") ? ["Anchor"] : [];
-  const size = Math.min(familySize, pool.length);
+  const measured = measuredPool.filter((component) => component.evidenceState === "measured");
+  const requiredRoles: ComponentRole[] = measured.some((component) => component.role === "Anchor")
+    ? ["Anchor"]
+    : [];
+  const size = Math.min(familySize, compositionSizeFor(measuredPool));
   let family: CompositionFamily | null = null;
   let ranking: RankingResult | null = null;
   let familyError: string | null = null;
-  if (pool.length >= 2) {
+  if (size >= 3) {
     try {
-      family = buildCompositions({ pool, graph, size, requiredRoles, distinctiveness });
+      family = buildCompositions({
+        pool: measuredPool,
+        graph,
+        size,
+        requiredRoles,
+        distinctiveness
+      });
       ranking = { ...rankCompositionSet(family.compositions), sweep: rivalSweep(family.compositions) };
     } catch (error) {
       familyError = toError(error).message.split("\n")[0] ?? "engine refused the composition family";
@@ -724,8 +825,9 @@ export async function runMeasurement(input: MeasurementInput): Promise<Measureme
     )
   );
 
-  const idf = computeIdf(pool, siteNeighborhoods);
-  const graph = buildGraph(pool, siteNeighborhoods, idf);
+  const measuredPool = reconcilePoolEvidence(pool, siteNeighborhoods);
+  const idf = computeIdf(measuredPool, siteNeighborhoods);
+  const graph = buildGraph(measuredPool, siteNeighborhoods, idf);
   const runGraph = projectRunGraph(graph, siteNeighborhoods, idf);
   const measuredEdges = graph.edges.filter((edge) => edge.state === "measured").length;
   input.ledger.append(
@@ -746,14 +848,23 @@ export async function runMeasurement(input: MeasurementInput): Promise<Measureme
   }
   const distinctiveness = computeDistinctivenessMap(siteNeighborhoods, cityVectors);
 
-  const requiredRoles: ComponentRole[] = pool.some((component) => component.role === "Anchor") ? ["Anchor"] : [];
-  const size = Math.min(COMPOSITION_SIZE, pool.length);
+  const measured = measuredPool.filter((component) => component.evidenceState === "measured");
+  const requiredRoles: ComponentRole[] = measured.some((component) => component.role === "Anchor")
+    ? ["Anchor"]
+    : [];
+  const size = compositionSizeFor(measuredPool);
   let family: CompositionFamily | null = null;
   let ranking: RankingResult | null = null;
   let familyError: string | null = null;
-  if (pool.length >= 2) {
+  if (size >= 3) {
     try {
-      family = buildCompositions({ pool, graph, size, requiredRoles, distinctiveness });
+      family = buildCompositions({
+        pool: measuredPool,
+        graph,
+        size,
+        requiredRoles,
+        distinctiveness
+      });
       ranking = {
         ...rankCompositionSet(family.compositions),
         sweep: rivalSweep(family.compositions)
@@ -766,7 +877,7 @@ export async function runMeasurement(input: MeasurementInput): Promise<Measureme
   const finalists = (ranking?.ranked ?? []).slice(0, FINALIST_COUNT);
   const pairSet = new Set<string>();
   const finalistPairs: Array<[CandidateComponent, CandidateComponent]> = [];
-  const componentsById = new Map(pool.map((component) => [component.id, component]));
+  const componentsById = new Map(measuredPool.map((component) => [component.id, component]));
   for (const finalist of finalists) {
     for (let left = 0; left < finalist.members.length; left += 1) {
       for (let right = left + 1; right < finalist.members.length; right += 1) {
@@ -814,9 +925,9 @@ export async function runMeasurement(input: MeasurementInput): Promise<Measureme
     )
   );
 
-  const prior = resolvePriorMarker(state.prior, pool, graph, family);
+  const prior = resolvePriorMarker(state.prior, measuredPool, graph, family);
   const compositionsNode = projectCompositionsNode({
-    pool,
+    pool: measuredPool,
     family,
     familyError,
     ranking,
@@ -877,6 +988,7 @@ export async function runMeasurement(input: MeasurementInput): Promise<Measureme
   return {
     state: {
       ...state,
+      candidatePool: measuredPool,
       neighborhoods: neighborhoodsNode,
       graph: runGraph,
       compositions: compositionsNode,
